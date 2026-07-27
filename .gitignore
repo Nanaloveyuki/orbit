@@ -1,3 +1,6 @@
 # ref
 ref/
 .Agents/
+_build/
+.mooncakes/
+.repos/

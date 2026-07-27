@@ -1,0 +1,11 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+  "gmlewis/sha256",
+}
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "platform.c" ],
+)

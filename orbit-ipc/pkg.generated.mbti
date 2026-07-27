@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-ipc"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn decode_request(StringView) -> InvocationRequest raise IpcError
+
+pub fn encode_response(InvocationResponse) -> String
+
+// Errors
+pub(all) suberror IpcError {
+  MalformedEnvelope(String)
+  UnsupportedVersion(Int)
+  InvalidInvocationId(String)
+  InvalidCommandName(String)
+  DuplicateCommand(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CommandFailure {
+  code : String
+  message : String
+  data : Json?
+} derive(Eq, @debug.Debug)
+pub fn CommandFailure::new(code~ : String, message~ : String, data? : Json) -> Self
+
+pub struct CommandName {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn CommandName::new(String) -> Self raise IpcError
+pub fn CommandName::value(Self) -> String
+
+pub struct CommandRegistry {
+  // private fields
+}
+pub fn CommandRegistry::contains(Self, CommandName) -> Bool
+pub fn CommandRegistry::dispatch(Self, StringView) -> String
+pub fn CommandRegistry::length(Self) -> Int
+pub fn CommandRegistry::new() -> Self
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_json(Self, CommandName, (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
+
+pub struct InvocationId {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn InvocationId::new(String) -> Self raise IpcError
+pub fn InvocationId::value(Self) -> String
+
+pub struct InvocationRequest {
+  // private fields
+}
+pub fn InvocationRequest::command(Self) -> CommandName
+pub fn InvocationRequest::id(Self) -> InvocationId
+pub fn InvocationRequest::payload(Self) -> Json
+
+pub(all) enum InvocationResponse {
+  Success(InvocationId, Json)
+  Failure(InvocationId?, CommandFailure)
+}
+
+// Type aliases
+
+// Traits
+

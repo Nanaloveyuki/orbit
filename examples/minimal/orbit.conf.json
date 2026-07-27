@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "app": {
+    "identifier": "dev.orbit.example",
+    "name": "Orbit Example",
+    "version": "0.1.0"
+  },
+  "windows": [
+    {
+      "label": "main",
+      "title": "Orbit Example",
+      "width": 1024,
+      "height": 720,
+      "entry": "index.html",
+      "visible": true,
+      "resizable": true
+    }
+  ],
+  "security": {
+    "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
+  }
+}
