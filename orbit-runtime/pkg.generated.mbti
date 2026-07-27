@@ -1,0 +1,65 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-runtime"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror RuntimeError {
+  Unavailable(String)
+  Unsupported(String)
+  InvalidState(String)
+  OperationFailed(String, String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum InitialContent {
+  Url(String)
+  Html(String)
+} derive(Eq, @debug.Debug)
+
+pub struct RuntimeBounds {
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn RuntimeBounds::new(x? : Int, y? : Int, width~ : Int, height~ : Int) -> Self raise RuntimeError
+
+pub(all) struct RuntimeCapabilities {
+  navigation : Bool
+  script_evaluation : Bool
+  message_transport : Bool
+  bounds_updates : Bool
+  devtools : Bool
+} derive(Eq, @debug.Debug)
+
+pub struct RuntimeOptions {
+  label : String
+  initial_content : InitialContent
+  initialization_script : String
+  bounds : RuntimeBounds
+  visible : Bool
+}
+pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool) -> Self raise RuntimeError
+
+// Type aliases
+
+// Traits
+pub(open) trait RuntimeFactory {
+  fn create(Self, RuntimeOptions) -> &WebViewRuntime raise RuntimeError
+}
+
+pub(open) trait WebViewRuntime {
+  fn capabilities(Self) -> RuntimeCapabilities
+  fn navigate(Self, String) -> Unit raise RuntimeError
+  fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
+  fn post_message(Self, String) -> Unit raise RuntimeError
+  fn set_message_handler(Self, ((String) -> Unit)?) -> Unit raise RuntimeError
+  fn set_bounds(Self, RuntimeBounds) -> Unit raise RuntimeError
+  fn destroy(Self) -> Unit raise RuntimeError
+}
+

@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-event"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+pub(all) suberror EventError {
+  InvalidName(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct EventDeliveryFailure {
+  code : String
+  message : String
+} derive(Eq, @debug.Debug)
+pub fn EventDeliveryFailure::new(code~ : String, message~ : String) -> Self
+
+pub(all) struct EventEnvelope {
+  name : EventName
+  source : EventTarget
+  target : EventTarget
+  payload : Json
+} derive(Eq, @debug.Debug)
+pub fn EventEnvelope::new(name~ : EventName, payload~ : Json, source? : EventTarget, target? : EventTarget) -> Self
+
+pub struct EventName {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn EventName::new(String) -> Self raise EventError
+pub fn EventName::value(Self) -> String
+
+pub(all) enum EventTarget {
+  Any
+  Application
+  Window(String)
+  Runtime(String)
+  Ipc(String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+pub(open) trait EventSink {
+  fn emit(Self, EventEnvelope) -> Result[Unit, EventDeliveryFailure]
+}
+
