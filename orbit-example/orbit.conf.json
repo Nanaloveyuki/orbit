@@ -1,28 +1,35 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "app": {
     "identifier": "dev.orbit.example",
     "name": "Orbit Example",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "product_name": "Orbit Example",
+    "windows": [
+      {
+        "label": "main",
+        "title": "Orbit Example",
+        "width": 1024,
+        "height": 720,
+        "entry": "assets/index.html",
+        "visible": true,
+        "resizable": true
+      }
+    ]
   },
-  "windows": [
-    {
-      "label": "main",
-      "title": "Orbit Example",
-      "width": 1024,
-      "height": 720,
-      "entry": "assets/index.html",
-      "visible": true,
-      "resizable": true
+  "bundle": { "icons": [] },
+  "web": {
+    "embedded": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
     }
-  ],
-  "security": {
-    "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
   },
+  "build": {},
   "capabilities": [
     {
       "identifier": "main-window-commands",
-      "windows": ["main"],
+      "effect": "allow",
+      "principals": [{ "kind": "window", "identifier": "main" }],
+      "scopes": [],
       "commands": ["example.ping"]
     }
   ],

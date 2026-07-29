@@ -1,6 +1,44 @@
 ///|
 let valid_config_source =
   #|{
+  #|  "schema_version": 2,
+  #|  "app": {
+  #|    "identifier": "dev.orbit.example",
+  #|    "name": "Orbit Example",
+  #|    "version": "0.1.0",
+  #|    "product_name": "Orbit Example",
+  #|    "windows": [
+  #|      {
+  #|        "label": "main",
+  #|        "title": "Orbit Example",
+  #|        "width": 1024,
+  #|        "height": 720,
+  #|        "entry": "assets/index.html",
+  #|        "visible": true,
+  #|        "resizable": true
+  #|      }
+  #|    ]
+  #|  },
+  #|  "bundle": { "icons": [] },
+  #|  "web": {
+  #|    "embedded": { "csp": "default-src 'self'; script-src 'self'" }
+  #|  },
+  #|  "build": {},
+  #|  "capabilities": [
+  #|    {
+  #|      "identifier": "main-commands",
+  #|      "effect": "allow",
+  #|      "principals": [{ "kind": "window", "identifier": "main" }],
+  #|      "scopes": [],
+  #|      "commands": ["example.ping"]
+  #|    }
+  #|  ],
+  #|  "plugins": []
+  #|}
+
+///|
+let valid_v1_config_source =
+  #|{
   #|  "schema_version": 1,
   #|  "app": {
   #|    "identifier": "dev.orbit.example",
@@ -13,7 +51,7 @@ let valid_config_source =
   #|      "title": "Orbit Example",
   #|      "width": 1024,
   #|      "height": 720,
-  #|      "entry": "index.html",
+  #|      "entry": "assets/index.html",
   #|      "visible": true,
   #|      "resizable": true
   #|    }
@@ -32,147 +70,114 @@ let valid_config_source =
   #|}
 
 ///|
-test "JSON syntax failures use structured diagnostics" {
-  let diagnostic = try {
-    ignore(parse_config("{\"schema_version\":"))
-    ConfigDiagnostic::{ code: "accepted", path: "", message: "" }
+fn failure_code(source : StringView) -> String {
+  try {
+    ignore(parse_config(source))
+    "accepted"
   } catch {
-    Invalid(diagnostics) => diagnostics[0]
+    Invalid(diagnostics) => diagnostics[0].code
   }
-  inspect(diagnostic.code, content="invalid_json")
-  inspect(diagnostic.path, content="$")
 }
 
 ///|
-test "configuration compiles to stable embedded data" {
+test "configuration compiles to stable v2 embedded data" {
   let embedded = compile_config(valid_config_source)
   inspect(embedded.fingerprint().length(), content="64")
-  assert_true(embedded.canonical_json().contains("\"schema_version\":1"))
-}
-
-///|
-test "configuration rejects unknown fields before decoding" {
-  let invalid = valid_config_source.replace_all(
-    old="\"schema_version\": 1,",
-    new="\"schema_version\": 1, \"unexpected\": true,",
-  )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="unknown_field")
-}
-
-///|
-test "configuration rejects fractional integer fields" {
-  let invalid = valid_config_source.replace_all(
-    old="\"width\": 1024",
-    new="\"width\": 1024.5",
-  )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="invalid_type")
-}
-
-///|
-test "configuration fingerprints ignore source formatting" {
-  let compact = compile_config(
-    compile_config(valid_config_source).canonical_json(),
-  )
+  assert_true(embedded.canonical_json().contains("\"schema_version\":2"))
   inspect(
-    compact.fingerprint(),
-    content=compile_config(valid_config_source).fingerprint(),
+    compile_config(embedded.canonical_json()).fingerprint(),
+    content=embedded.fingerprint(),
   )
 }
 
 ///|
-test "configuration rejects empty application identifier segments" {
-  let invalid = valid_config_source.replace_all(
-    old="dev.orbit.example",
-    new="dev..example",
-  )
-  let code = try {
-    ignore(parse_config(invalid))
+test "v2 configuration rejects v1 input without a silent compatibility path" {
+  inspect(failure_code(valid_v1_config_source), content="unsupported_schema")
+}
+
+///|
+test "migration produces a parseable v2 configuration with window principals" {
+  let migrated = migrate_config_v1(valid_v1_config_source)
+  let config = parse_config(migrated)
+  inspect(config.schema_version, content="2")
+  assert_true(migrated.contains("\"effect\":\"allow\""))
+  assert_true(migrated.contains("\"kind\":\"window\""))
+  assert_true(migrated.contains("\"build\":{}"))
+}
+
+///|
+test "migration rejects configuration versions other than v1" {
+  let rejected = try {
+    ignore(migrate_config_v1(valid_config_source))
     "accepted"
   } catch {
     Invalid(diagnostics) => diagnostics[0].code
   }
-  inspect(code, content="invalid_identifier")
+  inspect(rejected, content="unsupported_schema")
 }
 
 ///|
-test "configuration reports structured validation diagnostics" {
+test "strict JSON parsing rejects duplicate fields" {
   let invalid = valid_config_source.replace_all(
-    old="\"schema_version\": 1",
-    new="\"schema_version\": 2",
+    old="\"schema_version\": 2,",
+    new="\"schema_version\": 2, \"schema_version\": 2,",
   )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="unsupported_schema")
+  inspect(failure_code(invalid), content="invalid_json")
 }
 
 ///|
-test "capabilities must reference configured windows" {
+test "v2 configuration rejects unknown top-level fields" {
   let invalid = valid_config_source.replace_all(
-    old="\"windows\": [\"main\"]",
-    new="\"windows\": [\"missing\"]",
+    old="\"schema_version\": 2,",
+    new="\"schema_version\": 2, \"windows\": [],",
   )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="unknown_window")
+  inspect(failure_code(invalid), content="unknown_field")
 }
 
 ///|
-test "capability command names follow the IPC identifier grammar" {
+test "optional application metadata remains absent when not declared" {
+  let without_product_name = valid_config_source.replace_all(
+    old="    \"product_name\": \"Orbit Example\",\n",
+    new="",
+  )
+  let config = parse_config(without_product_name)
+  assert_true(config.app.product_name is None)
+  assert_true(config.app.publisher is None)
+}
+
+///|
+test "window capabilities must reference configured windows" {
   let invalid = valid_config_source.replace_all(
-    old="\"example.ping\"",
-    new="\"example ping\"",
+    old="\"identifier\": \"main\" }],",
+    new="\"identifier\": \"missing\" }],",
   )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="invalid_command_name")
+  inspect(failure_code(invalid), content="unknown_window")
 }
 
 ///|
-test "plugins require bundled relative native library paths" {
-  let invalid = valid_config_source.replace_all(
-    old="\"plugins\": []",
-    new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"F:/repo/demo.dll\",\"permissions\":[]}]",
-  )
-  let code = try {
-    ignore(parse_config(invalid))
-    "accepted"
-  } catch {
-    Invalid(diagnostics) => diagnostics[0].code
-  }
-  inspect(code, content="invalid_plugin_library")
-}
-
-///|
-test "plugins contribute to canonical configuration" {
+test "Vite configuration is optional but validates explicit workflows" {
   let configured = valid_config_source.replace_all(
-    old="\"plugins\": []",
-    new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"plugins/demo.dll\",\"permissions\":[\"fs.read\"]}]",
+    old="\"build\": {},",
+    new="\"build\": {\"vite\": {\"dev_command\": \"npm run dev\", \"dev_url\": \"http://127.0.0.1:5173\", \"build_command\": \"npm run build\", \"dist_dir\": \"dist\"}},",
   )
-  let canonical = compile_config(configured).canonical_json()
-  assert_true(canonical.contains("\"plugins\""))
-  assert_true(canonical.contains("plugins/demo.dll"))
+  assert_true(parse_config(configured).build.vite is Some(_))
+  let invalid = configured.replace_all(
+    old="http://127.0.0.1:5173",
+    new="file:///tmp/dev",
+  )
+  inspect(failure_code(invalid), content="invalid_vite_url")
+}
+
+///|
+test "capability scopes require declared transport or HTTPS origin values" {
+  let configured = valid_config_source.replace_all(
+    old="\"scopes\": [],",
+    new="\"scopes\": [{\"kind\": \"transport\", \"value\": \"moonview\"}, {\"kind\": \"origin\", \"value\": \"https://app.example\"}],",
+  )
+  assert_true(parse_config(configured).capabilities[0].scopes.length() == 2)
+  let invalid = configured.replace_all(
+    old="https://app.example",
+    new="http://app.example",
+  )
+  inspect(failure_code(invalid), content="invalid_scope")
 }

@@ -56,3 +56,37 @@ test("run and diagnose map to the expected Moon workflows", () => {
   const diagnose = parseInvocation(["diagnose", "--json"], cwd);
   assert.deepEqual(moonCommands(diagnose), [["check", "--target", "native", resolve(cwd, ".")]]);
 });
+
+test("migrate-config requires a distinct explicit output path", () => {
+  const cwd = resolve("workspace");
+  assert.throws(
+    () => parseInvocation(["migrate-config", "--config", "orbit.conf.json"], cwd),
+    /migrate-config requires --output <path>/,
+  );
+  assert.throws(
+    () => parseInvocation([
+      "migrate-config",
+      "--config",
+      "orbit.conf.json",
+      "--output",
+      "orbit.conf.json",
+    ], cwd),
+    /migrate-config output must differ from --config/,
+  );
+  const invocation = parseInvocation([
+    "migrate-config",
+    "--config",
+    "orbit.conf.json",
+    "--output",
+    "orbit.v2.conf.json",
+  ], cwd);
+  assert.deepEqual(moonCommands(invocation), [[
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "migrate-config",
+    resolve(cwd, "orbit.conf.json"),
+    resolve(cwd, "orbit.v2.conf.json"),
+  ]]);
+});

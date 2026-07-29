@@ -10,10 +10,16 @@ pub let app_name = "Orbit Example"
 pub let app_version = "0.1.0"
 
 ///|
-pub let configuration_json = "{\"schema_version\":1,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\"},\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}],\"security\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"windows\":[\"main\"],\"commands\":[\"example.ping\"]}],\"plugins\":[]}"
+pub let app_product_name : String? = Some("Orbit Example")
 
 ///|
-pub let configuration_fingerprint = "57a27bd6f73a06cf6b2366b4bdaf716b29312d2d48a1db8e7dbe598fac524c6c"
+pub let app_publisher : String? = None
+
+///|
+pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Example\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[]},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}},\"build\":{},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"example.ping\"]}],\"plugins\":[]}"
+
+///|
+pub let configuration_fingerprint = "dbf758d5cfd48a7d165c1bbd001bfc8b18fabfeb2b2544d03e7f63a7dbfd4f3c"
 
 ///|
 pub let window_label = "main"
@@ -42,10 +48,12 @@ pub let entry_url = "orbit://app/index.html"
 ///|
 pub fn configured_ipc_policy() -> @ipc.CommandPolicy raise @ipc.IpcError {
   let policy = @ipc.CommandPolicy::new()
-  policy.add(
-    @ipc.CommandCapability::new(
+  policy.add_grant(
+    @ipc.CommandGrant::new(
       identifier="main-window-commands",
-      windows=["main"],
+      effect=@ipc.CapabilityEffect::allow(),
+      principals=[@ipc.PrincipalSelector::window("main")],
+      scopes=[],
       commands=[@ipc.CommandName::new("example.ping")],
     ),
   )

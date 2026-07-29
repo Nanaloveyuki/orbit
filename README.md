@@ -7,7 +7,7 @@ boundary.
 This repository contains the Stage 1 foundation packages, native desktop
 composition, and initial developer tooling:
 
-- `orbit-utils`: configuration, resources, platform and CSP utilities.
+- `orbit-utils`: schema-v2 configuration, explicit v1 migration, resources, platform and CSP utilities.
 - `orbit-event`: standalone application and runtime event contracts.
 - `orbit-ipc`: transport-neutral command registration, principal-scoped capability policies and structured invocation envelopes.
 - `orbit-runtime`: replaceable WebView runtime contracts.
@@ -22,10 +22,11 @@ capabilities remain intentionally deferred.
 
 ## Current Boundaries
 
-- `orbit-build` strictly parses and validates `orbit.conf.json`, emits a
-  canonical configuration fingerprint, injects CSP into the HTML entry, and
-  embeds its resource directory. It deliberately supports exactly one window
-  while `orbit-core` remains single-window.
+- `orbit-build` strictly parses and validates schema-version 2
+  `orbit.conf.json`, emits a canonical configuration fingerprint, injects CSP
+  from `web.embedded` into the HTML entry, and embeds its resource directory.
+  Application metadata and windows live below `app`; package assets live below
+  `bundle`; explicit optional Vite commands live below `build.vite`.
 - `orbit-core` owns the Orby window and destroys the selected runtime before
   its parent window. `orbit-runtime` remains free of Orby and MoonView types;
   factories receive an abstract `RuntimeHost`.
@@ -111,6 +112,7 @@ embed assets itself.
 
 ```sh
 node orbit-cli/bin/orbit.mjs generate --config orbit-example/orbit.conf.json
+node orbit-cli/bin/orbit.mjs migrate-config --config old-orbit.conf.json --output orbit.conf.json
 node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
@@ -127,6 +129,13 @@ the executable.
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`
 when the generator lives outside the current workspace.
+
+Normal Orbit tooling accepts only `schema_version: 2`. To move an existing v1
+file forward, `migrate-config` requires an explicit `--output` path, rejects an
+existing output and never overwrites its input. The migration maps v1 window
+capabilities to explicit `allow` grants with `window` principals. It cannot
+infer optional publisher metadata, icon declarations or Vite commands; those
+remain absent until the application author supplies them.
 
 ## Development
 
