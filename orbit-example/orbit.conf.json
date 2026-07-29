@@ -25,5 +25,6 @@
       "windows": ["main"],
       "commands": ["example.ping"]
     }
-  ]
+  ],
+  "plugins": []
 }

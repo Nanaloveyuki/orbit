@@ -29,6 +29,9 @@ pub struct DesktopOptions {
   windows : Array[DesktopWindowOptions]
   ipc_registry : @ipc.CommandRegistry?
   ipc_policy : @ipc.CommandPolicy?
+  plugin_declarations : Array[@plugin.PluginDeclaration]
+  plugin_development_directory : String?
+  event_router : @event.EventRouter?
 }
 
 ///|
@@ -36,6 +39,9 @@ pub fn DesktopOptions::new(
   windows~ : Array[DesktopWindowOptions],
   ipc_registry? : @ipc.CommandRegistry? = None,
   ipc_policy? : @ipc.CommandPolicy? = None,
+  plugin_declarations? : Array[@plugin.PluginDeclaration] = [],
+  plugin_development_directory? : String? = None,
+  event_router? : @event.EventRouter? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -57,7 +63,19 @@ pub fn DesktopOptions::new(
       )
     _ => ()
   }
-  { windows, ipc_registry, ipc_policy }
+  if !plugin_declarations.is_empty() && ipc_registry is None {
+    raise InitializationFailed(
+      "plugins require an IPC registry and command policy",
+    )
+  }
+  {
+    windows,
+    ipc_registry,
+    ipc_policy,
+    plugin_declarations,
+    plugin_development_directory,
+    event_router,
+  }
 }
 
 ///|
@@ -100,6 +118,7 @@ struct DesktopApp {
   factory : &@runtime.RuntimeFactory
   options : DesktopOptions
   windows : Array[MountedWindow]
+  plugins : @plugin.PluginRuntime
   mut pending_runtime_failure : String?
   mut shutting_down : Bool
 }
@@ -116,6 +135,7 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     return
   }
   self.shutting_down = true
+  self.plugins.shutdown()
   for mounted in self.windows {
     mounted.runtime.set_message_handler(None) catch {
       _ => ()
@@ -137,9 +157,21 @@ fn DesktopApp::dispatch_ipc_message(
   runtime : &@runtime.WebViewRuntime,
   message : String,
 ) -> Unit {
+  self.emit_event(
+    "orbit://ipc/request",
+    Ipc(label),
+    Window(label),
+    Json::string(message),
+  )
   match (self.options.ipc_registry, self.options.ipc_policy) {
     (Some(registry), Some(policy)) => {
       let response = registry.dispatch_for_window(message, policy, label)
+      self.emit_event(
+        "orbit://ipc/response",
+        Ipc(label),
+        Window(label),
+        Json::string(response),
+      )
       runtime.post_message(response) catch {
         error =>
           if !self.shutting_down && self.pending_runtime_failure is None {
@@ -148,6 +180,28 @@ fn DesktopApp::dispatch_ipc_message(
       }
     }
     _ => ()
+  }
+}
+
+///|
+fn DesktopApp::emit_event(
+  self : DesktopApp,
+  name : String,
+  source : @event.EventTarget,
+  target : @event.EventTarget,
+  payload : Json,
+) -> Unit {
+  match self.options.event_router {
+    Some(router) => {
+      let event = @event.EventEnvelope::new(
+        name=@event.EventName::new(name) catch { _ => return },
+        payload~,
+        source~,
+        target~,
+      )
+      ignore((router as &@event.EventSink).emit(event))
+    }
+    None => ()
   }
 }
 
@@ -215,7 +269,7 @@ fn DesktopApp::mount_window(
   let supplied_lifecycle_handler = runtime_options.lifecycle_handler()
   let runtime_options = runtime_options.with_lifecycle_handler(event => {
     supplied_lifecycle_handler(event)
-    self.record_runtime_event(event)
+    self.record_runtime_event(options.runtime_options.label(), event)
   })
   let runtime = self.factory.create(runtime_host, runtime_options) catch {
     error => {
@@ -250,8 +304,20 @@ fn DesktopApp::mount_window(
 ///|
 fn DesktopApp::record_runtime_event(
   self : DesktopApp,
+  label : String,
   event : @runtime.RuntimeLifecycleEvent,
 ) -> Unit {
+  let payload = match event {
+    Ready => Json::string("ready")
+    Destroyed => Json::string("destroyed")
+    Failed(_) => Json::string("failed")
+  }
+  self.emit_event(
+    "orbit://runtime/lifecycle",
+    Runtime(label),
+    Window(label),
+    payload,
+  )
   match event {
     Failed(error) =>
       if !self.shutting_down && self.pending_runtime_failure is None {
@@ -275,6 +341,33 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
       }
     }
     self.windows.push(mounted)
+  }
+  if !self.options.plugin_declarations.is_empty() {
+    match
+      self.plugins.start(
+        self.options.plugin_declarations,
+        development_directory=self.options.plugin_development_directory,
+      ) {
+      Err(_) => {
+        self.teardown()
+        raise StartupFailed("plugin activation failed")
+      }
+      Ok(_) => ()
+    }
+    match self.options.ipc_registry {
+      Some(registry) =>
+        match self.plugins.register_ipc(registry) {
+          Err(_) => {
+            self.teardown()
+            raise StartupFailed("plugin IPC registration failed")
+          }
+          Ok(_) => ()
+        }
+      None => {
+        self.teardown()
+        raise StartupFailed("plugins require an IPC registry")
+      }
+    }
   }
 }
 
@@ -355,6 +448,7 @@ pub fn run(
     factory,
     options,
     windows: [],
+    plugins: @plugin.PluginRuntime::new(),
     pending_runtime_failure: None,
     shutting_down: false,
   }

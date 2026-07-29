@@ -1,6 +1,9 @@
 import {
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
   "Nanaloveyuki/dynlib",
   "Nanaloveyuki/orbit-plugin-abi" @abi,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/parsec/json" @strict_json,
 }
 

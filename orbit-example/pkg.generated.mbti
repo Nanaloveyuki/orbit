@@ -4,6 +4,7 @@ package "Nanaloveyuki/orbit/orbit-example"
 import {
   "Nanaloveyuki/orbit/orbit-core",
   "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-plugin",
   "Nanaloveyuki/orbit/orbit-runtime",
 }
 
@@ -19,6 +20,8 @@ pub let configuration_fingerprint : String
 pub let configuration_json : String
 
 pub fn configured_ipc_policy() -> @orbit-ipc.CommandPolicy raise @orbit-ipc.IpcError
+
+pub fn configured_plugins() -> Array[@orbit-plugin.PluginDeclaration]
 
 pub fn configured_windows() -> Array[@orbit-core.DesktopWindowOptions]
 

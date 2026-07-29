@@ -18,5 +18,7 @@
   ],
   "security": {
     "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
-  }
+  },
+  "capabilities": [],
+  "plugins": []
 }

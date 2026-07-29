@@ -2,6 +2,7 @@
 package "Nanaloveyuki/orbit/orbit-plugin"
 
 import {
+  "Nanaloveyuki/orbit/orbit-ipc",
   "moonbitlang/core/debug",
 }
 
@@ -10,9 +11,18 @@ pub fn load(String) -> Result[PluginLibrary, PluginError]
 
 pub fn parse_manifest(String) -> Result[PluginManifest, PluginError]
 
+pub fn plugin_command_name(String, String) -> @orbit-ipc.CommandName raise @orbit-ipc.IpcError
+
 // Errors
 
 // Types and methods
+pub(all) struct PluginDeclaration {
+  id : String
+  library : String
+  permissions : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn PluginDeclaration::new(id~ : String, library~ : String, permissions? : Array[String]) -> Self
+
 pub(all) enum PluginError {
   LoadFailed
   MissingSymbol(String)
@@ -46,6 +56,22 @@ pub struct PluginPolicy {
 pub fn PluginPolicy::allows(Self, String) -> Bool
 pub fn PluginPolicy::grant(Self, String) -> Unit
 pub fn PluginPolicy::new() -> Self
+
+pub struct PluginRuntime {
+  // private fields
+}
+pub fn PluginRuntime::new() -> Self
+pub fn PluginRuntime::register_ipc(Self, @orbit-ipc.CommandRegistry) -> Result[Unit, PluginRuntimeError]
+pub fn PluginRuntime::shutdown(Self) -> Unit
+pub fn PluginRuntime::start(Self, Array[PluginDeclaration], development_directory? : String?) -> Result[Unit, PluginRuntimeError]
+
+pub(all) enum PluginRuntimeError {
+  DuplicatePlugin(String)
+  IdentityMismatch(String, String)
+  InvalidDevelopmentDirectory
+  LoadFailure(String, PluginError)
+  RegistrationFailure(String)
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

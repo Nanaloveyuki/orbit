@@ -261,6 +261,44 @@ fn validate_capabilities_shape(
 }
 
 ///|
+fn validate_plugins_shape(
+  value : Json,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  match value {
+    Array(plugins) =>
+      for index, value in plugins {
+        let path = "$.plugins[\{index}]"
+        match value {
+          Object(object) => {
+            validate_object_keys(
+              object,
+              path,
+              ["id", "library", "permissions"],
+              diagnostics,
+            )
+            validate_string_field(object, "id", path, diagnostics)
+            validate_string_field(object, "library", path, diagnostics)
+            match object.get("permissions") {
+              Some(value) =>
+                validate_string_array(value, path + ".permissions", diagnostics)
+              None => ()
+            }
+          }
+          _ =>
+            diagnostics.push(
+              diagnostic("invalid_type", path, "plugin must be an object"),
+            )
+        }
+      }
+    _ =>
+      diagnostics.push(
+        diagnostic("invalid_type", "$.plugins", "field must be an array"),
+      )
+  }
+}
+
+///|
 fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
   let diagnostics : Array[ConfigDiagnostic] = []
   match value {
@@ -268,7 +306,9 @@ fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
       validate_object_keys(
         object,
         "$",
-        ["schema_version", "app", "windows", "security", "capabilities"],
+        [
+          "schema_version", "app", "windows", "security", "capabilities", "plugins",
+        ],
         diagnostics,
       )
       validate_int_field(object, "schema_version", "$", diagnostics)
@@ -286,6 +326,10 @@ fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
       }
       match object.get("capabilities") {
         Some(value) => validate_capabilities_shape(value, diagnostics)
+        None => ()
+      }
+      match object.get("plugins") {
+        Some(value) => validate_plugins_shape(value, diagnostics)
         None => ()
       }
     }
