@@ -30,8 +30,16 @@ pub(all) struct EmbeddedWebConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub(all) struct RemoteWebConfig {
+  http_url : String
+  allowed_origins : Array[String]
+  fallback_entry : String
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
 pub(all) struct WebConfig {
   embedded : EmbeddedWebConfig
+  remote : RemoteWebConfig?
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
@@ -146,6 +154,43 @@ fn valid_vite_url(value : String) -> Bool {
 }
 
 ///|
+fn https_origin(value : String) -> String? {
+  if !value.has_prefix("https://") || value.length() <= 8 {
+    return None
+  }
+  let chars = value.to_array()
+  let mut end = chars.length()
+  for index = 8; index < chars.length(); index = index + 1 {
+    if chars[index] == '/' || chars[index] == '?' || chars[index] == '#' {
+      end = index
+      break
+    }
+  }
+  let origin = String::from_array(chars[:end])
+  if origin.length() <= 8 || origin.contains("@") || origin.contains(" ") {
+    None
+  } else {
+    Some(origin)
+  }
+}
+
+///|
+fn valid_https_origin(value : String) -> Bool {
+  match https_origin(value) {
+    Some(origin) => origin == value
+    None => false
+  }
+}
+
+///|
+fn valid_remote_url(value : String) -> Bool {
+  match https_origin(value) {
+    Some(_) => !value.contains(" ")
+    None => false
+  }
+}
+
+///|
 fn valid_scope_kind(kind : String, value : String) -> Bool {
   match kind {
     "transport" =>
@@ -161,6 +206,7 @@ fn valid_scope_kind(kind : String, value : String) -> Bool {
 ///|
 fn valid_principal_kind(kind : String) -> Bool {
   kind == "window" ||
+  kind == "remote_page" ||
   kind == "http_client" ||
   kind == "plugin" ||
   kind == "background_task"
@@ -301,6 +347,65 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
       ),
     )
   }
+  match config.web.remote {
+    Some(remote) => {
+      let remote_url = remote.http_url.trim().to_owned()
+      let remote_origin = https_origin(remote_url)
+      if !valid_remote_url(remote_url) {
+        diagnostics.push(
+          diagnostic(
+            "invalid_remote_url", "$.web.remote.http_url", "remote http_url must be an HTTPS URL",
+          ),
+        )
+      }
+      match normalize_resource_path(remote.fallback_entry) {
+        Ok(_) => ()
+        Err(_) =>
+          diagnostics.push(
+            diagnostic(
+              "invalid_fallback_entry", "$.web.remote.fallback_entry", "remote fallback_entry must be a normalized relative resource path",
+            ),
+          )
+      }
+      if remote.allowed_origins.is_empty() {
+        diagnostics.push(
+          diagnostic(
+            "required", "$.web.remote.allowed_origins", "remote mode requires at least one allowed HTTPS origin",
+          ),
+        )
+      }
+      let origins : Map[String, Bool] = Map([])
+      for index, origin in remote.allowed_origins {
+        let path = "$.web.remote.allowed_origins[\{index}]"
+        let origin = origin.trim().to_owned()
+        if !valid_https_origin(origin) {
+          diagnostics.push(
+            diagnostic(
+              "invalid_remote_origin", path, "remote allowed origin must be an exact HTTPS origin",
+            ),
+          )
+        } else if origins.contains(origin) {
+          diagnostics.push(
+            diagnostic(
+              "duplicate_remote_origin", path, "remote allowed origin must not be repeated",
+            ),
+          )
+        } else {
+          origins[origin] = true
+        }
+      }
+      match remote_origin {
+        Some(origin) if !origins.contains(origin) =>
+          diagnostics.push(
+            diagnostic(
+              "remote_origin_not_allowed", "$.web.remote.http_url", "remote URL origin must be included in allowed_origins",
+            ),
+          )
+        _ => ()
+      }
+    }
+    None => ()
+  }
   match config.build.vite {
     Some(vite) => {
       if vite.dev_command.trim().is_empty() ||
@@ -329,6 +434,13 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
       }
     }
     None => ()
+  }
+  if config.web.remote is Some(_) && config.build.vite is Some(_) {
+    diagnostics.push(
+      diagnostic(
+        "remote_vite_conflict", "$.build.vite", "remote web mode cannot be combined with a Vite workflow",
+      ),
+    )
   }
   let capability_identifiers : Map[String, Bool] = Map([])
   for index, capability in config.capabilities {
@@ -384,10 +496,11 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
             "invalid_principal", principal_path, "principal kind or identifier is invalid",
           ),
         )
-      } else if kind == "window" && !labels.contains(principal_identifier) {
+      } else if (kind == "window" || kind == "remote_page") &&
+        !labels.contains(principal_identifier) {
         diagnostics.push(
           diagnostic(
-            "unknown_window", principal_path, "window principal must reference a configured window label",
+            "unknown_window", principal_path, "window or remote page principal must reference a configured window label",
           ),
         )
       } else if principal_keys.contains(key) {
@@ -420,6 +533,47 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         )
       } else {
         scope_keys[key] = true
+      }
+    }
+    let targets_remote_page = capability.principals.any(principal => {
+      principal.kind.trim() == "remote_page"
+    })
+    if targets_remote_page {
+      match config.web.remote {
+        Some(remote) => {
+          let has_moonview = capability.scopes.any(scope => {
+            scope.kind.trim() == "transport" && scope.value.trim() == "moonview"
+          })
+          let has_allowed_origin = capability.scopes.any(scope => {
+            scope.kind.trim() == "origin" &&
+            remote.allowed_origins.any(origin => {
+              origin.trim() == scope.value.trim()
+            })
+          })
+          let all_origins_allowed = capability.scopes.all(scope => {
+            scope.kind.trim() != "origin" ||
+            remote.allowed_origins.any(origin => {
+              origin.trim() == scope.value.trim()
+            })
+          })
+          if !has_moonview || !has_allowed_origin || !all_origins_allowed {
+            diagnostics.push(
+              diagnostic(
+                "remote_scope_required",
+                path + ".scopes",
+                "remote page capabilities require moonview transport and only allowed HTTPS origin scopes",
+              ),
+            )
+          }
+        }
+        None =>
+          diagnostics.push(
+            diagnostic(
+              "remote_without_config",
+              path + ".principals",
+              "remote page capabilities require web.remote configuration",
+            ),
+          )
       }
     }
     if capability.commands.is_empty() {
@@ -560,7 +714,18 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
         normalize_resource_path(icon).unwrap_or(icon)
       }),
     },
-    web: { embedded: { csp: config.web.embedded.csp.trim().to_owned() } },
+    web: {
+      embedded: { csp: config.web.embedded.csp.trim().to_owned() },
+      remote: config.web.remote.map(remote => {
+        http_url: remote.http_url.trim().to_owned(),
+        allowed_origins: remote.allowed_origins.map(origin => {
+          origin.trim().to_owned()
+        }),
+        fallback_entry: normalize_resource_path(remote.fallback_entry).unwrap_or(
+          remote.fallback_entry,
+        ),
+      }),
+    },
     build: { vite, },
     capabilities,
     plugins,
@@ -634,7 +799,7 @@ pub fn migrate_config_v1(source : StringView) -> String raise ConfigError {
       windows,
     },
     bundle: { icons: [] },
-    web: { embedded: { csp: config.security.csp } },
+    web: { embedded: { csp: config.security.csp }, remote: None },
     build: { vite: None },
     capabilities,
     plugins: config.plugins.map(plugin => {

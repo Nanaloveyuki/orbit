@@ -490,7 +490,13 @@ fn validate_v2_web_shape(
 ) -> Unit {
   match value {
     Object(object) => {
-      validate_object_keys(object, "$.web", ["embedded"], diagnostics)
+      validate_object_keys_with_optional(
+        object,
+        "$.web",
+        ["embedded"],
+        ["remote"],
+        diagnostics,
+      )
       match object.get("embedded") {
         Some(Object(embedded)) => {
           validate_object_keys(embedded, "$.web.embedded", ["csp"], diagnostics)
@@ -500,6 +506,34 @@ fn validate_v2_web_shape(
           diagnostics.push(
             diagnostic(
               "invalid_type", "$.web.embedded", "field must be an object",
+            ),
+          )
+        None => ()
+      }
+      match object.get("remote") {
+        Some(Object(remote)) => {
+          validate_object_keys(
+            remote,
+            "$.web.remote",
+            ["http_url", "allowed_origins", "fallback_entry"],
+            diagnostics,
+          )
+          validate_string_field(remote, "http_url", "$.web.remote", diagnostics)
+          match remote.get("allowed_origins") {
+            Some(value) =>
+              validate_string_array(
+                value, "$.web.remote.allowed_origins", diagnostics,
+              )
+            None => ()
+          }
+          validate_string_field(
+            remote, "fallback_entry", "$.web.remote", diagnostics,
+          )
+        }
+        Some(_) =>
+          diagnostics.push(
+            diagnostic(
+              "invalid_type", "$.web.remote", "field must be an object",
             ),
           )
         None => ()

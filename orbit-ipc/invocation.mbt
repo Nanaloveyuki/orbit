@@ -29,6 +29,7 @@ pub fn InvocationTransport::background() -> InvocationTransport {
 ///|
 pub enum InvocationPrincipal {
   Window(String)
+  RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
@@ -91,6 +92,29 @@ pub fn InvocationContext::window(
     raise InvalidPrincipal(label)
   }
   context(MoonView, Window(label), None)
+}
+
+///|
+/// Constructs a MoonView context for a configured remote top-level page.
+/// Remote pages are deliberately distinct from local window content and must
+/// normally be constrained by an exact origin scope.
+pub fn InvocationContext::remote_page(
+  identifier : String,
+  origin~ : String?,
+) -> InvocationContext raise IpcError {
+  if !valid_invocation_identity(identifier) {
+    raise InvalidPrincipal(identifier)
+  }
+  let origin = match origin {
+    Some(origin) => {
+      if !valid_origin(origin) {
+        raise InvalidContext(origin)
+      }
+      Some(origin)
+    }
+    None => None
+  }
+  context(MoonView, RemotePage(identifier), origin)
 }
 
 ///|
@@ -179,6 +203,7 @@ pub fn InvocationContext::max_response_chars(self : InvocationContext) -> Int {
 fn InvocationPrincipal::description(self : InvocationPrincipal) -> String {
   match self {
     Window(label) => "window: \{label}"
+    RemotePage(identifier) => "remote page: \{identifier}"
     HttpClient(identifier) => "http client: \{identifier}"
     Plugin(identifier) => "plugin: \{identifier}"
     BackgroundTask(identifier) => "background task: \{identifier}"

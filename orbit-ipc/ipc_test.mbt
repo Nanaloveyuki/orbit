@@ -281,3 +281,41 @@ test "context response limits reject oversized serialized responses" {
   )
   assert_true(response.contains("\"code\":\"response_too_large\""))
 }
+
+///|
+test "remote pages are distinct MoonView principals with origin scopes" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("remote.echo"), payload => Ok(payload))
+  let policy = CommandPolicy::new()
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="remote-page",
+      effect=CapabilityEffect::allow(),
+      principals=[PrincipalSelector::remote_page("main")],
+      scopes=[
+        InvocationScope::transport(InvocationTransport::moonview()),
+        InvocationScope::origin("https://app.example"),
+      ],
+      commands=[CommandName::new("remote.echo")],
+    ),
+  )
+  let request = "{\"version\":1,\"id\":\"req-remote-page\",\"command\":\"remote.echo\",\"payload\":null}"
+  let allowed = registry.dispatch_with_context(
+    request,
+    policy,
+    InvocationContext::remote_page("main", origin=Some("https://app.example")),
+  )
+  let window = registry.dispatch_with_context(
+    request,
+    policy,
+    InvocationContext::window("main"),
+  )
+  let other_origin = registry.dispatch_with_context(
+    request,
+    policy,
+    InvocationContext::remote_page("main", origin=Some("https://other.example")),
+  )
+  assert_true(allowed.contains("\"ok\":true"))
+  assert_true(window.contains("\"code\":\"permission_denied\""))
+  assert_true(other_origin.contains("\"code\":\"permission_denied\""))
+}

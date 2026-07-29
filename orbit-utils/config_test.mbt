@@ -186,3 +186,68 @@ test "capability scopes require declared transport or HTTPS origin values" {
   )
   inspect(failure_code(invalid), content="invalid_scope")
 }
+
+///|
+test "remote web mode requires HTTPS origins and an embedded fallback" {
+  let embedded =
+    #|  "web": {
+    #|    "embedded": { "csp": "default-src 'self'; script-src 'self'" }
+    #|  },
+  let remote =
+    #|  "web": {
+    #|    "embedded": { "csp": "default-src 'self'; script-src 'self'" },
+    #|    "remote": {
+    #|      "http_url": "https://app.example/start",
+    #|      "allowed_origins": ["https://app.example"],
+    #|      "fallback_entry": "assets/fallback.html"
+    #|    }
+    #|  },
+  let configured = valid_config_source.replace_all(old=embedded, new=remote)
+  let config = parse_config(configured)
+  assert_true(config.web.remote is Some(_))
+  let invalid_scheme = configured.replace_all(
+    old="https://app.example/start",
+    new="http://app.example/start",
+  )
+  inspect(failure_code(invalid_scheme), content="invalid_remote_url")
+  let missing_origin = configured.replace_all(
+    old="https://app.example\"],",
+    new="https://other.example\"],",
+  )
+  inspect(failure_code(missing_origin), content="remote_origin_not_allowed")
+}
+
+///|
+test "remote page capabilities require a MoonView origin-scoped grant" {
+  let embedded =
+    #|  "web": {
+    #|    "embedded": { "csp": "default-src 'self'; script-src 'self'" }
+    #|  },
+  let remote =
+    #|  "web": {
+    #|    "embedded": { "csp": "default-src 'self'; script-src 'self'" },
+    #|    "remote": {
+    #|      "http_url": "https://app.example",
+    #|      "allowed_origins": ["https://app.example"],
+    #|      "fallback_entry": "assets/fallback.html"
+    #|    }
+    #|  },
+  let configured = valid_config_source
+    .replace_all(old=embedded, new=remote)
+    .replace_all(
+      old="\"kind\": \"window\", \"identifier\": \"main\"",
+      new="\"kind\": \"remote_page\", \"identifier\": \"main\"",
+    )
+    .replace_all(
+      old="\"scopes\": [],",
+      new="\"scopes\": [{\"kind\": \"transport\", \"value\": \"moonview\"}, {\"kind\": \"origin\", \"value\": \"https://app.example\"}],",
+    )
+  assert_true(
+    parse_config(configured).capabilities[0].principals[0].kind == "remote_page",
+  )
+  let unscoped = configured.replace_all(
+    old="{\"kind\": \"origin\", \"value\": \"https://app.example\"}",
+    new="{\"kind\": \"origin\", \"value\": \"https://other.example\"}",
+  )
+  inspect(failure_code(unscoped), content="remote_scope_required")
+}

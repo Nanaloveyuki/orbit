@@ -1,8 +1,8 @@
 # Orbit
 
 Orbit is a MoonBit desktop application framework built around a replaceable
-WebView runtime, embedded Web assets, and a constrained command/event IPC
-boundary.
+WebView runtime, embedded or explicitly allowlisted HTTPS Web assets, and a
+constrained command/event IPC boundary.
 
 This repository contains the Stage 1 foundation packages, native desktop
 composition, and initial developer tooling:
@@ -24,7 +24,8 @@ capabilities remain intentionally deferred.
 
 - `orbit-build` strictly parses and validates schema-version 2
   `orbit.conf.json`, emits a canonical configuration fingerprint, injects CSP
-  from `web.embedded` into the HTML entry, and embeds its resource directory.
+  from `web.embedded` into the HTML entry or remote fallback, and embeds the
+  required resource directory.
   Application metadata and windows live below `app`; package assets live below
   `bundle`; explicit optional Vite commands live below `build.vite`.
 - `orbit-core` owns the Orby window and destroys the selected runtime before
@@ -104,6 +105,33 @@ requests. External navigation is denied by default. Applications can replace
 and approve an individual URL; the handler is never used for embedded-origin
 navigation.
 
+`web.remote` is an explicit production HTTPS mode. It retains
+`web.embedded.csp` and an embedded `fallback_entry`, then declares the initial
+`http_url` and exact HTTPS `allowed_origins`:
+
+```json
+{
+  "web": {
+    "embedded": { "csp": "default-src 'self'" },
+    "remote": {
+      "http_url": "https://app.example/start",
+      "allowed_origins": ["https://app.example"],
+      "fallback_entry": "assets/fallback.html"
+    }
+  }
+}
+```
+
+The initial URL origin must appear in `allowed_origins`; HTTP URLs, wildcard
+origins, duplicate origins and Vite workflows are rejected. Allowed remote
+navigations stay in the WebView. Failed or rejected remote navigations load
+the embedded fallback; URLs outside the allowlist still require the host's
+external-navigation callback. Remote pages use the separate `remote_page`
+principal and receive no desktop IPC by default. A remote command grant must
+name that principal, scope `moonview`, and include an exact allowlisted HTTPS
+origin scope. The injected bridge is top-level-only, so an iframe cannot use
+the host IPC channel.
+
 ## CLI
 
 `orbit-cli` is a zero-dependency Node.js development wrapper around the
@@ -149,9 +177,10 @@ only that URL and descendants are approved for development navigation.
 
 `orbit bindings` emits a deterministic `orbit-bindings.mjs` module beside the
 configuration. It exports the exact page-callable command map from `allow`
-capabilities targeting a window, including explicitly granted plugin command
-namespaces. Commands limited to HTTP, origins, plugins or background tasks are
-not emitted, and a matching page-level deny removes a command from the map.
+capabilities targeting a local window or explicitly scoped remote page,
+including explicitly granted plugin command namespaces. Commands limited to
+HTTP, plugins or background tasks are not emitted, and a matching page-level
+deny removes a command from the map.
 The generated module is a client convenience only; the IPC policy remains the
 authority at runtime.
 
