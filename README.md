@@ -137,6 +137,15 @@ capabilities to explicit `allow` grants with `window` principals. It cannot
 infer optional publisher metadata, icon declarations or Vite commands; those
 remain absent until the application author supplies them.
 
+When `build.vite` is declared, its commands are executed literally from the
+configuration directory. `orbit dev` starts `dev_command`, waits for
+`dev_url`, generates a page that loads that exact URL, and stops the Vite
+process tree when the desktop application exits. `orbit build`, `orbit run`
+and `orbit package` run `build_command` first, then embed resources from
+`dist_dir`. The CLI does not infer package managers, framework names, scripts
+or output paths. `dev_url` must be an HTTP(S) URL without a trailing slash;
+only that URL and descendants are approved for development navigation.
+
 ## Development
 
 ```sh

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { dirname, resolve } from "node:path";
 import { test } from "node:test";
-import { moonCommands, parseInvocation } from "../src/cli.mjs";
+import { moonCommands, parseInvocation, viteWorkflowCommand } from "../src/cli.mjs";
 
 test("generate defaults output and package to the configuration directory", () => {
   const cwd = resolve("workspace");
@@ -89,4 +89,33 @@ test("migrate-config requires a distinct explicit output path", () => {
     resolve(cwd, "orbit.conf.json"),
     resolve(cwd, "orbit.v2.conf.json"),
   ]]);
+});
+
+test("Vite development uses the explicit generator mode and workflow query", () => {
+  const cwd = resolve("workspace");
+  const invocation = parseInvocation(["dev", "--dev-timeout", "45000"], cwd);
+  const workflow = {
+    dev_command: "npm run dev",
+    dev_url: "http://127.0.0.1:5173",
+    build_command: "npm run build",
+    dist_dir: "dist",
+  };
+  assert.equal(invocation.devTimeout, 45000);
+  assert.deepEqual(viteWorkflowCommand(invocation), [
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "vite-workflow",
+    resolve(cwd, "orbit.conf.json"),
+  ]);
+  assert.deepEqual(moonCommands(invocation, workflow), [[
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "dev",
+    resolve(cwd, "orbit.conf.json"),
+    resolve(cwd, "generated_page.mbt"),
+  ], ["run", "--target", "native", resolve(cwd, ".")]]);
 });
