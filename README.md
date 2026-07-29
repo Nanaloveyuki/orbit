@@ -147,6 +147,7 @@ embed assets itself.
 node orbit-cli/bin/orbit.mjs generate --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs bindings --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs migrate-config --config old-orbit.conf.json --output orbit.conf.json
+node orbit-cli/bin/orbit.mjs icon --source assets/icon-1024.png --out-dir icons --compression 6
 node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
@@ -179,6 +180,13 @@ and `orbit package` run `build_command` first, then embed resources from
 `dist_dir`. The CLI does not infer package managers, framework names, scripts
 or output paths. `dev_url` must be an HTTP(S) URL without a trailing slash;
 only that URL and descendants are approved for development navigation.
+
+`orbit icon` consumes one required 1024x1024 PNG and writes deterministic
+`16x16.png` through `1024x1024.png`, `icon.ico`, `icon.icns`, and `icon.svg`.
+The SVG is a PNG data-URI wrapper, not an attempted vector conversion. The
+command accepts `--compression 0..9`; source decoding is bounded and output
+generation uses premultiplied-alpha Lanczos3 resizing through
+`Nanaloveyuki/image`.
 
 `orbit bindings` emits a deterministic `orbit-bindings.mjs` module beside the
 configuration. It exports the exact page-callable command map from `allow`

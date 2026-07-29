@@ -125,12 +125,19 @@ pub fn Platform::parse(StringView) -> Self
 pub(all) struct PluginConfig {
   id : String
   library : String
+  manifest : String
   permissions : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PrincipalConfig {
   kind : String
   identifier : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RemoteWebConfig {
+  http_url : String
+  allowed_origins : Array[String]
+  fallback_entry : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct ResourceTable {
@@ -155,6 +162,7 @@ pub(all) struct ViteBuildConfig {
 
 pub(all) struct WebConfig {
   embedded : EmbeddedWebConfig
+  remote : RemoteWebConfig?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct WindowConfig {
