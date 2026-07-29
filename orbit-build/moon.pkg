@@ -4,7 +4,6 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "Nanaloveyuki/orbit/orbit-utils" @utils,
-  "Nanaloveyuki/parsec/json" @strict_json,
 }
 
 supported_targets = "native"

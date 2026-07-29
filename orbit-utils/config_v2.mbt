@@ -141,7 +141,8 @@ fn valid_optional_metadata(value : String?) -> Bool {
 
 ///|
 fn valid_vite_url(value : String) -> Bool {
-  value.has_prefix("http://") || value.has_prefix("https://")
+  (value.has_prefix("http://") || value.has_prefix("https://")) &&
+  !value.has_suffix("/")
 }
 
 ///|
@@ -313,7 +314,7 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
       if !valid_vite_url(vite.dev_url.trim().to_owned()) {
         diagnostics.push(
           diagnostic(
-            "invalid_vite_url", "$.build.vite.dev_url", "Vite development URL must use http or https",
+            "invalid_vite_url", "$.build.vite.dev_url", "Vite development URL must use http or https without a trailing slash",
           ),
         )
       }

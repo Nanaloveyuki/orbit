@@ -166,6 +166,11 @@ test "Vite configuration is optional but validates explicit workflows" {
     new="file:///tmp/dev",
   )
   inspect(failure_code(invalid), content="invalid_vite_url")
+  let trailing_slash = configured.replace_all(
+    old="http://127.0.0.1:5173",
+    new="http://127.0.0.1:5173/",
+  )
+  inspect(failure_code(trailing_slash), content="invalid_vite_url")
 }
 
 ///|
