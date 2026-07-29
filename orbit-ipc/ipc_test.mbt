@@ -165,7 +165,12 @@ test "capabilities do not cross window boundaries" {
     "{\"version\":1,\"id\":\"req-8\",\"command\":\"echo\",\"payload\":null}", policy,
     "settings",
   )
-  assert_true(response.contains("\"code\":\"permission_denied\""))
+  inspect(
+    response,
+    content=(
+      #|{"version":1,"id":"req-8","ok":false,"error":{"code":"permission_denied","message":"command is not permitted for window: settings","data":null}}
+    ),
+  )
 }
 
 ///|
@@ -185,4 +190,94 @@ test "capability identifiers are unique within a policy" {
     _ => false
   }
   assert_true(duplicate)
+}
+
+///|
+test "context grants require the matching authenticated principal and origin" {
+  let registry = CommandRegistry::new()
+  registry.register_context_json(CommandName::new("context.echo"), fn(
+    context,
+    value,
+  ) {
+    match context.principal() {
+      HttpClient("remote-app") => Ok(value)
+      _ =>
+        Err(CommandFailure::new(code="wrong_principal", message="unexpected"))
+    }
+  })
+  let policy = CommandPolicy::new()
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="remote-app-echo",
+      effect=CapabilityEffect::allow(),
+      principals=[PrincipalSelector::http_client("remote-app")],
+      scopes=[
+        InvocationScope::transport(InvocationTransport::http()),
+        InvocationScope::origin("https://app.example"),
+      ],
+      commands=[CommandName::new("context.echo")],
+    ),
+  )
+  let allowed = registry.dispatch_with_context(
+    "{\"version\":1,\"id\":\"req-remote\",\"command\":\"context.echo\",\"payload\":null}",
+    policy,
+    InvocationContext::http_client("remote-app", origin="https://app.example"),
+  )
+  let denied = registry.dispatch_with_context(
+    "{\"version\":1,\"id\":\"req-other\",\"command\":\"context.echo\",\"payload\":null}",
+    policy,
+    InvocationContext::http_client("remote-app", origin="https://other.example"),
+  )
+  assert_true(allowed.contains("\"ok\":true"))
+  assert_true(denied.contains("\"code\":\"permission_denied\""))
+}
+
+///|
+test "deny grants override matching legacy window capabilities" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("settings.read"), value => Ok(value))
+  let policy = CommandPolicy::new()
+  policy.add(
+    CommandCapability::new(identifier="main-commands", windows=["main"], commands=[
+      CommandName::new("settings.read"),
+    ]),
+  )
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="main-deny",
+      effect=CapabilityEffect::deny(),
+      principals=[PrincipalSelector::window("main")],
+      commands=[CommandName::new("settings.read")],
+    ),
+  )
+  let response = registry.dispatch_for_window(
+    "{\"version\":1,\"id\":\"req-deny\",\"command\":\"settings.read\",\"payload\":null}",
+    policy, "main",
+  )
+  assert_true(response.contains("\"code\":\"permission_denied\""))
+}
+
+///|
+test "context response limits reject oversized serialized responses" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("large"), fn(_) {
+    Ok(Json::string("x".repeat(512)))
+  })
+  let policy = CommandPolicy::new()
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="background-large",
+      effect=CapabilityEffect::allow(),
+      principals=[PrincipalSelector::background_task("worker")],
+      commands=[CommandName::new("large")],
+    ),
+  )
+  let context = InvocationContext::background_task("worker").with_response_limit(
+    256,
+  )
+  let response = registry.dispatch_with_context(
+    "{\"version\":1,\"id\":\"req-large\",\"command\":\"large\",\"payload\":null}",
+    policy, context,
+  )
+  assert_true(response.contains("\"code\":\"response_too_large\""))
 }

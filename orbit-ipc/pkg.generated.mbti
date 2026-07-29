@@ -18,11 +18,20 @@ pub(all) suberror IpcError {
   InvalidInvocationId(String)
   InvalidCommandName(String)
   InvalidCapability(String)
+  InvalidPrincipal(String)
+  InvalidContext(String)
   DuplicateCommand(String)
   DuplicateCapability(String)
 } derive(@debug.Debug)
 
 // Types and methods
+pub enum CapabilityEffect {
+  Allow
+  Deny
+} derive(Eq, @debug.Debug)
+pub fn CapabilityEffect::allow() -> Self
+pub fn CapabilityEffect::deny() -> Self
+
 pub struct CommandCapability {
   // private fields
 }
@@ -36,6 +45,12 @@ pub(all) struct CommandFailure {
 } derive(Eq, @debug.Debug)
 pub fn CommandFailure::new(code~ : String, message~ : String, data? : Json) -> Self
 
+pub struct CommandGrant {
+  // private fields
+}
+pub fn CommandGrant::identifier(Self) -> String
+pub fn CommandGrant::new(identifier~ : String, effect~ : CapabilityEffect, principals~ : Array[PrincipalSelector], scopes? : Array[InvocationScope], commands~ : Array[CommandName]) -> Self raise IpcError
+
 pub struct CommandName {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -46,7 +61,9 @@ pub struct CommandPolicy {
   // private fields
 }
 pub fn CommandPolicy::add(Self, CommandCapability) -> Unit raise IpcError
+pub fn CommandPolicy::add_grant(Self, CommandGrant) -> Unit raise IpcError
 pub fn CommandPolicy::allows(Self, String, CommandName) -> Bool
+pub fn CommandPolicy::allows_context(Self, InvocationContext, CommandName) -> Bool
 pub fn CommandPolicy::new() -> Self
 
 pub struct CommandRegistry {
@@ -55,16 +72,39 @@ pub struct CommandRegistry {
 pub fn CommandRegistry::contains(Self, CommandName) -> Bool
 pub fn CommandRegistry::dispatch(Self, StringView) -> String
 pub fn CommandRegistry::dispatch_for_window(Self, StringView, CommandPolicy, String) -> String
+pub fn CommandRegistry::dispatch_with_context(Self, StringView, CommandPolicy, InvocationContext) -> String
 pub fn CommandRegistry::length(Self) -> Int
 pub fn CommandRegistry::new() -> Self
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_context(Self, CommandName, (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_context_json(Self, CommandName, (InvocationContext, Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
 pub fn CommandRegistry::register_json(Self, CommandName, (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
+
+pub struct InvocationContext {
+  // private fields
+}
+pub fn InvocationContext::background_task(String) -> Self raise IpcError
+pub fn InvocationContext::http_client(String, origin? : String) -> Self raise IpcError
+pub fn InvocationContext::max_response_chars(Self) -> Int
+pub fn InvocationContext::origin(Self) -> String?
+pub fn InvocationContext::plugin(String) -> Self raise IpcError
+pub fn InvocationContext::principal(Self) -> InvocationPrincipal
+pub fn InvocationContext::transport(Self) -> InvocationTransport
+pub fn InvocationContext::window(String) -> Self raise IpcError
+pub fn InvocationContext::with_response_limit(Self, Int) -> Self raise IpcError
 
 pub struct InvocationId {
   // private fields
 } derive(Eq, @debug.Debug)
 pub fn InvocationId::new(String) -> Self raise IpcError
 pub fn InvocationId::value(Self) -> String
+
+pub enum InvocationPrincipal {
+  Window(String)
+  HttpClient(String)
+  Plugin(String)
+  BackgroundTask(String)
+} derive(Eq, @debug.Debug)
 
 pub struct InvocationRequest {
   // private fields
@@ -77,6 +117,35 @@ pub(all) enum InvocationResponse {
   Success(InvocationId, Json)
   Failure(InvocationId?, CommandFailure)
 }
+
+pub enum InvocationScope {
+  Transport(InvocationTransport)
+  Origin(String)
+} derive(Eq, @debug.Debug)
+pub fn InvocationScope::origin(String) -> Self raise IpcError
+pub fn InvocationScope::transport(InvocationTransport) -> Self
+
+pub enum InvocationTransport {
+  MoonView
+  Http
+  Plugin
+  Background
+} derive(Eq, @debug.Debug)
+pub fn InvocationTransport::background() -> Self
+pub fn InvocationTransport::http() -> Self
+pub fn InvocationTransport::moonview() -> Self
+pub fn InvocationTransport::plugin() -> Self
+
+pub enum PrincipalSelector {
+  Window(String)
+  HttpClient(String)
+  Plugin(String)
+  BackgroundTask(String)
+} derive(Eq, @debug.Debug)
+pub fn PrincipalSelector::background_task(String) -> Self raise IpcError
+pub fn PrincipalSelector::http_client(String) -> Self raise IpcError
+pub fn PrincipalSelector::plugin(String) -> Self raise IpcError
+pub fn PrincipalSelector::window(String) -> Self raise IpcError
 
 // Type aliases
 

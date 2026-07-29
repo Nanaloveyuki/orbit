@@ -9,7 +9,7 @@ composition, and initial developer tooling:
 
 - `orbit-utils`: configuration, resources, platform and CSP utilities.
 - `orbit-event`: standalone application and runtime event contracts.
-- `orbit-ipc`: command registration, capability policies and structured invocation envelopes.
+- `orbit-ipc`: transport-neutral command registration, principal-scoped capability policies and structured invocation envelopes.
 - `orbit-runtime`: replaceable WebView runtime contracts.
 - `orbit-runtime-moonview`: native MoonView implementation of `orbit-runtime`.
 - `orbit-core`: Orby window lifecycle and runtime composition.
@@ -82,7 +82,11 @@ configuration grants that command only to the `main` window. The generator
 emits `configured_ipc_policy`; pass it to `DesktopOptions` alongside the
 command registry. An IPC registry without a policy is rejected, and commands
 not granted to the current window return `permission_denied` without invoking
-their handler.
+their handler. Internally, each invocation carries a typed principal and
+transport context; `dispatch_for_window` remains the protocol-v1 compatibility
+wrapper while future HTTP, plugin and background adapters use
+`dispatch_with_context`. New principal grants support exact origin and
+transport scopes, and a matching deny grant overrides every allow grant.
 
 When IPC is configured, Orbit installs `window.__ORBIT__.invoke(command,
 payload?, { timeout? })` before page scripts run. It returns a Promise, matches
