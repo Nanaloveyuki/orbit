@@ -47,3 +47,27 @@ test "event sinks report delivery failures as values" {
     Ok(_) => abort("expected delivery failure")
   }
 }
+
+///|
+test "router delivers target events and rejects duplicate subscriptions" {
+  let router = EventRouter::new()
+  let received = Ref(false)
+  assert_eq(
+    router.subscribe(Window("main"), _event => {
+      received.val = true
+      Ok(())
+    }),
+    Ok(()),
+  )
+  let event = EventEnvelope::new(
+    name=EventName::new("orbit://runtime/ready"),
+    payload=null,
+    target=Window("main"),
+  )
+  assert_eq((router as &EventSink).emit(event), Ok(()))
+  assert_true(received.val)
+  match router.subscribe(Window("main"), _event => Ok(())) {
+    Err(failure) => inspect(failure.code, content="duplicate_subscription")
+    Ok(_) => abort("duplicate subscription was accepted")
+  }
+}

@@ -2,7 +2,9 @@
 package "Nanaloveyuki/orbit/orbit-core"
 
 import {
+  "Nanaloveyuki/orbit/orbit-event",
   "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-plugin",
   "Nanaloveyuki/orbit/orbit-runtime",
   "Nanaloveyuki/orby",
   "moonbitlang/core/debug",
@@ -28,8 +30,11 @@ pub struct DesktopOptions {
   windows : Array[DesktopWindowOptions]
   ipc_registry : @orbit-ipc.CommandRegistry?
   ipc_policy : @orbit-ipc.CommandPolicy?
+  plugin_declarations : Array[@orbit-plugin.PluginDeclaration]
+  plugin_development_directory : String?
+  event_router : @orbit-event.EventRouter?
 }
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?) -> Self raise CoreError
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?) -> Self raise CoreError
 
 pub struct DesktopWindowOptions {
   window_title : String

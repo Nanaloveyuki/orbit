@@ -27,7 +27,8 @@ let valid_config_source =
   #|      "windows": ["main"],
   #|      "commands": ["example.ping"]
   #|    }
-  #|  ]
+  #|  ],
+  #|  "plugins": []
   #|}
 
 ///|
@@ -148,4 +149,30 @@ test "capability command names follow the IPC identifier grammar" {
     Invalid(diagnostics) => diagnostics[0].code
   }
   inspect(code, content="invalid_command_name")
+}
+
+///|
+test "plugins require bundled relative native library paths" {
+  let invalid = valid_config_source.replace_all(
+    old="\"plugins\": []",
+    new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"F:/repo/demo.dll\",\"permissions\":[]}]",
+  )
+  let code = try {
+    ignore(parse_config(invalid))
+    "accepted"
+  } catch {
+    Invalid(diagnostics) => diagnostics[0].code
+  }
+  inspect(code, content="invalid_plugin_library")
+}
+
+///|
+test "plugins contribute to canonical configuration" {
+  let configured = valid_config_source.replace_all(
+    old="\"plugins\": []",
+    new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"plugins/demo.dll\",\"permissions\":[\"fs.read\"]}]",
+  )
+  let canonical = compile_config(configured).canonical_json()
+  assert_true(canonical.contains("\"plugins\""))
+  assert_true(canonical.contains("plugins/demo.dll"))
 }

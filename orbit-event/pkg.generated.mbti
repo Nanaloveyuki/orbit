@@ -34,6 +34,14 @@ pub struct EventName {
 pub fn EventName::new(String) -> Self raise EventError
 pub fn EventName::value(Self) -> String
 
+pub struct EventRouter {
+  // private fields
+}
+pub fn EventRouter::new() -> Self
+pub fn EventRouter::subscribe(Self, EventTarget, (EventEnvelope) -> Result[Unit, EventDeliveryFailure]) -> Result[Unit, EventDeliveryFailure]
+pub fn EventRouter::unsubscribe(Self, EventTarget) -> Unit
+pub impl EventSink for EventRouter
+
 pub(all) enum EventTarget {
   Any
   Application

@@ -29,12 +29,25 @@ pub(all) struct CapabilityConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+/// A native plugin declared by the application configuration.
+///
+/// `library` is always a normalized path relative to the installed
+/// application root. Development overrides are deliberately runtime-only and
+/// therefore never become part of an embedded configuration.
+pub(all) struct PluginConfig {
+  id : String
+  library : String
+  permissions : Array[String]
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
 pub(all) struct OrbitConfig {
   schema_version : Int
   app : AppConfig
   windows : Array[WindowConfig]
   security : SecurityConfig
   capabilities : Array[CapabilityConfig]
+  plugins : Array[PluginConfig]
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
@@ -127,6 +140,20 @@ fn valid_command_name(value : String) -> Bool {
     }
   }
   true
+}
+
+///|
+fn valid_plugin_library_path(value : String) -> Bool {
+  match normalize_resource_path(value) {
+    Ok(path) =>
+      path.has_prefix("plugins/") &&
+      (
+        path.has_suffix(".dll") ||
+        path.has_suffix(".so") ||
+        path.has_suffix(".dylib")
+      )
+    Err(_) => false
+  }
 }
 
 ///|
@@ -284,6 +311,59 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
       }
     }
   }
+  let plugin_ids : Map[String, Bool] = Map([])
+  for index, plugin in config.plugins {
+    let path = "$.plugins[\{index}]"
+    let id = plugin.id.trim().to_owned()
+    if !valid_dotted_identifier(id) {
+      diagnostics.push(
+        diagnostic(
+          "invalid_plugin_id",
+          path + ".id",
+          "plugin id must be a non-empty dotted ASCII identifier",
+        ),
+      )
+    } else if plugin_ids.contains(id) {
+      diagnostics.push(
+        diagnostic(
+          "duplicate_plugin_id",
+          path + ".id",
+          "plugin id must be unique",
+        ),
+      )
+    } else {
+      plugin_ids[id] = true
+    }
+    if !valid_plugin_library_path(plugin.library) {
+      diagnostics.push(
+        diagnostic(
+          "invalid_plugin_library",
+          path + ".library",
+          "plugin library must be a normalized plugins/ relative path with a native library extension",
+        ),
+      )
+    }
+    let granted_permissions : Map[String, Bool] = Map([])
+    for permission_index, permission in plugin.permissions {
+      let permission_path = "\{path}.permissions[\{permission_index}]"
+      let permission = permission.trim().to_owned()
+      if !valid_command_name(permission) {
+        diagnostics.push(
+          diagnostic(
+            "invalid_plugin_permission", permission_path, "plugin permission must use ASCII command identifier characters",
+          ),
+        )
+      } else if granted_permissions.contains(permission) {
+        diagnostics.push(
+          diagnostic(
+            "duplicate_plugin_permission", permission_path, "plugin permission must not be repeated",
+          ),
+        )
+      } else {
+        granted_permissions[permission] = true
+      }
+    }
+  }
   if config.security.csp.trim().is_empty() {
     diagnostics.push(
       diagnostic("required", "$.security.csp", "CSP policy must not be empty"),
@@ -308,6 +388,13 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     windows: capability.windows.map(label => label.trim().to_owned()),
     commands: capability.commands.map(command => command.trim().to_owned()),
   })
+  let plugins = config.plugins.map(plugin => PluginConfig::{
+    id: plugin.id.trim().to_owned(),
+    library: normalize_resource_path(plugin.library).unwrap_or(plugin.library),
+    permissions: plugin.permissions.map(permission => {
+      permission.trim().to_owned()
+    }),
+  })
   {
     schema_version: config.schema_version,
     app: {
@@ -318,6 +405,7 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     windows,
     security: { csp: config.security.csp.trim().to_owned() },
     capabilities,
+    plugins,
   }
 }
 
@@ -400,6 +488,24 @@ pub fn canonicalize_config(config : OrbitConfig) -> String {
         builder.write_char(',')
       }
       builder.write_string(quote_json(command))
+    }
+    builder.write_string("]}")
+  }
+  builder.write_string("],\"plugins\":[")
+  for index, plugin in config.plugins {
+    if index > 0 {
+      builder.write_char(',')
+    }
+    builder.write_string("{\"id\":")
+    builder.write_string(quote_json(plugin.id))
+    builder.write_string(",\"library\":")
+    builder.write_string(quote_json(plugin.library))
+    builder.write_string(",\"permissions\":[")
+    for permission_index, permission in plugin.permissions {
+      if permission_index > 0 {
+        builder.write_char(',')
+      }
+      builder.write_string(quote_json(permission))
     }
     builder.write_string("]}")
   }

@@ -16,9 +16,9 @@ composition, and initial developer tooling:
 - `orbit-build`: strict configuration and embedded-resource generator.
 - `orbit-cli`: Node.js development wrapper for generator, build and run flows.
 
-Multi-window policy, npm publication, plugin support and production packaging
-remain deferred until the desktop lifecycle and configuration contracts are
-stable.
+Plugin loading and single-window production packaging are available. Multi-window
+resource roots, plugin isolation/signing, external navigation and broader native
+capabilities remain intentionally deferred.
 
 ## Current Boundaries
 
@@ -29,6 +29,15 @@ stable.
 - `orbit-core` owns the Orby window and destroys the selected runtime before
   its parent window. `orbit-runtime` remains free of Orby and MoonView types;
   factories receive an abstract `RuntimeHost`.
+- Native plugins use only `orbit-plugin-abi` v1. Each configuration entry
+  declares an ID, a bundled `plugins/` relative library path, and its explicit
+  permission grants. A plugin manifest cannot grant itself permissions. Orbit
+  activates plugins only after desktop startup, maps manifest commands to
+  `plugin:<plugin-id>/<command>` IPC commands, and destroys every instance
+  before closing its dynamic library.
+- A development plugin root is an explicit runtime option (`--plugin-dir` in
+  `orbit-cli`, exposed as `ORBIT_PLUGIN_DIRECTORY`) and is never written into
+  `orbit.conf.json`, generated source, or the configuration fingerprint.
 - MoonView, Orby, AJNI, sync, and Parsec are exact Mooncake dependencies. No
   source package uses a local path or unpinned Git dependency.
 - CSP injection targets framework-controlled application shells containing a
@@ -98,7 +107,16 @@ embed assets itself.
 node orbit-cli/bin/orbit.mjs generate --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
+node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
+node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --binary path/to/app.exe --out-dir dist
 ```
+
+`orbit-cli` is the npm-published boundary: its package contains only the Node
+wrapper. `package` generates and builds first, then copies the explicit launch
+artifact, application `plugins/` directory, and optional `--runtime-dir` into
+the output. It writes `orbit-package.json` with Orbit, MoonView and fixed
+plugin-ABI compatibility values. The generated Web assets remain embedded in
+the executable.
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`

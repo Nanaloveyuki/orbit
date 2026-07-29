@@ -47,3 +47,12 @@ test("unknown options are rejected before spawning Moon", () => {
     /unknown option: --unsafe/,
   );
 });
+
+test("run and diagnose map to the expected Moon workflows", () => {
+  const cwd = resolve("workspace");
+  const run = parseInvocation(["run", "--plugin-dir", "dev-plugins"], cwd);
+  assert.equal(run.pluginDir, resolve(cwd, "dev-plugins"));
+  assert.deepEqual(moonCommands(run).at(-1), ["run", "--target", "native", resolve(cwd, ".")]);
+  const diagnose = parseInvocation(["diagnose", "--json"], cwd);
+  assert.deepEqual(moonCommands(diagnose), [["check", "--target", "native", resolve(cwd, ".")]]);
+});

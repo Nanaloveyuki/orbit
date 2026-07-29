@@ -24,6 +24,7 @@ fn main {
     windows=configured_windows(),
     ipc_registry=Some(ipc_registry),
     ipc_policy=Some(ipc_policy),
+    plugin_declarations=configured_plugins(),
   ) catch {
     _ => fail("could not create desktop options")
   }
