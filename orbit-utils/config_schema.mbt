@@ -110,6 +110,34 @@ fn validate_int_field(
 }
 
 ///|
+fn validate_string_array(
+  value : Json,
+  path : String,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  match value {
+    Array(values) =>
+      for index, value in values {
+        match value {
+          String(_) => ()
+          _ =>
+            diagnostics.push(
+              diagnostic(
+                "invalid_type",
+                "\{path}[\{index}]",
+                "array item must be a string",
+              ),
+            )
+        }
+      }
+    _ =>
+      diagnostics.push(
+        diagnostic("invalid_type", path, "field must be an array"),
+      )
+  }
+}
+
+///|
 fn validate_app_shape(
   value : Json,
   diagnostics : Array[ConfigDiagnostic],
@@ -191,6 +219,48 @@ fn validate_security_shape(
 }
 
 ///|
+fn validate_capabilities_shape(
+  value : Json,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  match value {
+    Array(capabilities) =>
+      for index, value in capabilities {
+        let path = "$.capabilities[\{index}]"
+        match value {
+          Object(object) => {
+            validate_object_keys(
+              object,
+              path,
+              ["identifier", "windows", "commands"],
+              diagnostics,
+            )
+            validate_string_field(object, "identifier", path, diagnostics)
+            match object.get("windows") {
+              Some(value) =>
+                validate_string_array(value, path + ".windows", diagnostics)
+              None => ()
+            }
+            match object.get("commands") {
+              Some(value) =>
+                validate_string_array(value, path + ".commands", diagnostics)
+              None => ()
+            }
+          }
+          _ =>
+            diagnostics.push(
+              diagnostic("invalid_type", path, "capability must be an object"),
+            )
+        }
+      }
+    _ =>
+      diagnostics.push(
+        diagnostic("invalid_type", "$.capabilities", "field must be an array"),
+      )
+  }
+}
+
+///|
 fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
   let diagnostics : Array[ConfigDiagnostic] = []
   match value {
@@ -198,7 +268,7 @@ fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
       validate_object_keys(
         object,
         "$",
-        ["schema_version", "app", "windows", "security"],
+        ["schema_version", "app", "windows", "security", "capabilities"],
         diagnostics,
       )
       validate_int_field(object, "schema_version", "$", diagnostics)
@@ -212,6 +282,10 @@ fn validate_config_shape(value : Json) -> Array[ConfigDiagnostic] {
       }
       match object.get("security") {
         Some(value) => validate_security_shape(value, diagnostics)
+        None => ()
+      }
+      match object.get("capabilities") {
+        Some(value) => validate_capabilities_shape(value, diagnostics)
         None => ()
       }
     }

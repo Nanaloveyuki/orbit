@@ -17,6 +17,9 @@ fn main {
   let ipc_registry = example_registry() catch {
     _ => fail("could not register example IPC commands")
   }
+  let ipc_policy = configured_ipc_policy() catch {
+    _ => fail("could not configure example IPC permissions")
+  }
   let runtime_options = @runtime.RuntimeOptions::new(
     label=window_label,
     bounds=@runtime.RuntimeBounds::new(width=window_width, height=window_height),
@@ -37,6 +40,7 @@ fn main {
     runtime_options,
     resizable=window_resizable,
     ipc_registry=Some(ipc_registry),
+    ipc_policy=Some(ipc_policy),
   ) catch {
     _ => fail("could not create desktop options")
   }

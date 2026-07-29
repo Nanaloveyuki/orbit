@@ -27,8 +27,9 @@ pub struct DesktopOptions {
   runtime_options : @orbit-runtime.RuntimeOptions
   resizable : Bool
   ipc_registry : @orbit-ipc.CommandRegistry?
+  ipc_policy : @orbit-ipc.CommandPolicy?
 }
-pub fn DesktopOptions::new(String, @orbit-runtime.RuntimeOptions, resizable? : Bool, ipc_registry? : @orbit-ipc.CommandRegistry?) -> Self raise CoreError
+pub fn DesktopOptions::new(String, @orbit-runtime.RuntimeOptions, resizable? : Bool, ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?) -> Self raise CoreError
 
 // Type aliases
 

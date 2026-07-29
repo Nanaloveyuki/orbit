@@ -69,6 +69,43 @@ pub fn CommandRegistry::dispatch(
         Failure(extract_request_id(source), error.failure()),
       )
   }
+  self.dispatch_request(request)
+}
+
+///|
+pub fn CommandRegistry::dispatch_for_window(
+  self : CommandRegistry,
+  source : StringView,
+  policy : CommandPolicy,
+  window_label : String,
+) -> String {
+  let request = decode_request(source) catch {
+    error =>
+      return encode_response(
+        Failure(extract_request_id(source), error.failure()),
+      )
+  }
+  let id = request.id()
+  let command = request.command()
+  if !policy.allows(window_label, command) {
+    return encode_response(
+      Failure(
+        Some(id),
+        CommandFailure::new(
+          code="permission_denied",
+          message="command is not permitted for window: \{window_label}",
+        ),
+      ),
+    )
+  }
+  self.dispatch_request(request)
+}
+
+///|
+fn CommandRegistry::dispatch_request(
+  self : CommandRegistry,
+  request : InvocationRequest,
+) -> String {
   let id = request.id()
   match self.handlers.get(request.command().value()) {
     None =>

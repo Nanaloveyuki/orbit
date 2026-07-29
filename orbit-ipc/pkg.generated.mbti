@@ -17,10 +17,18 @@ pub(all) suberror IpcError {
   UnsupportedVersion(Int)
   InvalidInvocationId(String)
   InvalidCommandName(String)
+  InvalidCapability(String)
   DuplicateCommand(String)
+  DuplicateCapability(String)
 } derive(@debug.Debug)
 
 // Types and methods
+pub struct CommandCapability {
+  // private fields
+}
+pub fn CommandCapability::identifier(Self) -> String
+pub fn CommandCapability::new(identifier~ : String, windows~ : Array[String], commands~ : Array[CommandName]) -> Self raise IpcError
+
 pub(all) struct CommandFailure {
   code : String
   message : String
@@ -34,11 +42,19 @@ pub struct CommandName {
 pub fn CommandName::new(String) -> Self raise IpcError
 pub fn CommandName::value(Self) -> String
 
+pub struct CommandPolicy {
+  // private fields
+}
+pub fn CommandPolicy::add(Self, CommandCapability) -> Unit raise IpcError
+pub fn CommandPolicy::allows(Self, String, CommandName) -> Bool
+pub fn CommandPolicy::new() -> Self
+
 pub struct CommandRegistry {
   // private fields
 }
 pub fn CommandRegistry::contains(Self, CommandName) -> Bool
 pub fn CommandRegistry::dispatch(Self, StringView) -> String
+pub fn CommandRegistry::dispatch_for_window(Self, StringView, CommandPolicy, String) -> String
 pub fn CommandRegistry::length(Self) -> Int
 pub fn CommandRegistry::new() -> Self
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError

@@ -18,5 +18,12 @@
   ],
   "security": {
     "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
-  }
+  },
+  "capabilities": [
+    {
+      "identifier": "main-window-commands",
+      "windows": ["main"],
+      "commands": ["example.ping"]
+    }
+  ]
 }

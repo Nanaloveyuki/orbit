@@ -2,6 +2,7 @@
 package "Nanaloveyuki/orbit/orbit-example"
 
 import {
+  "Nanaloveyuki/orbit/orbit-ipc",
   "Nanaloveyuki/orbit/orbit-runtime",
 }
 
@@ -15,6 +16,8 @@ pub let app_version : String
 pub let configuration_fingerprint : String
 
 pub let configuration_json : String
+
+pub fn configured_ipc_policy() -> @orbit-ipc.CommandPolicy raise @orbit-ipc.IpcError
 
 pub let entry_url : String
 

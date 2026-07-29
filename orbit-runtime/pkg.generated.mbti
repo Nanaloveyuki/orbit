@@ -58,6 +58,7 @@ pub struct RuntimeOptions {
   lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
   resource_provider : RuntimeResourceProvider?
 }
+pub fn RuntimeOptions::label(Self) -> String
 pub fn RuntimeOptions::lifecycle_handler(Self) -> (RuntimeLifecycleEvent) -> Unit
 pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, resource_provider? : RuntimeResourceProvider?) -> Self raise RuntimeError
 pub fn RuntimeOptions::resource_provider(Self) -> RuntimeResourceProvider?

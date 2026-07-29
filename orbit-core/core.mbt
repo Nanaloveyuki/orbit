@@ -11,6 +11,7 @@ pub struct DesktopOptions {
   runtime_options : @runtime.RuntimeOptions
   resizable : Bool
   ipc_registry : @ipc.CommandRegistry?
+  ipc_policy : @ipc.CommandPolicy?
 }
 
 ///|
@@ -19,11 +20,19 @@ pub fn DesktopOptions::new(
   runtime_options : @runtime.RuntimeOptions,
   resizable? : Bool = true,
   ipc_registry? : @ipc.CommandRegistry? = None,
+  ipc_policy? : @ipc.CommandPolicy? = None,
 ) -> DesktopOptions raise CoreError {
   if window_title.is_empty() {
     raise InitializationFailed("window title must not be empty")
   }
-  { window_title, runtime_options, resizable, ipc_registry }
+  match (ipc_registry, ipc_policy) {
+    (Some(_), None) | (None, Some(_)) =>
+      raise InitializationFailed(
+        "IPC registry and command policy must be configured together",
+      )
+    _ => ()
+  }
+  { window_title, runtime_options, resizable, ipc_registry, ipc_policy }
 }
 
 ///|
@@ -103,9 +112,13 @@ fn DesktopApp::dispatch_ipc_message(
   self : DesktopApp,
   message : String,
 ) -> Unit {
-  match (self.options.ipc_registry, self.runtime) {
-    (Some(registry), Some(runtime)) => {
-      let response = registry.dispatch(message)
+  match (self.options.ipc_registry, self.options.ipc_policy, self.runtime) {
+    (Some(registry), Some(policy), Some(runtime)) => {
+      let response = registry.dispatch_for_window(
+        message,
+        policy,
+        self.options.runtime_options.label(),
+      )
       runtime.post_message(response) catch {
         error =>
           if !self.shutting_down && self.pending_runtime_failure is None {

@@ -225,6 +225,11 @@ pub fn RuntimeOptions::lifecycle_handler(
 }
 
 ///|
+pub fn RuntimeOptions::label(self : RuntimeOptions) -> String {
+  self.label
+}
+
+///|
 pub fn RuntimeOptions::resource_provider(
   self : RuntimeOptions,
 ) -> RuntimeResourceProvider? {

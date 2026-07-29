@@ -22,11 +22,19 @@ pub(all) struct SecurityConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub(all) struct CapabilityConfig {
+  identifier : String
+  windows : Array[String]
+  commands : Array[String]
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
 pub(all) struct OrbitConfig {
   schema_version : Int
   app : AppConfig
   windows : Array[WindowConfig]
   security : SecurityConfig
+  capabilities : Array[CapabilityConfig]
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
@@ -94,6 +102,27 @@ fn valid_dotted_identifier(value : String) -> Bool {
   }
   for segment in value.split(".") {
     if segment.is_empty() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn valid_command_name(value : String) -> Bool {
+  if value.is_empty() || value.length() > 128 {
+    return false
+  }
+  for char in value {
+    let code = char.to_int()
+    if !((code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      char == '-' ||
+      char == '_' ||
+      char == '.' ||
+      char == ':' ||
+      char == '/') {
       return false
     }
   }
@@ -182,6 +211,79 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         )
     }
   }
+  let capability_identifiers : Map[String, Bool] = Map([])
+  for index, capability in config.capabilities {
+    let path = "$.capabilities[\{index}]"
+    let identifier = capability.identifier.trim().to_owned()
+    if !valid_command_name(identifier) {
+      diagnostics.push(
+        diagnostic(
+          "invalid_capability_identifier",
+          path + ".identifier",
+          "capability identifier must use ASCII command identifier characters",
+        ),
+      )
+    } else if capability_identifiers.contains(identifier) {
+      diagnostics.push(
+        diagnostic(
+          "duplicate_capability_identifier",
+          path + ".identifier",
+          "capability identifier must be unique",
+        ),
+      )
+    } else {
+      capability_identifiers[identifier] = true
+    }
+    if capability.windows.is_empty() {
+      diagnostics.push(
+        diagnostic(
+          "required",
+          path + ".windows",
+          "capability must apply to at least one window",
+        ),
+      )
+    }
+    for window_index, window_label in capability.windows {
+      let window_path = "\{path}.windows[\{window_index}]"
+      let window_label = window_label.trim().to_owned()
+      if !labels.contains(window_label) {
+        diagnostics.push(
+          diagnostic(
+            "unknown_window", window_path, "capability window must reference a configured window label",
+          ),
+        )
+      }
+    }
+    if capability.commands.is_empty() {
+      diagnostics.push(
+        diagnostic(
+          "required",
+          path + ".commands",
+          "capability must allow at least one command",
+        ),
+      )
+    }
+    let command_names : Map[String, Bool] = Map([])
+    for command_index, command in capability.commands {
+      let command_path = "\{path}.commands[\{command_index}]"
+      let command = command.trim().to_owned()
+      if !valid_command_name(command) {
+        diagnostics.push(
+          diagnostic(
+            "invalid_command_name", command_path, "capability command must use ASCII command identifier characters",
+          ),
+        )
+      } else if command_names.contains(command) {
+        diagnostics.push(
+          diagnostic(
+            "duplicate_command_name", command_path, "command must not be repeated within a capability",
+          ),
+        )
+      } else {
+        command_names[command] = true
+      }
+    }
+  }
   if config.security.csp.trim().is_empty() {
     diagnostics.push(
       diagnostic("required", "$.security.csp", "CSP policy must not be empty"),
@@ -201,6 +303,11 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     visible: window.visible,
     resizable: window.resizable,
   })
+  let capabilities = config.capabilities.map(capability => CapabilityConfig::{
+    identifier: capability.identifier.trim().to_owned(),
+    windows: capability.windows.map(label => label.trim().to_owned()),
+    commands: capability.commands.map(command => command.trim().to_owned()),
+  })
   {
     schema_version: config.schema_version,
     app: {
@@ -210,6 +317,7 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     },
     windows,
     security: { csp: config.security.csp.trim().to_owned() },
+    capabilities,
   }
 }
 
@@ -272,7 +380,30 @@ pub fn canonicalize_config(config : OrbitConfig) -> String {
   }
   builder.write_string("],\"security\":{\"csp\":")
   builder.write_string(quote_json(config.security.csp))
-  builder.write_string("}}")
+  builder.write_string("},\"capabilities\":[")
+  for index, capability in config.capabilities {
+    if index > 0 {
+      builder.write_char(',')
+    }
+    builder.write_string("{\"identifier\":")
+    builder.write_string(quote_json(capability.identifier))
+    builder.write_string(",\"windows\":[")
+    for window_index, window in capability.windows {
+      if window_index > 0 {
+        builder.write_char(',')
+      }
+      builder.write_string(quote_json(window))
+    }
+    builder.write_string("],\"commands\":[")
+    for command_index, command in capability.commands {
+      if command_index > 0 {
+        builder.write_char(',')
+      }
+      builder.write_string(quote_json(command))
+    }
+    builder.write_string("]}")
+  }
+  builder.write_string("]}")
   builder.to_string()
 }
 
