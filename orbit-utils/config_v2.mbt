@@ -85,6 +85,7 @@ pub(all) struct CapabilityConfig {
 pub(all) struct PluginConfig {
   id : String
   library : String
+  manifest : String
   permissions : Array[String]
 } derive(Eq, Debug, ToJson, FromJson)
 
@@ -638,6 +639,17 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         ),
       )
     }
+    match normalize_resource_path(plugin.manifest) {
+      Ok(_) => ()
+      Err(_) =>
+        diagnostics.push(
+          diagnostic(
+            "invalid_plugin_manifest",
+            path + ".manifest",
+            "plugin manifest must be a normalized relative sidecar path",
+          ),
+        )
+    }
     let granted_permissions : Map[String, Bool] = Map([])
     for permission_index, permission in plugin.permissions {
       let permission_path = "\{path}.permissions[\{permission_index}]"
@@ -695,6 +707,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
   let plugins = config.plugins.map(plugin => PluginConfig::{
     id: plugin.id.trim().to_owned(),
     library: normalize_resource_path(plugin.library).unwrap_or(plugin.library),
+    manifest: normalize_resource_path(plugin.manifest).unwrap_or(
+      plugin.manifest,
+    ),
     permissions: plugin.permissions.map(permission => {
       permission.trim().to_owned()
     }),
@@ -805,6 +820,7 @@ pub fn migrate_config_v1(source : StringView) -> String raise ConfigError {
     plugins: config.plugins.map(plugin => {
       id: plugin.id,
       library: plugin.library,
+      manifest: plugin.library + ".json",
       permissions: plugin.permissions,
     }),
   })

@@ -2,6 +2,7 @@
 pub(all) struct PluginDeclaration {
   id : String
   library : String
+  sidecar : PluginSidecarManifest
   permissions : Array[String]
 } derive(Eq, Debug)
 
@@ -9,15 +10,18 @@ pub(all) struct PluginDeclaration {
 pub fn PluginDeclaration::new(
   id~ : String,
   library~ : String,
+  sidecar~ : PluginSidecarManifest,
   permissions? : Array[String] = [],
 ) -> PluginDeclaration {
-  { id, library, permissions }
+  { id, library, sidecar, permissions }
 }
 
 ///|
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
   IdentityMismatch(String, String)
+  SidecarMismatch(String)
+  MissingPermission(String, String)
   InvalidDevelopmentDirectory
   LoadFailure(String, PluginError)
   RegistrationFailure(String)
@@ -100,6 +104,18 @@ pub fn PluginRuntime::start(
       library.close()
       self.shutdown()
       return Err(IdentityMismatch(declaration.id, manifest.id))
+    }
+    if !sidecar_matches_manifest(declaration.sidecar, manifest) {
+      library.close()
+      self.shutdown()
+      return Err(SidecarMismatch(declaration.id))
+    }
+    for permission in manifest.permissions {
+      if !declaration.permissions.contains(permission) {
+        library.close()
+        self.shutdown()
+        return Err(MissingPermission(declaration.id, permission))
+      }
     }
     match library.activate(policy_for(declaration)) {
       Ok(_) => self.libraries.push(library)

@@ -8,7 +8,33 @@ fn declaration(
   path : String,
   permissions : Array[String],
 ) -> @plugin.PluginDeclaration {
-  @plugin.PluginDeclaration::new(id="fixture.echo", library=path, permissions~)
+  let sidecar = match
+    @plugin.parse_sidecar_manifest(
+      "{\"schema_version\":2,\"abi_version\":1,\"id\":\"fixture.echo\",\"name\":\"Orbit fixture\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[\"test.invoke\"],\"commands\":[{\"name\":\"echo\",\"request_schema\":{},\"response_schema\":{}},{\"name\":\"fail\",\"request_schema\":{},\"response_schema\":{}}]}",
+    ) {
+    Ok(sidecar) => sidecar
+    Err(_) => abort("fixture sidecar is invalid")
+  }
+  @plugin.PluginDeclaration::new(
+    id="fixture.echo",
+    library=path,
+    sidecar~,
+    permissions~,
+  )
+}
+
+///|
+fn mismatched_declaration(path : String) -> @plugin.PluginDeclaration {
+  let sidecar = match
+    @plugin.parse_sidecar_manifest(
+      "{\"schema_version\":2,\"abi_version\":1,\"id\":\"fixture.echo\",\"name\":\"Unexpected\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[\"test.invoke\"],\"commands\":[{\"name\":\"echo\",\"request_schema\":{},\"response_schema\":{}},{\"name\":\"fail\",\"request_schema\":{},\"response_schema\":{}}]}",
+    ) {
+    Ok(sidecar) => sidecar
+    Err(_) => abort("fixture sidecar is invalid")
+  }
+  @plugin.PluginDeclaration::new(id="fixture.echo", library=path, sidecar~, permissions=[
+    "test.invoke",
+  ])
 }
 
 ///|
@@ -27,8 +53,13 @@ fn main {
   let fixture = args[1]
   let runtime = @plugin.PluginRuntime::new()
 
+  match runtime.start([mismatched_declaration(fixture)]) {
+    Err(SidecarMismatch("fixture.echo")) => ()
+    _ => fail("mismatched sidecar was accepted")
+  }
+
   match runtime.start([declaration(fixture, [])]) {
-    Err(LoadFailure("fixture.echo", PermissionDenied("test.invoke"))) => ()
+    Err(MissingPermission("fixture.echo", "test.invoke")) => ()
     _ => fail("missing permission did not deny plugin activation")
   }
   match

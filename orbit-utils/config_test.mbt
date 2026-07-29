@@ -251,3 +251,19 @@ test "remote page capabilities require a MoonView origin-scoped grant" {
   )
   inspect(failure_code(unscoped), content="remote_scope_required")
 }
+
+///|
+test "plugin configuration requires an explicit sidecar path" {
+  let configured = valid_config_source.replace_all(
+    old="\"plugins\": []",
+    new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"plugins/demo.dll\",\"manifest\":\"plugins/demo.plugin.json\",\"permissions\":[]}]",
+  )
+  assert_true(
+    parse_config(configured).plugins[0].manifest == "plugins/demo.plugin.json",
+  )
+  let missing = configured.replace_all(
+    old="\"manifest\":\"plugins/demo.plugin.json\",",
+    new="",
+  )
+  inspect(failure_code(missing), content="decode_failed")
+}

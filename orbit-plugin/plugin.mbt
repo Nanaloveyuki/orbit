@@ -8,6 +8,27 @@ pub(all) struct PluginManifest {
 } derive(Eq, Debug)
 
 ///|
+/// A build-validated sidecar descriptor. JSON Schema values are retained as
+/// ordinary inspectable JSON rather than becoming a second invocation ABI.
+pub(all) struct PluginCommandDescriptor {
+  name : String
+  request_schema : Json
+  response_schema : Json
+} derive(Eq, Debug, FromJson)
+
+///|
+pub(all) struct PluginSidecarManifest {
+  schema_version : Int
+  abi_version : Int
+  id : String
+  name : String
+  version : String
+  platforms : Array[String]
+  requested_permissions : Array[String]
+  commands : Array[PluginCommandDescriptor]
+} derive(Eq, Debug, FromJson)
+
+///|
 pub(all) enum PluginError {
   LoadFailed
   MissingSymbol(String)
@@ -121,6 +142,79 @@ fn string_array(
     }
     _ => None
   }
+}
+
+///|
+fn unique_nonempty(values : Array[String]) -> Bool {
+  let seen : Map[String, Bool] = Map([])
+  for value in values {
+    if value.is_empty() || seen.contains(value) {
+      return false
+    }
+    seen[value] = true
+  }
+  true
+}
+
+///|
+fn valid_sidecar_manifest(sidecar : PluginSidecarManifest) -> Bool {
+  if sidecar.schema_version != 2 ||
+    sidecar.abi_version != 1 ||
+    sidecar.id.is_empty() ||
+    sidecar.name.is_empty() ||
+    sidecar.version.is_empty() ||
+    sidecar.platforms.is_empty() ||
+    sidecar.commands.is_empty() ||
+    !unique_nonempty(sidecar.platforms) ||
+    !unique_nonempty(sidecar.requested_permissions) {
+    return false
+  }
+  let allowed_platforms = ["windows", "linux", "macos"]
+  let commands : Map[String, Bool] = Map([])
+  for command in sidecar.commands {
+    if command.name.is_empty() || commands.contains(command.name) {
+      return false
+    }
+    match (command.request_schema, command.response_schema) {
+      (Object(_), Object(_)) => ()
+      _ => return false
+    }
+    commands[command.name] = true
+  }
+  sidecar.platforms.all(platform => allowed_platforms.contains(platform))
+}
+
+///|
+pub fn parse_sidecar_manifest(
+  source : String,
+) -> Result[PluginSidecarManifest, PluginError] {
+  match @strict_json.parse_with_limits(source, manifest_limits()) {
+    Ok(_) => ()
+    Err(_) => return Err(InvalidManifest("sidecar must be strict JSON"))
+  }
+  let value = @json.parse(source) catch {
+    _ => return Err(InvalidManifest("sidecar could not be decoded"))
+  }
+  let sidecar : PluginSidecarManifest = @json.from_json(value) catch {
+    _ => return Err(InvalidManifest("sidecar fields are invalid"))
+  }
+  if valid_sidecar_manifest(sidecar) {
+    Ok(sidecar)
+  } else {
+    Err(InvalidManifest("sidecar fields are invalid"))
+  }
+}
+
+///|
+pub fn sidecar_matches_manifest(
+  sidecar : PluginSidecarManifest,
+  manifest : PluginManifest,
+) -> Bool {
+  sidecar.id == manifest.id &&
+  sidecar.name == manifest.name &&
+  sidecar.version == manifest.version &&
+  sidecar.requested_permissions == manifest.permissions &&
+  sidecar.commands.map(command => command.name) == manifest.commands
 }
 
 ///|
