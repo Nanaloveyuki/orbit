@@ -1,0 +1,6 @@
+import {
+  "Nanaloveyuki/orbit/orbit-runtime" @orbit_runtime,
+  "Nanaloveyuki/moonview",
+}
+
+supported_targets = "native"

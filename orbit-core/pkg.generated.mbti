@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-core"
+
+import {
+  "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-runtime",
+  "Nanaloveyuki/orby",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn run(&@orbit-runtime.RuntimeFactory, DesktopOptions) -> Int raise CoreError
+
+// Errors
+pub(all) suberror CoreError {
+  InitializationFailed(String)
+  StartupFailed(String)
+  RuntimeFailed(String)
+} derive(@debug.Debug)
+
+// Types and methods
+type DesktopApp
+pub impl @orby.App for DesktopApp
+
+pub struct DesktopOptions {
+  window_title : String
+  runtime_options : @orbit-runtime.RuntimeOptions
+  resizable : Bool
+  ipc_registry : @orbit-ipc.CommandRegistry?
+}
+pub fn DesktopOptions::new(String, @orbit-runtime.RuntimeOptions, resizable? : Bool, ipc_registry? : @orbit-ipc.CommandRegistry?) -> Self raise CoreError
+
+// Type aliases
+
+// Traits

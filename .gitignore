@@ -4,3 +4,4 @@ ref/
 _build/
 .mooncakes/
 .repos/
+orbit-cli/node_modules/

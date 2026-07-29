@@ -24,6 +24,18 @@ test "runtime options require initial content" {
 }
 
 ///|
+test "resource providers require a scheme name" {
+  let rejected = try {
+    ignore(RuntimeResourceProvider::new(scheme="", handler=_request => None))
+    false
+  } catch {
+    InvalidState(_) => true
+    _ => false
+  }
+  assert_true(rejected)
+}
+
+///|
 priv struct FakeRuntime {
   mut destroyed : Bool
   mut handler : ((String) -> Unit)?
@@ -90,7 +102,7 @@ impl WebViewRuntime for FakeRuntime with fn destroy(self) {
 priv struct FakeFactory {}
 
 ///|
-impl RuntimeFactory for FakeFactory with fn create(_self, _options) {
+impl RuntimeFactory for FakeFactory with fn create(_self, _host, _options) {
   FakeRuntime::{ destroyed: false, handler: None } as &WebViewRuntime
 }
 
@@ -98,6 +110,7 @@ impl RuntimeFactory for FakeFactory with fn create(_self, _options) {
 test "runtime factories return replaceable trait objects" {
   let factory = FakeFactory::{  } as &RuntimeFactory
   let runtime = factory.create(
+    RuntimeHost::new(1UL),
     RuntimeOptions::new(
       label="main",
       bounds=RuntimeBounds::new(width=800, height=600),
@@ -119,4 +132,16 @@ test "runtime factories return replaceable trait objects" {
   }
   assert_true(rejected)
   debug_inspect(messages, content="[\"ready\"]")
+}
+
+///|
+test "runtime hosts reject a missing native handle" {
+  let rejected = try {
+    ignore(RuntimeHost::new(0UL))
+    false
+  } catch {
+    InvalidState(_) => true
+    _ => false
+  }
+  assert_true(rejected)
 }
