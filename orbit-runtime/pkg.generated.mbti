@@ -56,12 +56,15 @@ pub struct RuntimeOptions {
   bounds : RuntimeBounds
   visible : Bool
   lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
+  external_navigation_handler : (String) -> Bool
   resource_provider : RuntimeResourceProvider?
 }
+pub fn RuntimeOptions::external_navigation_handler(Self) -> (String) -> Bool
 pub fn RuntimeOptions::label(Self) -> String
 pub fn RuntimeOptions::lifecycle_handler(Self) -> (RuntimeLifecycleEvent) -> Unit
-pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, resource_provider? : RuntimeResourceProvider?) -> Self raise RuntimeError
+pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, external_navigation_handler? : (String) -> Bool, resource_provider? : RuntimeResourceProvider?) -> Self raise RuntimeError
 pub fn RuntimeOptions::resource_provider(Self) -> RuntimeResourceProvider?
+pub fn RuntimeOptions::with_external_navigation_handler(Self, (String) -> Bool) -> Self
 pub fn RuntimeOptions::with_initialization_script(Self, String) -> Self
 pub fn RuntimeOptions::with_lifecycle_handler(Self, (RuntimeLifecycleEvent) -> Unit) -> Self
 

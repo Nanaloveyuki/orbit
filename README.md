@@ -94,8 +94,10 @@ rejection before they reach command handlers.
 
 An embedded resource provider confines navigation to its own
 `<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource
-requests, and `WebViewRuntime::navigate` returns a checked error for an external
-target. External navigation policy is intentionally not configurable yet.
+requests. External navigation is denied by default. Applications can replace
+`RuntimeOptions`' external navigation handler to display a permission prompt
+and approve an individual URL; the handler is never used for embedded-origin
+navigation.
 
 ## CLI
 
