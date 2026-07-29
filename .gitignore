@@ -2,6 +2,10 @@
 ref/
 .Agents/
 _build/
+tmp/
+orbit-plugin-fixtures/orbit-plugin-fixture.dll
+orbit-plugin-fixtures/orbit-plugin-fixture.lib
+orbit-plugin-fixture-order.log
 .mooncakes/
 .repos/
 orbit-cli/node_modules/
