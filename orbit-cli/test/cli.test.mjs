@@ -119,3 +119,18 @@ test("Vite development uses the explicit generator mode and workflow query", () 
     resolve(cwd, "generated_page.mbt"),
   ], ["run", "--target", "native", resolve(cwd, ".")]]);
 });
+
+test("bindings default to an inspectable JavaScript module beside the configuration", () => {
+  const cwd = resolve("workspace");
+  const invocation = parseInvocation(["bindings", "--config", "app/orbit.conf.json"], cwd);
+  assert.equal(invocation.output, resolve(cwd, "app/orbit-bindings.mjs"));
+  assert.deepEqual(moonCommands(invocation), [[
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "bindings",
+    resolve(cwd, "app/orbit.conf.json"),
+    resolve(cwd, "app/orbit-bindings.mjs"),
+  ]]);
+});

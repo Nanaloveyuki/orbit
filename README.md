@@ -112,6 +112,7 @@ embed assets itself.
 
 ```sh
 node orbit-cli/bin/orbit.mjs generate --config orbit-example/orbit.conf.json
+node orbit-cli/bin/orbit.mjs bindings --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs migrate-config --config old-orbit.conf.json --output orbit.conf.json
 node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
@@ -145,6 +146,14 @@ and `orbit package` run `build_command` first, then embed resources from
 `dist_dir`. The CLI does not infer package managers, framework names, scripts
 or output paths. `dev_url` must be an HTTP(S) URL without a trailing slash;
 only that URL and descendants are approved for development navigation.
+
+`orbit bindings` emits a deterministic `orbit-bindings.mjs` module beside the
+configuration. It exports the exact page-callable command map from `allow`
+capabilities targeting a window, including explicitly granted plugin command
+namespaces. Commands limited to HTTP, origins, plugins or background tasks are
+not emitted, and a matching page-level deny removes a command from the map.
+The generated module is a client convenience only; the IPC policy remains the
+authority at runtime.
 
 ## Development
 
