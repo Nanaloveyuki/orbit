@@ -3,15 +3,15 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 
-const commands = new Set(["generate", "build", "run", "dev", "diagnose", "package", "migrate-config"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "migrate-config"]);
 
 export function usage() {
   return [
-    "Usage: orbit <generate|build|run|diagnose|package|migrate-config> [options]",
+    "Usage: orbit <generate|bindings|build|run|diagnose|package|migrate-config> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
-    "  --output <path>       Generated MoonBit source, or required v2 migration destination",
+    "  --output <path>       Generated source, bindings, or required v2 migration destination",
     "  --package <path>      Moon package to build or run (default: config directory)",
     "  --orbit-build <path>  Moon package for the generator (default: orbit-build)",
     "  --moon <command>      Moon executable (default: moon)",
@@ -92,7 +92,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   }
   const output = resolve(
     workspace,
-    values.output ?? `${dirname(config)}/generated_page.mbt`,
+    values.output ?? `${dirname(config)}/${command === "bindings" ? "orbit-bindings.mjs" : "generated_page.mbt"}`,
   );
   if (command === "migrate-config" && output === config) {
     throw new Error("migrate-config output must differ from --config");
@@ -178,6 +178,17 @@ export function moonCommands(invocation, viteWorkflow = null) {
       "native",
       invocation.orbitBuild,
       "migrate-config",
+      invocation.config,
+      invocation.output,
+    ]];
+  }
+  if (invocation.command === "bindings") {
+    return [[
+      "run",
+      "--target",
+      "native",
+      invocation.orbitBuild,
+      "bindings",
       invocation.config,
       invocation.output,
     ]];
