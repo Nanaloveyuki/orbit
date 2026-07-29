@@ -130,3 +130,19 @@ moon test --target all --deny-warn
 moon fmt --check
 moon info
 ```
+
+## Plugin Fixture Integration
+
+The native plugin integration fixture compiles a small ABI v1 DLL and loads it
+through the published `dynlib` and `orbit-plugin-abi` packages. It verifies
+explicit permission denial, duplicate identifiers, JSON command dispatch,
+plugin command failures, and that instance destruction occurs before DLL
+unload.
+
+```powershell
+./orbit-plugin-fixtures/run-integration.ps1
+```
+
+The script uses `cl.exe` when the Visual Studio developer tools are active and
+otherwise falls back to `clang.exe`. The compiled DLL and teardown log are
+ignored build artifacts.
