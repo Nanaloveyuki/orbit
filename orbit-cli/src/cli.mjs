@@ -3,15 +3,15 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 
-const commands = new Set(["generate", "build", "run", "dev", "diagnose", "package"]);
+const commands = new Set(["generate", "build", "run", "dev", "diagnose", "package", "migrate-config"]);
 
 export function usage() {
   return [
-    "Usage: orbit <generate|build|run|diagnose|package> [options]",
+    "Usage: orbit <generate|build|run|diagnose|package|migrate-config> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
-    "  --output <path>       Generated MoonBit source (default: generated_page.mbt next to config)",
+    "  --output <path>       Generated MoonBit source, or required v2 migration destination",
     "  --package <path>      Moon package to build or run (default: config directory)",
     "  --orbit-build <path>  Moon package for the generator (default: orbit-build)",
     "  --moon <command>      Moon executable (default: moon)",
@@ -78,10 +78,16 @@ export function parseInvocation(argv, cwd = process.cwd()) {
 
   const workspace = resolve(cwd, values.workspace ?? ".");
   const config = resolve(workspace, values.config ?? "orbit.conf.json");
+  if (command === "migrate-config" && !values.output) {
+    throw new Error("migrate-config requires --output <path>");
+  }
   const output = resolve(
     workspace,
     values.output ?? `${dirname(config)}/generated_page.mbt`,
   );
+  if (command === "migrate-config" && output === config) {
+    throw new Error("migrate-config output must differ from --config");
+  }
   return {
     command,
     workspace,
@@ -125,6 +131,17 @@ export function moonCommands(invocation) {
     invocation.config,
     invocation.output,
   ];
+  if (invocation.command === "migrate-config") {
+    return [[
+      "run",
+      "--target",
+      "native",
+      invocation.orbitBuild,
+      "migrate-config",
+      invocation.config,
+      invocation.output,
+    ]];
+  }
   if (invocation.command === "generate") {
     return [generate];
   }

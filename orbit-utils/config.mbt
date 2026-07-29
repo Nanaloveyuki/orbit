@@ -1,12 +1,12 @@
 ///|
-pub(all) struct AppConfig {
+priv struct V1AppConfig {
   identifier : String
   name : String
   version : String
-} derive(Eq, Debug, ToJson, FromJson)
+} derive(FromJson)
 
 ///|
-pub(all) struct WindowConfig {
+priv struct V1WindowConfig {
   label : String
   title : String
   width : Int
@@ -14,19 +14,19 @@ pub(all) struct WindowConfig {
   entry : String
   visible : Bool
   resizable : Bool
-} derive(Eq, Debug, ToJson, FromJson)
+} derive(FromJson)
 
 ///|
-pub(all) struct SecurityConfig {
+priv struct V1SecurityConfig {
   csp : String
-} derive(Eq, Debug, ToJson, FromJson)
+} derive(FromJson)
 
 ///|
-pub(all) struct CapabilityConfig {
+priv struct V1CapabilityConfig {
   identifier : String
   windows : Array[String]
   commands : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+} derive(FromJson)
 
 ///|
 /// A native plugin declared by the application configuration.
@@ -34,21 +34,21 @@ pub(all) struct CapabilityConfig {
 /// `library` is always a normalized path relative to the installed
 /// application root. Development overrides are deliberately runtime-only and
 /// therefore never become part of an embedded configuration.
-pub(all) struct PluginConfig {
+priv struct V1PluginConfig {
   id : String
   library : String
   permissions : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+} derive(FromJson)
 
 ///|
-pub(all) struct OrbitConfig {
+priv struct V1OrbitConfig {
   schema_version : Int
-  app : AppConfig
-  windows : Array[WindowConfig]
-  security : SecurityConfig
-  capabilities : Array[CapabilityConfig]
-  plugins : Array[PluginConfig]
-} derive(Eq, Debug, ToJson, FromJson)
+  app : V1AppConfig
+  windows : Array[V1WindowConfig]
+  security : V1SecurityConfig
+  capabilities : Array[V1CapabilityConfig]
+  plugins : Array[V1PluginConfig]
+} derive(FromJson)
 
 ///|
 pub(all) struct ConfigDiagnostic {
@@ -157,7 +157,7 @@ fn valid_plugin_library_path(value : String) -> Bool {
 }
 
 ///|
-pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
+fn validate_v1_config(config : V1OrbitConfig) -> Array[ConfigDiagnostic] {
   let diagnostics : Array[ConfigDiagnostic] = []
   if config.schema_version != 1 {
     diagnostics.push(
@@ -373,8 +373,8 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
 }
 
 ///|
-pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
-  let windows = config.windows.map(window => WindowConfig::{
+fn normalize_v1_config(config : V1OrbitConfig) -> V1OrbitConfig {
+  let windows = config.windows.map(window => V1WindowConfig::{
     label: window.label.trim().to_owned(),
     title: window.title.trim().to_owned(),
     width: window.width,
@@ -383,12 +383,12 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     visible: window.visible,
     resizable: window.resizable,
   })
-  let capabilities = config.capabilities.map(capability => CapabilityConfig::{
+  let capabilities = config.capabilities.map(capability => V1CapabilityConfig::{
     identifier: capability.identifier.trim().to_owned(),
     windows: capability.windows.map(label => label.trim().to_owned()),
     commands: capability.commands.map(command => command.trim().to_owned()),
   })
-  let plugins = config.plugins.map(plugin => PluginConfig::{
+  let plugins = config.plugins.map(plugin => V1PluginConfig::{
     id: plugin.id.trim().to_owned(),
     library: normalize_resource_path(plugin.library).unwrap_or(plugin.library),
     permissions: plugin.permissions.map(permission => {
@@ -410,113 +410,22 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
 }
 
 ///|
-pub fn parse_config(source : StringView) -> OrbitConfig raise ConfigError {
-  let value = @json.parse(source) catch {
-    error => raise Invalid([diagnostic("invalid_json", "$", error.to_string())])
+fn parse_v1_config(source : StringView) -> V1OrbitConfig raise ConfigError {
+  let value = strict_config_json(source)
+  if json_schema_version(value) != Some(1) {
+    raise unsupported_schema(1)
   }
-  let shape_diagnostics = validate_config_shape(value)
+  let shape_diagnostics = validate_v1_config_shape(value)
   if !shape_diagnostics.is_empty() {
     raise Invalid(shape_diagnostics)
   }
-  let config : OrbitConfig = @json.from_json(value) catch {
+  let config : V1OrbitConfig = @json.from_json(value) catch {
     error =>
       raise Invalid([diagnostic("decode_failed", "$", error.to_string())])
   }
-  let diagnostics = validate_config(config)
+  let diagnostics = validate_v1_config(config)
   if !diagnostics.is_empty() {
     raise Invalid(diagnostics)
   }
-  normalize_config(config)
-}
-
-///|
-fn quote_json(value : String) -> String {
-  Json::string(value).stringify()
-}
-
-///|
-pub fn canonicalize_config(config : OrbitConfig) -> String {
-  let builder = StringBuilder()
-  builder.write_string("{\"schema_version\":")
-  builder.write_string(config.schema_version.to_string())
-  builder.write_string(",\"app\":{\"identifier\":")
-  builder.write_string(quote_json(config.app.identifier))
-  builder.write_string(",\"name\":")
-  builder.write_string(quote_json(config.app.name))
-  builder.write_string(",\"version\":")
-  builder.write_string(quote_json(config.app.version))
-  builder.write_string("},\"windows\":[")
-  for index, window in config.windows {
-    if index > 0 {
-      builder.write_char(',')
-    }
-    builder.write_string("{\"label\":")
-    builder.write_string(quote_json(window.label))
-    builder.write_string(",\"title\":")
-    builder.write_string(quote_json(window.title))
-    builder.write_string(",\"width\":")
-    builder.write_string(window.width.to_string())
-    builder.write_string(",\"height\":")
-    builder.write_string(window.height.to_string())
-    builder.write_string(",\"entry\":")
-    builder.write_string(quote_json(window.entry))
-    builder.write_string(",\"visible\":")
-    builder.write_string(window.visible.to_string())
-    builder.write_string(",\"resizable\":")
-    builder.write_string(window.resizable.to_string())
-    builder.write_char('}')
-  }
-  builder.write_string("],\"security\":{\"csp\":")
-  builder.write_string(quote_json(config.security.csp))
-  builder.write_string("},\"capabilities\":[")
-  for index, capability in config.capabilities {
-    if index > 0 {
-      builder.write_char(',')
-    }
-    builder.write_string("{\"identifier\":")
-    builder.write_string(quote_json(capability.identifier))
-    builder.write_string(",\"windows\":[")
-    for window_index, window in capability.windows {
-      if window_index > 0 {
-        builder.write_char(',')
-      }
-      builder.write_string(quote_json(window))
-    }
-    builder.write_string("],\"commands\":[")
-    for command_index, command in capability.commands {
-      if command_index > 0 {
-        builder.write_char(',')
-      }
-      builder.write_string(quote_json(command))
-    }
-    builder.write_string("]}")
-  }
-  builder.write_string("],\"plugins\":[")
-  for index, plugin in config.plugins {
-    if index > 0 {
-      builder.write_char(',')
-    }
-    builder.write_string("{\"id\":")
-    builder.write_string(quote_json(plugin.id))
-    builder.write_string(",\"library\":")
-    builder.write_string(quote_json(plugin.library))
-    builder.write_string(",\"permissions\":[")
-    for permission_index, permission in plugin.permissions {
-      if permission_index > 0 {
-        builder.write_char(',')
-      }
-      builder.write_string(quote_json(permission))
-    }
-    builder.write_string("]}")
-  }
-  builder.write_string("]}")
-  builder.to_string()
-}
-
-///|
-pub fn compile_config(source : StringView) -> EmbeddedConfig raise ConfigError {
-  let config = parse_config(source)
-  let canonical_json = canonicalize_config(config)
-  let fingerprint = fingerprint_string(canonical_json)
-  { canonical_json, fingerprint }
+  normalize_v1_config(config)
 }

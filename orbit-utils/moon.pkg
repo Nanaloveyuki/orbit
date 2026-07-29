@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "gmlewis/sha256",
+  "Nanaloveyuki/parsec/json" @strict_json,
 }
 
 supported_targets = "native"

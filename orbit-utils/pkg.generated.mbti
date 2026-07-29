@@ -21,6 +21,8 @@ pub fn fingerprint_string(StringView) -> String
 
 pub fn inject_csp(String, String) -> String raise CspError
 
+pub fn migrate_config_v1(StringView) -> String raise ConfigError
+
 pub fn normalize_config(OrbitConfig) -> OrbitConfig
 
 pub fn normalize_resource_path(String) -> Result[String, ResourceError]
@@ -50,11 +52,24 @@ pub(all) struct AppConfig {
   identifier : String
   name : String
   version : String
+  product_name : String?
+  publisher : String?
+  windows : Array[WindowConfig]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BuildConfig {
+  vite : ViteBuildConfig?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct BundleConfig {
+  icons : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct CapabilityConfig {
   identifier : String
-  windows : Array[String]
+  effect : String
+  principals : Array[PrincipalConfig]
+  scopes : Array[ScopeConfig]
   commands : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -83,11 +98,16 @@ pub fn EmbeddedResource::media_type(Self) -> String
 pub fn EmbeddedResource::new(path~ : String, media_type~ : String, bytes~ : Bytes) -> Self raise ResourceError
 pub fn EmbeddedResource::path(Self) -> String
 
+pub(all) struct EmbeddedWebConfig {
+  csp : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct OrbitConfig {
   schema_version : Int
   app : AppConfig
-  windows : Array[WindowConfig]
-  security : SecurityConfig
+  bundle : BundleConfig
+  web : WebConfig
+  build : BuildConfig
   capabilities : Array[CapabilityConfig]
   plugins : Array[PluginConfig]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -108,6 +128,11 @@ pub(all) struct PluginConfig {
   permissions : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct PrincipalConfig {
+  kind : String
+  identifier : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub struct ResourceTable {
   // private fields
 }
@@ -116,8 +141,20 @@ pub fn ResourceTable::get(Self, String) -> EmbeddedResource?
 pub fn ResourceTable::length(Self) -> Int
 pub fn ResourceTable::new() -> Self
 
-pub(all) struct SecurityConfig {
-  csp : String
+pub(all) struct ScopeConfig {
+  kind : String
+  value : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct ViteBuildConfig {
+  dev_command : String
+  dev_url : String
+  build_command : String
+  dist_dir : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct WebConfig {
+  embedded : EmbeddedWebConfig
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct WindowConfig {
