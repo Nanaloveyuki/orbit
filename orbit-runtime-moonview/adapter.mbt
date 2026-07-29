@@ -53,23 +53,29 @@ fn embedded_origin(provider : @orbit_runtime.RuntimeResourceProvider) -> String 
 ///|
 fn allows_embedded_navigation(
   provider : @orbit_runtime.RuntimeResourceProvider?,
+  external_navigation_handler : (String) -> Bool,
   url : String,
 ) -> Bool {
   match provider {
     Some(provider) => {
       let origin = embedded_origin(provider)
-      url == origin || url.has_prefix("\{origin}/")
+      if url == origin || url.has_prefix("\{origin}/") {
+        true
+      } else {
+        external_navigation_handler(url)
+      }
     }
-    None => true
+    None => external_navigation_handler(url)
   }
 }
 
 ///|
 fn navigation_decision(
   provider : @orbit_runtime.RuntimeResourceProvider?,
+  external_navigation_handler : (String) -> Bool,
   url : String,
 ) -> @moonview.NavigationDecision {
-  if allows_embedded_navigation(provider, url) {
+  if allows_embedded_navigation(provider, external_navigation_handler, url) {
     Allow
   } else {
     Deny
@@ -208,6 +214,7 @@ pub fn MoonViewRuntimeFactory::new() -> MoonViewRuntimeFactory {
 struct MoonViewRuntime {
   view : @moonview.WebView
   resource_provider : @orbit_runtime.RuntimeResourceProvider?
+  external_navigation_handler : (String) -> Bool
   message_handler : Ref[((String) -> Unit)?]
   lifecycle_handler : Ref[(@orbit_runtime.RuntimeLifecycleEvent) -> Unit]
   mut destroyed : Bool
@@ -224,6 +231,7 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     raise Unavailable("MoonView is unavailable")
   }
   let resource_provider = options.resource_provider()
+  let external_navigation_handler = options.external_navigation_handler()
   ensure_resource_scheme(resource_provider)
   let message_handler : Ref[((String) -> Unit)?] = Ref(None)
   let lifecycle_handler = Ref(options.lifecycle_handler())
@@ -248,7 +256,9 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     initial_html~,
     initialization_script=options.initialization_script,
     visible=options.visible,
-    on_navigation=url => navigation_decision(resource_provider, url),
+    on_navigation=url => {
+      navigation_decision(resource_provider, external_navigation_handler, url)
+    },
     on_event=event => {
       match event {
         Ready => report_lifecycle(lifecycle_handler, Ready)
@@ -278,6 +288,7 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
       MoonViewRuntime::{
         view,
         resource_provider,
+        external_navigation_handler,
         message_handler,
         lifecycle_handler,
         destroyed: false,
@@ -316,7 +327,11 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn navigate(
   url,
 ) {
   self.require_live()
-  if !allows_embedded_navigation(self.resource_provider, url) {
+  if !allows_embedded_navigation(
+      self.resource_provider,
+      self.external_navigation_handler,
+      url,
+    ) {
     raise Unsupported(
       "navigation outside the embedded application origin is blocked",
     )
@@ -401,10 +416,20 @@ test "embedded resource providers block external navigation" {
       None
     }),
   )
-  assert_true(allows_embedded_navigation(provider, "orbit://app/index.html"))
-  assert_true(allows_embedded_navigation(provider, "orbit://app/assets/app.js"))
-  assert_false(
-    allows_embedded_navigation(provider, "orbit://application/index.html"),
+  let deny = _url => false
+  assert_true(
+    allows_embedded_navigation(provider, deny, "orbit://app/index.html"),
   )
-  assert_false(allows_embedded_navigation(provider, "https://example.com/"))
+  assert_true(
+    allows_embedded_navigation(provider, deny, "orbit://app/assets/app.js"),
+  )
+  assert_false(
+    allows_embedded_navigation(provider, deny, "orbit://application/index.html"),
+  )
+  assert_false(
+    allows_embedded_navigation(provider, deny, "https://example.com/"),
+  )
+  assert_true(
+    allows_embedded_navigation(provider, _url => true, "https://example.com/"),
+  )
 }

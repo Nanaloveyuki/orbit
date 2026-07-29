@@ -177,6 +177,7 @@ pub struct RuntimeOptions {
   bounds : RuntimeBounds
   visible : Bool
   lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
+  external_navigation_handler : (String) -> Bool
   resource_provider : RuntimeResourceProvider?
 }
 
@@ -188,6 +189,7 @@ pub fn RuntimeOptions::new(
   initialization_script? : String = "",
   visible? : Bool = true,
   lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit = _event => (),
+  external_navigation_handler? : (String) -> Bool = _url => false,
   resource_provider? : RuntimeResourceProvider? = None,
 ) -> RuntimeOptions raise RuntimeError {
   if label.is_empty() {
@@ -205,6 +207,7 @@ pub fn RuntimeOptions::new(
     bounds,
     visible,
     lifecycle_handler,
+    external_navigation_handler,
     resource_provider,
   }
 }
@@ -226,10 +229,27 @@ pub fn RuntimeOptions::with_initialization_script(
 }
 
 ///|
+/// Replaces the default-deny external navigation handler. The handler runs
+/// only for URLs outside the embedded application origin.
+pub fn RuntimeOptions::with_external_navigation_handler(
+  self : RuntimeOptions,
+  external_navigation_handler : (String) -> Bool,
+) -> RuntimeOptions {
+  { ..self, external_navigation_handler, }
+}
+
+///|
 pub fn RuntimeOptions::lifecycle_handler(
   self : RuntimeOptions,
 ) -> (RuntimeLifecycleEvent) -> Unit {
   self.lifecycle_handler
+}
+
+///|
+pub fn RuntimeOptions::external_navigation_handler(
+  self : RuntimeOptions,
+) -> (String) -> Bool {
+  self.external_navigation_handler
 }
 
 ///|

@@ -145,3 +145,20 @@ test "runtime hosts reject a missing native handle" {
   }
   assert_true(rejected)
 }
+
+///|
+test "external navigation remains denied unless the host approves it" {
+  let options = RuntimeOptions::new(
+    label="main",
+    bounds=RuntimeBounds::new(width=800, height=600),
+    initial_content=Url("orbit://app/index.html"),
+  )
+  assert_false(options.external_navigation_handler()("https://example.com"))
+  let approved = options.with_external_navigation_handler(url => {
+    url == "https://docs.example.com/"
+  })
+  assert_true(
+    approved.external_navigation_handler()("https://docs.example.com/"),
+  )
+  assert_false(approved.external_navigation_handler()("https://example.com/"))
+}
