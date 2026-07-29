@@ -1,0 +1,7 @@
+import {
+  "Nanaloveyuki/dynlib",
+  "Nanaloveyuki/orbit-plugin-abi" @abi,
+  "Nanaloveyuki/parsec/json" @strict_json,
+}
+
+supported_targets = "native"

@@ -1,16 +1,8 @@
-window.moonview.onmessage = event => {
-  const response = JSON.parse(event.data);
-  const text = response.ok
-    ? response.result.message
-    : `IPC error: ${response.error.code}`;
-  document.querySelector("#message").textContent = text;
-};
-
-document.querySelector("#action").addEventListener("click", () => {
-  window.moonview.postMessage(JSON.stringify({
-    version: 1,
-    id: "example-ping",
-    command: "example.ping",
-    payload: null,
-  }));
+document.querySelector("#action").addEventListener("click", async () => {
+  try {
+    const response = await window.__ORBIT__.invoke("example.ping");
+    document.querySelector("#message").textContent = response.message;
+  } catch (error) {
+    document.querySelector("#message").textContent = `IPC error: ${error.code}`;
+  }
 });

@@ -49,6 +49,24 @@ test "malformed requests never escape the dispatch boundary" {
 }
 
 ///|
+test "strict IPC parsing rejects duplicate envelope fields" {
+  let response = CommandRegistry::new().dispatch(
+    "{\"version\":1,\"version\":1,\"id\":\"req-duplicate\",\"command\":\"echo\",\"payload\":null}",
+  )
+  assert_true(response.contains("\"code\":\"invalid_request\""))
+  assert_true(response.contains("duplicate JSON key"))
+}
+
+///|
+test "strict IPC parsing rejects duplicate payload fields" {
+  let response = CommandRegistry::new().dispatch(
+    "{\"version\":1,\"id\":\"req-payload-duplicate\",\"command\":\"echo\",\"payload\":{\"value\":1,\"value\":2}}",
+  )
+  assert_true(response.contains("\"code\":\"invalid_request\""))
+  assert_true(response.contains("duplicate JSON key"))
+}
+
+///|
 test "duplicate registrations are checked errors" {
   let registry = CommandRegistry::new()
   let name = CommandName::new("echo")
