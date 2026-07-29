@@ -4,6 +4,7 @@ package "Nanaloveyuki/orbit/orbit-plugin"
 import {
   "Nanaloveyuki/orbit/orbit-ipc",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -11,17 +12,28 @@ pub fn load(String) -> Result[PluginLibrary, PluginError]
 
 pub fn parse_manifest(String) -> Result[PluginManifest, PluginError]
 
+pub fn parse_sidecar_manifest(String) -> Result[PluginSidecarManifest, PluginError]
+
 pub fn plugin_command_name(String, String) -> @orbit-ipc.CommandName raise @orbit-ipc.IpcError
+
+pub fn sidecar_matches_manifest(PluginSidecarManifest, PluginManifest) -> Bool
 
 // Errors
 
 // Types and methods
+pub(all) struct PluginCommandDescriptor {
+  name : String
+  request_schema : Json
+  response_schema : Json
+} derive(Eq, @debug.Debug, @json.FromJson)
+
 pub(all) struct PluginDeclaration {
   id : String
   library : String
+  sidecar : PluginSidecarManifest
   permissions : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn PluginDeclaration::new(id~ : String, library~ : String, permissions? : Array[String]) -> Self
+pub fn PluginDeclaration::new(id~ : String, library~ : String, sidecar~ : PluginSidecarManifest, permissions? : Array[String]) -> Self
 
 pub(all) enum PluginError {
   LoadFailed
@@ -68,10 +80,23 @@ pub fn PluginRuntime::start(Self, Array[PluginDeclaration], development_director
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
   IdentityMismatch(String, String)
+  SidecarMismatch(String)
+  MissingPermission(String, String)
   InvalidDevelopmentDirectory
   LoadFailure(String, PluginError)
   RegistrationFailure(String)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct PluginSidecarManifest {
+  schema_version : Int
+  abi_version : Int
+  id : String
+  name : String
+  version : String
+  platforms : Array[String]
+  requested_permissions : Array[String]
+  commands : Array[PluginCommandDescriptor]
+} derive(Eq, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

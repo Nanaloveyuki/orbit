@@ -1,8 +1,10 @@
 import {
   "moonbitlang/core/env",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "Nanaloveyuki/image",
   "Nanaloveyuki/orbit/orbit-plugin" @plugin,
   "Nanaloveyuki/orbit/orbit-utils" @utils,
 }

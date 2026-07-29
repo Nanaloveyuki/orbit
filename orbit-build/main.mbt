@@ -425,6 +425,70 @@ async fn write_if_changed(output : String, content : String) -> Unit {
 }
 
 ///|
+async fn write_bytes_if_changed(output : String, content : Bytes) -> Unit {
+  let unchanged = if @fs.exists(output) {
+    @fs.read_file(output).binary() == content
+  } else {
+    false
+  }
+  if !unchanged {
+    let temporary = "\{output}.tmp"
+    @fs.write_file(temporary, content, create_mode=CreateOrTruncate)
+    @fs.rename(temporary, output, replace=true)
+  }
+}
+
+///|
+fn icon_sizes() -> Array[Int] {
+  [16, 32, 48, 64, 128, 256, 512, 1024]
+}
+
+///|
+async fn generate_icons(
+  source_path : String,
+  output_directory : String,
+  compression_level : Int,
+) -> Unit {
+  if compression_level < 0 || compression_level > 9 {
+    abort_build("icon compression level must be between 0 and 9")
+  }
+  let source_path = @fs.realpath(source_path)
+  let output_directory = @fs.realpath(output_directory)
+  let source = @fs.read_file(source_path).binary()
+  let image = @image.decode_png(source) catch {
+    _ => abort_build("icon source must be a valid bounded PNG")
+  }
+  if image.width != 1024 || image.height != 1024 {
+    abort_build("icon source must be exactly 1024x1024 pixels")
+  }
+  let variants = @image.encode_png_sizes(
+    image,
+    icon_sizes(),
+    compression_level~,
+  ) catch {
+    _ => abort_build("could not generate PNG icon sizes")
+  }
+  for variant in variants {
+    write_bytes_if_changed(
+      join_path(output_directory, "\{variant.size}x\{variant.size}.png"),
+      variant.png,
+    )
+  }
+  let ico = @image.encode_ico(image, compression_level~) catch {
+    _ => abort_build("could not generate ICO icon")
+  }
+  write_bytes_if_changed(join_path(output_directory, "icon.ico"), ico)
+  let icns = @image.encode_icns(image, compression_level~) catch {
+    _ => abort_build("could not generate ICNS icon")
+  }
+  write_bytes_if_changed(join_path(output_directory, "icon.icns"), icns)
+  let svg = @image.png_data_uri_svg(source, 1024, 1024) catch {
+    _ => abort_build("could not generate SVG icon wrapper")
+  }
+  write_if_changed(join_path(output_directory, "icon.svg"), svg)
+}
+
+///|
 async fn read_plugin_sidecars(
   configuration_directory : String,
   config : @utils.OrbitConfig,
@@ -670,6 +734,11 @@ async fn generate_development(
 ///|
 async fn main {
   let args = @env.args()
+  if args.length() == 5 && args[1] == "icon" {
+    let compression_level = @string.parse_int(args[4])
+    generate_icons(args[2], args[3], compression_level)
+    return
+  }
   if args.length() == 3 && args[1] == "vite-workflow" {
     print_vite_workflow(args[2])
     return
@@ -688,7 +757,7 @@ async fn main {
   }
   if args.length() != 3 {
     abort_build(
-      "usage: moon run orbit-build <orbit.conf.json> <generated.mbt> | moon run orbit-build bindings <orbit.conf.json> <orbit-bindings.mjs> | moon run orbit-build vite-workflow <orbit.conf.json> | moon run orbit-build dev <orbit.conf.json> <generated.mbt> | moon run orbit-build migrate-config <v1-orbit.conf.json> <v2-orbit.conf.json>",
+      "usage: moon run orbit-build icon <source.png> <output-dir> <compression-level> | moon run orbit-build <orbit.conf.json> <generated.mbt> | moon run orbit-build bindings <orbit.conf.json> <orbit-bindings.mjs> | moon run orbit-build vite-workflow <orbit.conf.json> | moon run orbit-build dev <orbit.conf.json> <generated.mbt> | moon run orbit-build migrate-config <v1-orbit.conf.json> <v2-orbit.conf.json>",
     )
   }
   generate(args[1], args[2], None)
@@ -751,4 +820,9 @@ test "remote web generation uses the HTTPS entry and embedded fallback" {
   assert_true(source.contains("fallback_url=\"orbit://app/fallback.html\""))
   assert_true(source.contains("DesktopIpcPrincipal::remote_page"))
   assert_true(source.contains("PrincipalSelector::remote_page"))
+}
+
+///|
+test "icon generation targets deterministic desktop icon sizes" {
+  debug_inspect(icon_sizes(), content="[16, 32, 48, 64, 128, 256, 512, 1024]")
 }

@@ -3,11 +3,11 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "migrate-config"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "migrate-config", "icon"]);
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|diagnose|package|migrate-config> [options]",
+    "Usage: orbit <generate|bindings|build|run|diagnose|package|migrate-config|icon> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
@@ -21,6 +21,8 @@ export function usage() {
     "  --binary <path>       Executable copied by package",
     "  --out-dir <path>      Package output directory (default: dist)",
     "  --runtime-dir <path>  Optional WebView runtime files copied by package",
+    "  --source <path>       Required 1024x1024 PNG source for icon generation",
+    "  --compression <level> PNG compression level for icon generation (0-9, default: 6)",
     "  --dev-timeout <ms>    Vite readiness timeout (default: 30000)",
     "  --help                Show this help",
   ].join("\n");
@@ -72,6 +74,8 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "binary",
       "out-dir",
       "runtime-dir",
+      "source",
+      "compression",
       "dev-timeout",
       "json",
     ].includes(key)) {
@@ -97,6 +101,13 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "migrate-config" && output === config) {
     throw new Error("migrate-config output must differ from --config");
   }
+  if (command === "icon" && !values.source) {
+    throw new Error("icon requires --source <path>");
+  }
+  const compression = Number(values.compression ?? "6");
+  if (!Number.isInteger(compression) || compression < 0 || compression > 9) {
+    throw new Error("--compression must be an integer between 0 and 9");
+  }
   const devTimeout = Number(values["dev-timeout"] ?? "30000");
   if (!Number.isInteger(devTimeout) || devTimeout < 1 || devTimeout > 300000) {
     throw new Error("--dev-timeout must be an integer between 1 and 300000");
@@ -111,7 +122,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     moon: resolveExecutable(workspace, values.moon, "moon"),
     pluginDir: values["plugin-dir"] ? resolve(workspace, values["plugin-dir"]) : undefined,
     binary: values.binary ? resolve(workspace, values.binary) : undefined,
-    outDir: resolve(workspace, values["out-dir"] ?? "dist"),
+    outDir: resolve(workspace, values["out-dir"] ?? (command === "icon" ? "icons" : "dist")),
+    source: values.source ? resolve(workspace, values.source) : undefined,
+    compression,
     runtimeDir: values["runtime-dir"] ? resolve(workspace, values["runtime-dir"]) : undefined,
     devTimeout,
     json: values.json ?? false,
@@ -191,6 +204,18 @@ export function moonCommands(invocation, viteWorkflow = null) {
       "bindings",
       invocation.config,
       invocation.output,
+    ]];
+  }
+  if (invocation.command === "icon") {
+    return [[
+      "run",
+      "--target",
+      "native",
+      invocation.orbitBuild,
+      "icon",
+      invocation.source,
+      invocation.outDir,
+      String(invocation.compression),
     ]];
   }
   if (invocation.command === "dev" && viteWorkflow) {
@@ -369,6 +394,9 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
       waitForDevelopmentUrl(viteWorkflow.dev_url, invocation.devTimeout);
     } else if (viteWorkflow && ["build", "run", "package"].includes(invocation.command)) {
       runWorkflowCommand(invocation, viteWorkflow.build_command);
+    }
+    if (invocation.command === "icon") {
+      mkdirSync(invocation.outDir, { recursive: true });
     }
     for (const command of moonCommands(invocation, viteWorkflow)) {
       if (!runMoon(invocation, command)) {

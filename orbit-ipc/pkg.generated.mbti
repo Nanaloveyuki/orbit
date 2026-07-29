@@ -89,6 +89,7 @@ pub fn InvocationContext::max_response_chars(Self) -> Int
 pub fn InvocationContext::origin(Self) -> String?
 pub fn InvocationContext::plugin(String) -> Self raise IpcError
 pub fn InvocationContext::principal(Self) -> InvocationPrincipal
+pub fn InvocationContext::remote_page(String, origin~ : String?) -> Self raise IpcError
 pub fn InvocationContext::transport(Self) -> InvocationTransport
 pub fn InvocationContext::window(String) -> Self raise IpcError
 pub fn InvocationContext::with_response_limit(Self, Int) -> Self raise IpcError
@@ -101,6 +102,7 @@ pub fn InvocationId::value(Self) -> String
 
 pub enum InvocationPrincipal {
   Window(String)
+  RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
@@ -138,6 +140,7 @@ pub fn InvocationTransport::plugin() -> Self
 
 pub enum PrincipalSelector {
   Window(String)
+  RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
@@ -145,6 +148,7 @@ pub enum PrincipalSelector {
 pub fn PrincipalSelector::background_task(String) -> Self raise IpcError
 pub fn PrincipalSelector::http_client(String) -> Self raise IpcError
 pub fn PrincipalSelector::plugin(String) -> Self raise IpcError
+pub fn PrincipalSelector::remote_page(String) -> Self raise IpcError
 pub fn PrincipalSelector::window(String) -> Self raise IpcError
 
 // Type aliases

@@ -24,4 +24,5 @@ import {
   "moonbitlang/async@0.20.3",
   "Nanaloveyuki/dynlib@0.1.0",
   "Nanaloveyuki/orbit-plugin-abi@0.1.0",
+  "Nanaloveyuki/image@0.1.0",
 }

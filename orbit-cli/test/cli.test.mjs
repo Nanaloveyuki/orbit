@@ -134,3 +134,31 @@ test("bindings default to an inspectable JavaScript module beside the configurat
     resolve(cwd, "app/orbit-bindings.mjs"),
   ]]);
 });
+
+test("icon generation requires a source and passes explicit output settings", () => {
+  const cwd = resolve("workspace");
+  assert.throws(() => parseInvocation(["icon"], cwd), /icon requires --source/);
+  assert.throws(
+    () => parseInvocation(["icon", "--source", "icon.png", "--compression", "10"], cwd),
+    /--compression must be an integer between 0 and 9/,
+  );
+  const invocation = parseInvocation([
+    "icon",
+    "--source",
+    "assets/app.png",
+    "--out-dir",
+    "artifacts/icons",
+    "--compression",
+    "9",
+  ], cwd);
+  assert.deepEqual(moonCommands(invocation), [[
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "icon",
+    resolve(cwd, "assets/app.png"),
+    resolve(cwd, "artifacts/icons"),
+    "9",
+  ]]);
+});

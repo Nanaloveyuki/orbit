@@ -21,6 +21,14 @@ pub(all) enum InitialContent {
   Html(String)
 } derive(Eq, @debug.Debug)
 
+pub struct RemoteNavigation {
+  allowed_origins : Array[String]
+  fallback_url : String
+}
+pub fn RemoteNavigation::allowed_origins(Self) -> Array[String]
+pub fn RemoteNavigation::fallback_url(Self) -> String
+pub fn RemoteNavigation::new(allowed_origins~ : Array[String], fallback_url~ : String) -> Self raise RuntimeError
+
 pub struct RuntimeBounds {
   x : Int
   y : Int
@@ -58,15 +66,25 @@ pub struct RuntimeOptions {
   lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
   external_navigation_handler : (String) -> Bool
   resource_provider : RuntimeResourceProvider?
+  remote_navigation : RemoteNavigation?
 }
 pub fn RuntimeOptions::external_navigation_handler(Self) -> (String) -> Bool
 pub fn RuntimeOptions::label(Self) -> String
 pub fn RuntimeOptions::lifecycle_handler(Self) -> (RuntimeLifecycleEvent) -> Unit
-pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, external_navigation_handler? : (String) -> Bool, resource_provider? : RuntimeResourceProvider?) -> Self raise RuntimeError
+pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, external_navigation_handler? : (String) -> Bool, resource_provider? : RuntimeResourceProvider?, remote_navigation? : RemoteNavigation?) -> Self raise RuntimeError
+pub fn RuntimeOptions::remote_navigation(Self) -> RemoteNavigation?
 pub fn RuntimeOptions::resource_provider(Self) -> RuntimeResourceProvider?
 pub fn RuntimeOptions::with_external_navigation_handler(Self, (String) -> Bool) -> Self
 pub fn RuntimeOptions::with_initialization_script(Self, String) -> Self
 pub fn RuntimeOptions::with_lifecycle_handler(Self, (RuntimeLifecycleEvent) -> Unit) -> Self
+
+pub struct RuntimePageMessage {
+  body : String
+  origin : String?
+}
+pub fn RuntimePageMessage::body(Self) -> String
+pub fn RuntimePageMessage::new(body~ : String, origin? : String?) -> Self
+pub fn RuntimePageMessage::origin(Self) -> String?
 
 pub struct RuntimeResourceProvider {
   scheme : String
@@ -108,7 +126,7 @@ pub(open) trait WebViewRuntime {
   fn navigate(Self, String) -> Unit raise RuntimeError
   fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
   fn post_message(Self, String) -> Unit raise RuntimeError
-  fn set_message_handler(Self, ((String) -> Unit)?) -> Unit raise RuntimeError
+  fn set_message_handler(Self, ((RuntimePageMessage) -> Unit)?) -> Unit raise RuntimeError
   fn set_bounds(Self, RuntimeBounds) -> Unit raise RuntimeError
   fn destroy(Self) -> Unit raise RuntimeError
 }
