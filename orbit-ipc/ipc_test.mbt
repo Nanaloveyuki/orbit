@@ -109,3 +109,62 @@ test "validation failures preserve an already valid invocation id" {
   assert_true(response.contains("\"id\":\"req-5\""))
   assert_true(response.contains("\"code\":\"invalid_request\""))
 }
+
+///|
+test "capabilities grant only listed commands to the matching window" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("allowed"), value => Ok(value))
+  registry.register_json(CommandName::new("denied"), value => Ok(value))
+  let policy = CommandPolicy::new()
+  policy.add(
+    CommandCapability::new(identifier="main-commands", windows=["main"], commands=[
+      CommandName::new("allowed"),
+    ]),
+  )
+  let allowed = registry.dispatch_for_window(
+    "{\"version\":1,\"id\":\"req-6\",\"command\":\"allowed\",\"payload\":null}",
+    policy, "main",
+  )
+  let denied = registry.dispatch_for_window(
+    "{\"version\":1,\"id\":\"req-7\",\"command\":\"denied\",\"payload\":null}", policy,
+    "main",
+  )
+  assert_true(allowed.contains("\"ok\":true"))
+  assert_true(denied.contains("\"code\":\"permission_denied\""))
+}
+
+///|
+test "capabilities do not cross window boundaries" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("echo"), value => Ok(value))
+  let policy = CommandPolicy::new()
+  policy.add(
+    CommandCapability::new(identifier="main-commands", windows=["main"], commands=[
+      CommandName::new("echo"),
+    ]),
+  )
+  let response = registry.dispatch_for_window(
+    "{\"version\":1,\"id\":\"req-8\",\"command\":\"echo\",\"payload\":null}", policy,
+    "settings",
+  )
+  assert_true(response.contains("\"code\":\"permission_denied\""))
+}
+
+///|
+test "capability identifiers are unique within a policy" {
+  let policy = CommandPolicy::new()
+  let capability = CommandCapability::new(
+    identifier="main-commands",
+    windows=["main"],
+    commands=[CommandName::new("echo")],
+  )
+  policy.add(capability)
+  let duplicate = try {
+    policy.add(capability)
+    false
+  } catch {
+    DuplicateCapability(_) => true
+    _ => false
+  }
+  assert_true(duplicate)
+}

@@ -52,6 +52,12 @@ pub(all) struct AppConfig {
   version : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) struct CapabilityConfig {
+  identifier : String
+  windows : Array[String]
+  commands : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ConfigDiagnostic {
   code : String
   path : String
@@ -82,6 +88,7 @@ pub(all) struct OrbitConfig {
   app : AppConfig
   windows : Array[WindowConfig]
   security : SecurityConfig
+  capabilities : Array[CapabilityConfig]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Platform {

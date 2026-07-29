@@ -10,10 +10,10 @@ pub let app_name = "Orbit Example"
 pub let app_version = "0.1.0"
 
 ///|
-pub let configuration_json = "{\"schema_version\":1,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\"},\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}],\"security\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}}"
+pub let configuration_json = "{\"schema_version\":1,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\"},\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}],\"security\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"windows\":[\"main\"],\"commands\":[\"example.ping\"]}]}"
 
 ///|
-pub let configuration_fingerprint = "86d38c0ff82f5ce447e17993b65c7230be562793bd7ee7b15d553359a61d2595"
+pub let configuration_fingerprint = "6f6630dbdc908c299a028ce22e01fd970f50ba35e782fcdf5928e5967ebe44f0"
 
 ///|
 pub let window_label = "main"
@@ -38,6 +38,19 @@ pub let resource_scheme = "orbit"
 
 ///|
 pub let entry_url = "orbit://app/index.html"
+
+///|
+pub fn configured_ipc_policy() -> @ipc.CommandPolicy raise @ipc.IpcError {
+  let policy = @ipc.CommandPolicy::new()
+  policy.add(
+    @ipc.CommandCapability::new(
+      identifier="main-window-commands",
+      windows=["main"],
+      commands=[@ipc.CommandName::new("example.ping")],
+    ),
+  )
+  policy
+}
 
 ///|
 pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {

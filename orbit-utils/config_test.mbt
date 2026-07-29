@@ -20,7 +20,14 @@ let valid_config_source =
   #|  ],
   #|  "security": {
   #|    "csp": "default-src 'self'; script-src 'self'"
-  #|  }
+  #|  },
+  #|  "capabilities": [
+  #|    {
+  #|      "identifier": "main-commands",
+  #|      "windows": ["main"],
+  #|      "commands": ["example.ping"]
+  #|    }
+  #|  ]
   #|}
 
 ///|
@@ -111,4 +118,34 @@ test "configuration reports structured validation diagnostics" {
     Invalid(diagnostics) => diagnostics[0].code
   }
   inspect(code, content="unsupported_schema")
+}
+
+///|
+test "capabilities must reference configured windows" {
+  let invalid = valid_config_source.replace_all(
+    old="\"windows\": [\"main\"]",
+    new="\"windows\": [\"missing\"]",
+  )
+  let code = try {
+    ignore(parse_config(invalid))
+    "accepted"
+  } catch {
+    Invalid(diagnostics) => diagnostics[0].code
+  }
+  inspect(code, content="unknown_window")
+}
+
+///|
+test "capability command names follow the IPC identifier grammar" {
+  let invalid = valid_config_source.replace_all(
+    old="\"example.ping\"",
+    new="\"example ping\"",
+  )
+  let code = try {
+    ignore(parse_config(invalid))
+    "accepted"
+  } catch {
+    Invalid(diagnostics) => diagnostics[0].code
+  }
+  inspect(code, content="invalid_command_name")
 }

@@ -9,7 +9,7 @@ composition, and initial developer tooling:
 
 - `orbit-utils`: configuration, resources, platform and CSP utilities.
 - `orbit-event`: standalone application and runtime event contracts.
-- `orbit-ipc`: command registration and structured invocation envelopes.
+- `orbit-ipc`: command registration, capability policies and structured invocation envelopes.
 - `orbit-runtime`: replaceable WebView runtime contracts.
 - `orbit-runtime-moonview`: native MoonView implementation of `orbit-runtime`.
 - `orbit-core`: Orby window lifecycle and runtime composition.
@@ -68,7 +68,12 @@ configuration and fingerprint, and injects the configured CSP into the HTML
 entry document. The current desktop generator requires exactly one configured
 window and applies its title, dimensions, visibility and resizable setting.
 The example button dispatches `example.ping` through
-`orbit-ipc` and displays the returned JSON response.
+`orbit-ipc` and displays the returned JSON response. Its `capabilities`
+configuration grants that command only to the `main` window. The generator
+emits `configured_ipc_policy`; pass it to `DesktopOptions` alongside the
+command registry. An IPC registry without a policy is rejected, and commands
+not granted to the current window return `permission_denied` without invoking
+their handler.
 
 An embedded resource provider confines navigation to its own
 `<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource

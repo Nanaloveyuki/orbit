@@ -4,7 +4,9 @@ pub(all) suberror IpcError {
   UnsupportedVersion(Int)
   InvalidInvocationId(String)
   InvalidCommandName(String)
+  InvalidCapability(String)
   DuplicateCommand(String)
+  DuplicateCapability(String)
 } derive(Debug)
 
 ///|
@@ -239,10 +241,20 @@ fn IpcError::failure(self : IpcError) -> CommandFailure {
         code="invalid_request",
         message="invalid command name",
       )
+    InvalidCapability(_) =>
+      CommandFailure::new(
+        code="invalid_capability",
+        message="invalid command capability",
+      )
     DuplicateCommand(name) =>
       CommandFailure::new(
         code="duplicate_command",
         message="command is already registered: \{name}",
+      )
+    DuplicateCapability(identifier) =>
+      CommandFailure::new(
+        code="duplicate_capability",
+        message="capability is already registered: \{identifier}",
       )
   }
 }
