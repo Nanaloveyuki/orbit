@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-plugin"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn load(String) -> Result[PluginLibrary, PluginError]
+
+pub fn parse_manifest(String) -> Result[PluginManifest, PluginError]
+
+// Errors
+
+// Types and methods
+pub(all) enum PluginError {
+  LoadFailed
+  MissingSymbol(String)
+  InvalidAbi
+  InvalidManifest(String)
+  PermissionDenied(String)
+  CommandDenied(String)
+  ActivationFailed
+  InvocationFailed
+} derive(Eq, @debug.Debug)
+
+pub struct PluginLibrary {
+  // private fields
+}
+pub fn PluginLibrary::activate(Self, PluginPolicy) -> Result[Unit, PluginError]
+pub fn PluginLibrary::close(Self) -> Unit
+pub fn PluginLibrary::invoke(Self, String, Bytes) -> Result[Bytes, PluginError]
+pub fn PluginLibrary::manifest(Self) -> PluginManifest
+
+pub(all) struct PluginManifest {
+  id : String
+  name : String
+  version : String
+  commands : Array[String]
+  permissions : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct PluginPolicy {
+  // private fields
+}
+pub fn PluginPolicy::allows(Self, String) -> Bool
+pub fn PluginPolicy::grant(Self, String) -> Unit
+pub fn PluginPolicy::new() -> Self
+
+// Type aliases
+
+// Traits
+

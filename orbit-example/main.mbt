@@ -20,25 +20,8 @@ fn main {
   let ipc_policy = configured_ipc_policy() catch {
     _ => fail("could not configure example IPC permissions")
   }
-  let runtime_options = @runtime.RuntimeOptions::new(
-    label=window_label,
-    bounds=@runtime.RuntimeBounds::new(width=window_width, height=window_height),
-    initial_content=Url(entry_url),
-    initialization_script="document.documentElement.dataset.orbit = 'ready'",
-    visible=window_visible,
-    resource_provider=Some(
-      @runtime.RuntimeResourceProvider::new(
-        scheme=resource_scheme,
-        handler=handle_resource,
-      ),
-    ),
-  ) catch {
-    _ => fail("could not create runtime options")
-  }
   let desktop_options = @core.DesktopOptions::new(
-    window_title,
-    runtime_options,
-    resizable=window_resizable,
+    windows=configured_windows(),
     ipc_registry=Some(ipc_registry),
     ipc_policy=Some(ipc_policy),
   ) catch {

@@ -6,24 +6,49 @@ pub(all) suberror CoreError {
 } derive(Debug)
 
 ///|
-pub struct DesktopOptions {
+pub struct DesktopWindowOptions {
   window_title : String
   runtime_options : @runtime.RuntimeOptions
   resizable : Bool
+}
+
+///|
+pub fn DesktopWindowOptions::new(
+  window_title : String,
+  runtime_options : @runtime.RuntimeOptions,
+  resizable? : Bool = true,
+) -> DesktopWindowOptions raise CoreError {
+  if window_title.is_empty() {
+    raise InitializationFailed("window title must not be empty")
+  }
+  { window_title, runtime_options, resizable }
+}
+
+///|
+pub struct DesktopOptions {
+  windows : Array[DesktopWindowOptions]
   ipc_registry : @ipc.CommandRegistry?
   ipc_policy : @ipc.CommandPolicy?
 }
 
 ///|
 pub fn DesktopOptions::new(
-  window_title : String,
-  runtime_options : @runtime.RuntimeOptions,
-  resizable? : Bool = true,
+  windows~ : Array[DesktopWindowOptions],
   ipc_registry? : @ipc.CommandRegistry? = None,
   ipc_policy? : @ipc.CommandPolicy? = None,
 ) -> DesktopOptions raise CoreError {
-  if window_title.is_empty() {
-    raise InitializationFailed("window title must not be empty")
+  if windows.is_empty() {
+    raise InitializationFailed("at least one desktop window is required")
+  }
+  let labels : Map[String, Bool] = Map([])
+  for window in windows {
+    let label = window.runtime_options.label()
+    if labels.contains(label) {
+      raise InitializationFailed(
+        "desktop window labels must be unique: \{label}",
+      )
+    }
+    labels[label] = true
   }
   match (ipc_registry, ipc_policy) {
     (Some(_), None) | (None, Some(_)) =>
@@ -32,7 +57,7 @@ pub fn DesktopOptions::new(
       )
     _ => ()
   }
-  { window_title, runtime_options, resizable, ipc_registry, ipc_policy }
+  { windows, ipc_registry, ipc_policy }
 }
 
 ///|
@@ -74,10 +99,15 @@ fn app_reason(error : @orby.AppError) -> CoreError {
 struct DesktopApp {
   factory : &@runtime.RuntimeFactory
   options : DesktopOptions
-  mut window : @orby.Window?
-  mut runtime : &@runtime.WebViewRuntime?
+  windows : Array[MountedWindow]
   mut pending_runtime_failure : String?
   mut shutting_down : Bool
+}
+
+///|
+priv struct MountedWindow {
+  window : @orby.Window
+  runtime : &@runtime.WebViewRuntime
 }
 
 ///|
@@ -86,39 +116,30 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     return
   }
   self.shutting_down = true
-  match self.runtime {
-    Some(runtime) => {
-      self.runtime = None
-      runtime.set_message_handler(None) catch {
-        _ => ()
-      }
-      runtime.destroy() catch {
-        _ => ()
-      }
+  for mounted in self.windows {
+    mounted.runtime.set_message_handler(None) catch {
+      _ => ()
     }
-    None => ()
-  }
-  match self.window {
-    Some(window) => {
-      self.window = None
-      window.destroy()
+    mounted.runtime.destroy() catch {
+      _ => ()
     }
-    None => ()
   }
+  for mounted in self.windows {
+    mounted.window.destroy()
+  }
+  self.windows.clear()
 }
 
 ///|
 fn DesktopApp::dispatch_ipc_message(
   self : DesktopApp,
+  label : String,
+  runtime : &@runtime.WebViewRuntime,
   message : String,
 ) -> Unit {
-  match (self.options.ipc_registry, self.options.ipc_policy, self.runtime) {
-    (Some(registry), Some(policy), Some(runtime)) => {
-      let response = registry.dispatch_for_window(
-        message,
-        policy,
-        self.options.runtime_options.label(),
-      )
+  match (self.options.ipc_registry, self.options.ipc_policy) {
+    (Some(registry), Some(policy)) => {
+      let response = registry.dispatch_for_window(message, policy, label)
       runtime.post_message(response) catch {
         error =>
           if !self.shutting_down && self.pending_runtime_failure is None {
@@ -128,6 +149,102 @@ fn DesktopApp::dispatch_ipc_message(
     }
     _ => ()
   }
+}
+
+///|
+fn DesktopApp::mounted_window(
+  self : DesktopApp,
+  id : @orby.WindowId,
+) -> MountedWindow? {
+  for mounted in self.windows {
+    if mounted.window.id() == id {
+      return Some(mounted)
+    }
+  }
+  None
+}
+
+///|
+fn DesktopApp::has_live_windows(self : DesktopApp) -> Bool {
+  self.windows.any(mounted => !mounted.window.is_destroyed())
+}
+
+///|
+fn DesktopApp::mount_window(
+  self : DesktopApp,
+  active : @orby.ActiveApp,
+  options : DesktopWindowOptions,
+) -> MountedWindow raise CoreError {
+  let bounds = options.runtime_options.bounds
+  let window = active.create_window(
+    @orby.WindowOptions::new(
+      title=options.window_title,
+      size=@orby.Size::new(width=bounds.width, height=bounds.height),
+      visible=options.runtime_options.visible,
+      resizable=options.resizable,
+    ),
+  ) catch {
+    error => raise StartupFailed(window_reason(error))
+  }
+  let host = window.webview_host() catch {
+    error => {
+      window.destroy()
+      raise StartupFailed(window_reason(error))
+    }
+  }
+  let native_handle = host.native_handle() catch {
+    error => {
+      window.destroy()
+      raise StartupFailed(window_reason(error))
+    }
+  }
+  let runtime_host = @runtime.RuntimeHost::new(native_handle) catch {
+    InvalidState(message) => {
+      window.destroy()
+      raise StartupFailed(message)
+    }
+    _ => raise StartupFailed("runtime host creation failed")
+  }
+  let runtime_options = match self.options.ipc_registry {
+    Some(_) =>
+      options.runtime_options.with_initialization_script(
+        ipc_initialization_script(options.runtime_options.initialization_script),
+      )
+    None => options.runtime_options
+  }
+  let supplied_lifecycle_handler = runtime_options.lifecycle_handler()
+  let runtime_options = runtime_options.with_lifecycle_handler(event => {
+    supplied_lifecycle_handler(event)
+    self.record_runtime_event(event)
+  })
+  let runtime = self.factory.create(runtime_host, runtime_options) catch {
+    error => {
+      window.destroy()
+      raise StartupFailed(runtime_reason(error))
+    }
+  }
+  match self.options.ipc_registry {
+    Some(_) =>
+      runtime.set_message_handler(
+        Some(message => {
+          self.dispatch_ipc_message(
+            options.runtime_options.label(),
+            runtime,
+            message,
+          )
+        }),
+      ) catch {
+        error => {
+          runtime.destroy() catch {
+            _ => ()
+          }
+          window.destroy()
+          raise StartupFailed(runtime_reason(error))
+        }
+      }
+    None => ()
+  }
+  { window, runtime }
 }
 
 ///|
@@ -146,98 +263,63 @@ fn DesktopApp::record_runtime_event(
 
 ///|
 pub impl @orby.App for DesktopApp with fn started(self, active) {
-  let bounds = self.options.runtime_options.bounds
-  let window = active.create_window(
-    @orby.WindowOptions::new(
-      title=self.options.window_title,
-      size=@orby.Size::new(width=bounds.width, height=bounds.height),
-      visible=self.options.runtime_options.visible,
-      resizable=self.options.resizable,
-    ),
-  ) catch {
-    error => raise StartupFailed(window_reason(error))
-  }
-  self.window = Some(window)
-  let host = window.webview_host() catch {
-    error => {
-      self.teardown()
-      raise StartupFailed(window_reason(error))
-    }
-  }
-  let native_handle = host.native_handle() catch {
-    error => {
-      self.teardown()
-      raise StartupFailed(window_reason(error))
-    }
-  }
-  let runtime_host = @runtime.RuntimeHost::new(native_handle) catch {
-    InvalidState(message) => {
-      self.teardown()
-      raise StartupFailed(message)
-    }
-    _ => raise StartupFailed("runtime host creation failed")
-  }
-  let supplied_lifecycle_handler = self.options.runtime_options.lifecycle_handler()
-  let runtime_options = self.options.runtime_options.with_lifecycle_handler(event => {
-    supplied_lifecycle_handler(event)
-    self.record_runtime_event(event)
-  })
-  let runtime = self.factory.create(runtime_host, runtime_options) catch {
-    error => {
-      self.teardown()
-      raise StartupFailed(runtime_reason(error))
-    }
-  }
-  self.runtime = Some(runtime)
-  match self.options.ipc_registry {
-    Some(_) =>
-      runtime.set_message_handler(
-        Some(message => self.dispatch_ipc_message(message)),
-      ) catch {
-        error => {
-          self.teardown()
-          raise StartupFailed(runtime_reason(error))
+  for options in self.options.windows {
+    let mounted = self.mount_window(active, options) catch {
+      error => {
+        self.teardown()
+        match error {
+          InitializationFailed(message)
+          | StartupFailed(message)
+          | RuntimeFailed(message) => raise StartupFailed(message)
         }
       }
-    None => ()
+    }
+    self.windows.push(mounted)
   }
 }
 
 ///|
-pub impl @orby.App for DesktopApp with fn window_event(self, _active, id, event) {
-  let is_primary_window = match self.window {
-    Some(window) => window.id() == id
-    None => false
+pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) {
+  let mounted = match self.mounted_window(id) {
+    Some(mounted) => mounted
+    None => return
   }
-  if !is_primary_window {
+  if mounted.window.is_destroyed() {
+    match event {
+      Destroyed => if !self.has_live_windows() { active.exit() }
+      _ => ()
+    }
     return
   }
   match event {
     Resized(size) =>
       if size.width > 0 && size.height > 0 {
-        match self.runtime {
-          Some(runtime) =>
-            try
-              @runtime.RuntimeBounds::new(width=size.width, height=size.height)
-            catch {
-              _ => ()
-            } noraise {
-              bounds => runtime.set_bounds(bounds) catch { _ => () }
-            }
-          None => ()
+        try
+          @runtime.RuntimeBounds::new(width=size.width, height=size.height)
+        catch {
+          _ => ()
+        } noraise {
+          bounds => mounted.runtime.set_bounds(bounds) catch { _ => () }
         }
       }
-    CloseRequested => self.teardown()
+    CloseRequested => {
+      mounted.runtime.set_message_handler(None) catch {
+        _ => ()
+      }
+      mounted.runtime.destroy() catch {
+        _ => ()
+      }
+      mounted.window.destroy()
+    }
     Destroyed => {
-      self.window = None
-      match self.runtime {
-        Some(runtime) => {
-          self.runtime = None
-          runtime.destroy() catch {
-            _ => ()
-          }
-        }
-        None => ()
+      mounted.runtime.set_message_handler(None) catch {
+        _ => ()
+      }
+      mounted.runtime.destroy() catch {
+        _ => ()
+      }
+      if !self.has_live_windows() {
+        active.exit()
       }
     }
     _ => ()
@@ -272,8 +354,7 @@ pub fn run(
   let app = {
     factory,
     options,
-    window: None,
-    runtime: None,
+    windows: [],
     pending_runtime_failure: None,
     shutting_down: false,
   }

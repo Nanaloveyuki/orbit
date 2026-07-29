@@ -155,7 +155,42 @@ fn decode_string(value : Json, name : String) -> String raise IpcError {
 }
 
 ///|
+fn ipc_json_limits() -> @strict_json.JsonLimits {
+  @strict_json.JsonLimits::new(
+    max_input_chars=262_144,
+    max_depth=32,
+    max_string_chars=131_072,
+    max_array_items=4_096,
+    max_object_members=4_096,
+  )
+}
+
+///|
+fn strict_json_message(error : @strict_json.JsonError) -> String {
+  match error {
+    Syntax(error~) => "invalid JSON at character \{error.offset()}"
+    DuplicateKey(key~, duplicate_offset~, ..) =>
+      "duplicate JSON key \{key} at character \{duplicate_offset}"
+    Limit(kind~, offset~, limit~) => {
+      let kind = match kind {
+        InputChars => "input size"
+        NestingDepth => "nesting depth"
+        StringChars => "string size"
+        ArrayItems => "array item count"
+        ObjectMembers => "object member count"
+      }
+      "JSON \{kind} limit \{limit} exceeded at character \{offset}"
+    }
+  }
+}
+
+///|
 pub fn decode_request(source : StringView) -> InvocationRequest raise IpcError {
+  let source = source.to_owned()
+  match @strict_json.parse_with_limits(source, ipc_json_limits()) {
+    Ok(_) => ()
+    Err(error) => raise malformed(strict_json_message(error))
+  }
   let value = @json.parse(source) catch {
     error => raise malformed("invalid JSON: \{error}")
   }

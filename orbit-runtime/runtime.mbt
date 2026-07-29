@@ -218,6 +218,14 @@ pub fn RuntimeOptions::with_lifecycle_handler(
 }
 
 ///|
+pub fn RuntimeOptions::with_initialization_script(
+  self : RuntimeOptions,
+  initialization_script : String,
+) -> RuntimeOptions {
+  { ..self, initialization_script, }
+}
+
+///|
 pub fn RuntimeOptions::lifecycle_handler(
   self : RuntimeOptions,
 ) -> (RuntimeLifecycleEvent) -> Unit {

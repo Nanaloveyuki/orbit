@@ -75,6 +75,14 @@ command registry. An IPC registry without a policy is rejected, and commands
 not granted to the current window return `permission_denied` without invoking
 their handler.
 
+When IPC is configured, Orbit installs `window.__ORBIT__.invoke(command,
+payload?, { timeout? })` before page scripts run. It returns a Promise, matches
+responses by invocation ID, preserves a page's legacy `window.moonview.onmessage`
+handler, and rejects non-serializable, oversized, timed-out or failed commands
+with an `OrbitIpcError` containing `code`, `message` and optional `data`.
+Requests are limited to 256 KiB and strictly parsed with duplicate-key
+rejection before they reach command handlers.
+
 An embedded resource provider confines navigation to its own
 `<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource
 requests, and `WebViewRuntime::navigate` returns a checked error for an external

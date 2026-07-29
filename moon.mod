@@ -20,6 +20,8 @@ import {
   "Nanaloveyuki/parsec@0.1.2",
   "Nanaloveyuki/moonview@0.1.0-beta.3",
   "Nanaloveyuki/sync@0.2.1",
-  "Nanaloveyuki/orby@0.1.0-beta.0",
+  "Nanaloveyuki/orby@0.1.0-beta.1",
   "moonbitlang/async@0.20.3",
+  "Nanaloveyuki/dynlib@0.1.0",
+  "Nanaloveyuki/orbit-plugin-abi@0.1.0",
 }
