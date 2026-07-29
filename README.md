@@ -32,11 +32,16 @@ capabilities remain intentionally deferred.
   its parent window. `orbit-runtime` remains free of Orby and MoonView types;
   factories receive an abstract `RuntimeHost`.
 - Native plugins use only `orbit-plugin-abi` v1. Each configuration entry
-  declares an ID, a bundled `plugins/` relative library path, and its explicit
-  permission grants. A plugin manifest cannot grant itself permissions. Orbit
-  activates plugins only after desktop startup, maps manifest commands to
-  `plugin:<plugin-id>/<command>` IPC commands, and destroys every instance
-  before closing its dynamic library.
+  declares an ID, bundled `plugins/` relative library and sidecar-manifest
+  paths, and explicit permission grants. Sidecars use `schema_version: 2`,
+  declare ABI version, identity, supported platforms, requested permissions,
+  command names, and request/response JSON Schema objects. `orbit-build`
+  strictly validates and embeds the sidecar descriptor without loading native
+  code. Before creating an instance, Orbit compares that descriptor with the
+  ABI v1 manifest reported by the loaded library. A sidecar request never
+  grants itself a permission: configuration grants must cover every requested
+  permission. Orbit maps validated commands to `plugin:<plugin-id>/<command>`
+  and destroys every instance before closing its dynamic library.
 - A development plugin root is an explicit runtime option (`--plugin-dir` in
   `orbit-cli`, exposed as `ORBIT_PLUGIN_DIRECTORY`) and is never written into
   `orbit.conf.json`, generated source, or the configuration fingerprint.

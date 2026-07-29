@@ -279,14 +279,21 @@ fn capabilities_expression(config : @utils.OrbitConfig) -> String {
 }
 
 ///|
-fn plugins_expression(config : @utils.OrbitConfig) -> String {
+fn plugins_expression(
+  config : @utils.OrbitConfig,
+  sidecars : Array[String],
+) -> String {
   let declarations = []
-  for plugin in config.plugins {
+  for index, plugin in config.plugins {
     let id = Json::string(plugin.id).stringify()
     let library = Json::string(plugin.library).stringify()
     let permissions = string_array_expression(plugin.permissions)
+    let sidecar = match sidecars.get(index) {
+      Some(source) => Json::string(source).stringify()
+      None => abort_build("plugin sidecar source is missing")
+    }
     declarations.push(
-      "  @plugin.PluginDeclaration::new(\n    id=\{id},\n    library=\{library},\n    permissions=\{permissions},\n  ),",
+      "  @plugin.PluginDeclaration::new(\n    id=\{id},\n    library=\{library},\n    sidecar=match @plugin.parse_sidecar_manifest(\{sidecar}) {\n      Ok(value) => value\n      Err(_) => abort(\"invalid generated plugin sidecar\")\n    },\n    permissions=\{permissions},\n  ),",
     )
   }
   declarations.join("\n")
@@ -358,6 +365,7 @@ fn generated_source(
   canonical_json : String,
   assets : Array[Asset],
   development_url : String?,
+  sidecars : Array[String],
 ) -> String {
   let cases = []
   for asset in assets {
@@ -394,7 +402,7 @@ fn generated_source(
   let canonical_json = Json::string(canonical_json).stringify()
   let fingerprint = Json::string(fingerprint).stringify()
   let capabilities = capabilities_expression(config)
-  let plugins = plugins_expression(config)
+  let plugins = plugins_expression(config, sidecars)
   let windows = indent_lines(
     windows_expression(config, "orbit", development_url),
     "  ",
@@ -414,6 +422,31 @@ async fn write_if_changed(output : String, content : String) -> Unit {
     @fs.write_file(temporary, content, create_mode=CreateOrTruncate)
     @fs.rename(temporary, output, replace=true)
   }
+}
+
+///|
+async fn read_plugin_sidecars(
+  configuration_directory : String,
+  config : @utils.OrbitConfig,
+) -> Array[String] {
+  let sidecars = []
+  for plugin in config.plugins {
+    let path = @fs.realpath(join_path(configuration_directory, plugin.manifest))
+    if !has_path_prefix(
+        normalized_path(path),
+        normalized_path(configuration_directory),
+      ) {
+      abort_build("plugin sidecar escapes the configuration directory")
+    }
+    let source = @fs.read_file(path).text()
+    match @plugin.parse_sidecar_manifest(source) {
+      Ok(sidecar) if sidecar.id == plugin.id => sidecars.push(source)
+      Ok(_) =>
+        abort_build("plugin sidecar identity does not match configuration")
+      Err(_) => abort_build("plugin sidecar does not satisfy schema version 2")
+    }
+  }
+  sidecars
 }
 
 ///|
@@ -553,6 +586,7 @@ async fn generate(
   let orbit_config = @utils.parse_config(config_text) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
+  let sidecars = read_plugin_sidecars(configuration_directory, orbit_config)
   let assets = []
   if development_url is None {
     let asset_root = @fs.realpath(
@@ -612,6 +646,7 @@ async fn generate(
       compiled.canonical_json(),
       assets,
       development_url,
+      sidecars,
     ),
   )
 }
@@ -701,7 +736,15 @@ test "remote web generation uses the HTTPS entry and embedded fallback" {
     #|  "plugins": []
     #|}
   let config = @utils.parse_config(config_source)
-  let source = generated_source("orbit", config, "fingerprint", "{}", [], None)
+  let source = generated_source(
+    "orbit",
+    config,
+    "fingerprint",
+    "{}",
+    [],
+    None,
+    [],
+  )
   assert_true(
     source.contains("initial_content=Url(\"https://app.example/start\")"),
   )

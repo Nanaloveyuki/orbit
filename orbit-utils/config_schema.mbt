@@ -271,14 +271,20 @@ fn validate_plugins_shape(
         let path = "$.plugins[\{index}]"
         match value {
           Object(object) => {
-            validate_object_keys(
+            validate_object_keys_with_optional(
               object,
               path,
               ["id", "library", "permissions"],
+              ["manifest"],
               diagnostics,
             )
             validate_string_field(object, "id", path, diagnostics)
             validate_string_field(object, "library", path, diagnostics)
+            match object.get("manifest") {
+              Some(_) =>
+                validate_string_field(object, "manifest", path, diagnostics)
+              None => ()
+            }
             match object.get("permissions") {
               Some(value) =>
                 validate_string_array(value, path + ".permissions", diagnostics)

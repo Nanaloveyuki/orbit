@@ -24,3 +24,15 @@ test "every declared permission requires an explicit grant" {
   policy.grant("net.fetch")
   assert_eq(permissions_allowed(manifest, policy), None)
 }
+
+///|
+test "sidecar manifests require v2 descriptors and JSON Schema objects" {
+  let valid = parse_sidecar_manifest(
+    "{\"schema_version\":2,\"abi_version\":1,\"id\":\"demo.echo\",\"name\":\"Demo\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[],\"commands\":[{\"name\":\"echo\",\"request_schema\":{},\"response_schema\":{}}]}",
+  )
+  assert_true(valid is Ok(_))
+  let invalid = parse_sidecar_manifest(
+    "{\"schema_version\":1,\"abi_version\":1,\"id\":\"demo.echo\",\"name\":\"Demo\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[],\"commands\":[{\"name\":\"echo\",\"request_schema\":[],\"response_schema\":{}}]}",
+  )
+  assert_true(invalid is Err(_))
+}

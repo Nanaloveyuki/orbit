@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "Nanaloveyuki/orbit/orbit-plugin" @plugin,
   "Nanaloveyuki/orbit/orbit-utils" @utils,
 }
 
