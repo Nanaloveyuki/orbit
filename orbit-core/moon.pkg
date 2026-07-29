@@ -1,0 +1,7 @@
+import {
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+  "Nanaloveyuki/orby",
+}
+
+supported_targets = "native"

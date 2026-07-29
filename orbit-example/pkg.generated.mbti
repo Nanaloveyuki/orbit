@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-example"
+
+import {
+  "Nanaloveyuki/orbit/orbit-runtime",
+}
+
+// Values
+pub let app_identifier : String
+
+pub let app_name : String
+
+pub let app_version : String
+
+pub let configuration_fingerprint : String
+
+pub let configuration_json : String
+
+pub let entry_url : String
+
+pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub let resource_scheme : String
+
+pub let window_height : Int
+
+pub let window_label : String
+
+pub let window_resizable : Bool
+
+pub let window_title : String
+
+pub let window_visible : Bool
+
+pub let window_width : Int
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

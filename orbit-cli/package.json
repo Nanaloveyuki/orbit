@@ -1,0 +1,17 @@
+{
+  "name": "@nanaloveyuki/orbit-cli",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "description": "Development command-line interface for Orbit applications.",
+  "type": "module",
+  "bin": {
+    "orbit": "./bin/orbit.mjs"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0"
+}

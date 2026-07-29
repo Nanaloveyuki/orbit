@@ -37,20 +37,65 @@ pub(all) struct RuntimeCapabilities {
   devtools : Bool
 } derive(Eq, @debug.Debug)
 
+pub struct RuntimeHost {
+  native_handle : UInt64
+} derive(Eq, @debug.Debug)
+pub fn RuntimeHost::native_handle(Self) -> UInt64
+pub fn RuntimeHost::new(UInt64) -> Self raise RuntimeError
+
+pub(all) enum RuntimeLifecycleEvent {
+  Ready
+  Failed(RuntimeError)
+  Destroyed
+} derive(@debug.Debug)
+
 pub struct RuntimeOptions {
   label : String
   initial_content : InitialContent
   initialization_script : String
   bounds : RuntimeBounds
   visible : Bool
+  lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
+  resource_provider : RuntimeResourceProvider?
 }
-pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool) -> Self raise RuntimeError
+pub fn RuntimeOptions::lifecycle_handler(Self) -> (RuntimeLifecycleEvent) -> Unit
+pub fn RuntimeOptions::new(label~ : String, bounds~ : RuntimeBounds, initial_content~ : InitialContent, initialization_script? : String, visible? : Bool, lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit, resource_provider? : RuntimeResourceProvider?) -> Self raise RuntimeError
+pub fn RuntimeOptions::resource_provider(Self) -> RuntimeResourceProvider?
+pub fn RuntimeOptions::with_lifecycle_handler(Self, (RuntimeLifecycleEvent) -> Unit) -> Self
+
+pub struct RuntimeResourceProvider {
+  scheme : String
+  handler : (RuntimeResourceRequest) -> RuntimeResourceResponse?
+}
+pub fn RuntimeResourceProvider::handle(Self, RuntimeResourceRequest) -> RuntimeResourceResponse?
+pub fn RuntimeResourceProvider::new(scheme~ : String, handler~ : (RuntimeResourceRequest) -> RuntimeResourceResponse?) -> Self raise RuntimeError
+pub fn RuntimeResourceProvider::scheme(Self) -> String
+
+pub struct RuntimeResourceRequest {
+  http_method : String
+  uri : String
+  body : Bytes
+}
+pub fn RuntimeResourceRequest::body(Self) -> Bytes
+pub fn RuntimeResourceRequest::http_method(Self) -> String
+pub fn RuntimeResourceRequest::new(http_method~ : String, uri~ : String, body~ : Bytes) -> Self
+pub fn RuntimeResourceRequest::uri(Self) -> String
+
+pub struct RuntimeResourceResponse {
+  status : Int
+  media_type : String
+  body : Bytes
+}
+pub fn RuntimeResourceResponse::body(Self) -> Bytes
+pub fn RuntimeResourceResponse::media_type(Self) -> String
+pub fn RuntimeResourceResponse::new(status~ : Int, media_type~ : String, body~ : Bytes) -> Self
+pub fn RuntimeResourceResponse::status(Self) -> Int
 
 // Type aliases
 
 // Traits
 pub(open) trait RuntimeFactory {
-  fn create(Self, RuntimeOptions) -> &WebViewRuntime raise RuntimeError
+  fn create(Self, RuntimeHost, RuntimeOptions) -> &WebViewRuntime raise RuntimeError
 }
 
 pub(open) trait WebViewRuntime {
