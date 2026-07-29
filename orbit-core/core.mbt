@@ -165,7 +165,8 @@ fn DesktopApp::dispatch_ipc_message(
   )
   match (self.options.ipc_registry, self.options.ipc_policy) {
     (Some(registry), Some(policy)) => {
-      let response = registry.dispatch_for_window(message, policy, label)
+      let context = @ipc.InvocationContext::window(label) catch { _ => return }
+      let response = registry.dispatch_with_context(message, policy, context)
       self.emit_event(
         "orbit://ipc/response",
         Ipc(label),

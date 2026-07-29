@@ -5,6 +5,8 @@ pub(all) suberror IpcError {
   InvalidInvocationId(String)
   InvalidCommandName(String)
   InvalidCapability(String)
+  InvalidPrincipal(String)
+  InvalidContext(String)
   DuplicateCommand(String)
   DuplicateCapability(String)
 } derive(Debug)
@@ -280,6 +282,16 @@ fn IpcError::failure(self : IpcError) -> CommandFailure {
       CommandFailure::new(
         code="invalid_capability",
         message="invalid command capability",
+      )
+    InvalidPrincipal(_) =>
+      CommandFailure::new(
+        code="invalid_principal",
+        message="invalid invocation principal",
+      )
+    InvalidContext(_) =>
+      CommandFailure::new(
+        code="invalid_context",
+        message="invalid invocation context",
       )
     DuplicateCommand(name) =>
       CommandFailure::new(
