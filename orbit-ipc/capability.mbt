@@ -77,6 +77,7 @@ pub fn CapabilityEffect::deny() -> CapabilityEffect {
 ///|
 pub enum PrincipalSelector {
   Window(String)
+  RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
@@ -90,6 +91,16 @@ pub fn PrincipalSelector::window(
     raise InvalidPrincipal(label)
   }
   Window(label)
+}
+
+///|
+pub fn PrincipalSelector::remote_page(
+  identifier : String,
+) -> PrincipalSelector raise IpcError {
+  if !valid_invocation_identity(identifier) {
+    raise InvalidPrincipal(identifier)
+  }
+  RemotePage(identifier)
 }
 
 ///|
@@ -157,8 +168,11 @@ pub struct CommandGrant {
 ///|
 fn PrincipalSelector::valid(self : PrincipalSelector) -> Bool {
   match self {
-    Window(value) | HttpClient(value) | Plugin(value) | BackgroundTask(value) =>
-      valid_invocation_identity(value)
+    Window(value)
+    | RemotePage(value)
+    | HttpClient(value)
+    | Plugin(value)
+    | BackgroundTask(value) => valid_invocation_identity(value)
   }
 }
 
@@ -169,6 +183,7 @@ fn PrincipalSelector::matches(
 ) -> Bool {
   match (self, principal) {
     (Window(expected), Window(actual))
+    | (RemotePage(expected), RemotePage(actual))
     | (HttpClient(expected), HttpClient(actual))
     | (Plugin(expected), Plugin(actual))
     | (BackgroundTask(expected), BackgroundTask(actual)) => expected == actual

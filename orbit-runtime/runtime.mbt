@@ -70,6 +70,74 @@ pub(all) enum InitialContent {
 } derive(Eq, Debug)
 
 ///|
+/// A message delivered by the current top-level page. `origin` is absent when
+/// an adapter cannot establish a trustworthy document origin.
+pub struct RuntimePageMessage {
+  body : String
+  origin : String?
+}
+
+///|
+pub fn RuntimePageMessage::new(
+  body~ : String,
+  origin? : String? = None,
+) -> RuntimePageMessage {
+  { body, origin }
+}
+
+///|
+pub fn RuntimePageMessage::body(self : RuntimePageMessage) -> String {
+  self.body
+}
+
+///|
+pub fn RuntimePageMessage::origin(self : RuntimePageMessage) -> String? {
+  self.origin
+}
+
+///|
+/// Describes the embedded fallback used when a configured remote page cannot
+/// be loaded or a navigation is rejected.
+pub struct RemoteNavigation {
+  allowed_origins : Array[String]
+  fallback_url : String
+}
+
+///|
+pub fn RemoteNavigation::new(
+  allowed_origins~ : Array[String],
+  fallback_url~ : String,
+) -> RemoteNavigation raise RuntimeError {
+  if allowed_origins.is_empty() || fallback_url.is_empty() {
+    raise InvalidState(
+      "remote navigation requires allowed origins and a fallback URL",
+    )
+  }
+  let seen : Map[String, Bool] = Map([])
+  for origin in allowed_origins {
+    if origin.is_empty() || seen.contains(origin) {
+      raise InvalidState(
+        "remote navigation origins must be non-empty and unique",
+      )
+    }
+    seen[origin] = true
+  }
+  { allowed_origins, fallback_url }
+}
+
+///|
+pub fn RemoteNavigation::allowed_origins(
+  self : RemoteNavigation,
+) -> Array[String] {
+  self.allowed_origins
+}
+
+///|
+pub fn RemoteNavigation::fallback_url(self : RemoteNavigation) -> String {
+  self.fallback_url
+}
+
+///|
 pub struct RuntimeResourceRequest {
   http_method : String
   uri : String
@@ -179,6 +247,7 @@ pub struct RuntimeOptions {
   lifecycle_handler : (RuntimeLifecycleEvent) -> Unit
   external_navigation_handler : (String) -> Bool
   resource_provider : RuntimeResourceProvider?
+  remote_navigation : RemoteNavigation?
 }
 
 ///|
@@ -191,6 +260,7 @@ pub fn RuntimeOptions::new(
   lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit = _event => (),
   external_navigation_handler? : (String) -> Bool = _url => false,
   resource_provider? : RuntimeResourceProvider? = None,
+  remote_navigation? : RemoteNavigation? = None,
 ) -> RuntimeOptions raise RuntimeError {
   if label.is_empty() {
     raise InvalidState("runtime label must not be empty")
@@ -198,6 +268,19 @@ pub fn RuntimeOptions::new(
   match initial_content {
     Url(value) | Html(value) if value.is_empty() =>
       raise InvalidState("runtime initial content must not be empty")
+    _ => ()
+  }
+  match (remote_navigation, resource_provider) {
+    (Some(_), None) =>
+      raise InvalidState(
+        "remote navigation requires an embedded resource provider for fallback content",
+      )
+    (Some(navigation), Some(provider)) if !navigation
+      .fallback_url()
+      .has_prefix("\{provider.scheme()}://app/") =>
+      raise InvalidState(
+        "remote fallback URL must use the embedded resource provider origin",
+      )
     _ => ()
   }
   {
@@ -209,6 +292,7 @@ pub fn RuntimeOptions::new(
     lifecycle_handler,
     external_navigation_handler,
     resource_provider,
+    remote_navigation,
   }
 }
 
@@ -265,12 +349,19 @@ pub fn RuntimeOptions::resource_provider(
 }
 
 ///|
+pub fn RuntimeOptions::remote_navigation(
+  self : RuntimeOptions,
+) -> RemoteNavigation? {
+  self.remote_navigation
+}
+
+///|
 pub(open) trait WebViewRuntime {
   fn capabilities(Self) -> RuntimeCapabilities
   fn navigate(Self, String) -> Unit raise RuntimeError
   fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
   fn post_message(Self, String) -> Unit raise RuntimeError
-  fn set_message_handler(Self, ((String) -> Unit)?) -> Unit raise RuntimeError
+  fn set_message_handler(Self, ((RuntimePageMessage) -> Unit)?) -> Unit raise RuntimeError
   fn set_bounds(Self, RuntimeBounds) -> Unit raise RuntimeError
   /// Implementations must make repeated destruction safe and stop callbacks.
   fn destroy(Self) -> Unit raise RuntimeError

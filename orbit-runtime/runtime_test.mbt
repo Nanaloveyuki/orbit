@@ -38,7 +38,7 @@ test "resource providers require a scheme name" {
 ///|
 priv struct FakeRuntime {
   mut destroyed : Bool
-  mut handler : ((String) -> Unit)?
+  mut handler : ((RuntimePageMessage) -> Unit)?
 }
 
 ///|
@@ -72,7 +72,7 @@ impl WebViewRuntime for FakeRuntime with fn post_message(self, message) {
     raise InvalidState("post_message after destroy")
   }
   match self.handler {
-    Some(handler) => handler(message)
+    Some(handler) => handler(RuntimePageMessage::new(body=message))
     None => ()
   }
 }
@@ -118,7 +118,9 @@ test "runtime factories return replaceable trait objects" {
     ),
   )
   let messages : Array[String] = []
-  runtime.set_message_handler(Some(fn(message) { messages.push(message) }))
+  runtime.set_message_handler(
+    Some(fn(message) { messages.push(message.body()) }),
+  )
   runtime.post_message("ready")
   debug_inspect(messages, content="[\"ready\"]")
   runtime.destroy()
@@ -161,4 +163,49 @@ test "external navigation remains denied unless the host approves it" {
     approved.external_navigation_handler()("https://docs.example.com/"),
   )
   assert_false(approved.external_navigation_handler()("https://example.com/"))
+}
+
+///|
+test "remote navigation requires a fallback and unique origins" {
+  let navigation = RemoteNavigation::new(
+    allowed_origins=["https://app.example"],
+    fallback_url="orbit://app/fallback.html",
+  )
+  inspect(navigation.fallback_url(), content="orbit://app/fallback.html")
+  let rejected = try {
+    ignore(
+      RemoteNavigation::new(
+        allowed_origins=["https://app.example", "https://app.example"],
+        fallback_url="orbit://app/fallback.html",
+      ),
+    )
+    false
+  } catch {
+    InvalidState(_) => true
+    _ => false
+  }
+  assert_true(rejected)
+}
+
+///|
+test "remote navigation requires an embedded fallback provider" {
+  let navigation = RemoteNavigation::new(
+    allowed_origins=["https://app.example"],
+    fallback_url="orbit://app/fallback.html",
+  )
+  let rejected = try {
+    ignore(
+      RuntimeOptions::new(
+        label="main",
+        bounds=RuntimeBounds::new(width=800, height=600),
+        initial_content=Url("https://app.example"),
+        remote_navigation=Some(navigation),
+      ),
+    )
+    false
+  } catch {
+    InvalidState(_) => true
+    _ => false
+  }
+  assert_true(rejected)
 }

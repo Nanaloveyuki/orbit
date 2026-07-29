@@ -51,34 +51,107 @@ fn embedded_origin(provider : @orbit_runtime.RuntimeResourceProvider) -> String 
 }
 
 ///|
-fn allows_embedded_navigation(
+fn url_has_origin(url : String, origin : String) -> Bool {
+  url == origin ||
+  url.has_prefix("\{origin}/") ||
+  url.has_prefix("\{origin}?") ||
+  url.has_prefix("\{origin}#")
+}
+
+///|
+fn remote_origin(
+  navigation : @orbit_runtime.RemoteNavigation,
+  url : String,
+) -> String? {
+  for origin in navigation.allowed_origins() {
+    if url_has_origin(url, origin) {
+      return Some(origin)
+    }
+  }
+  None
+}
+
+///|
+fn page_origin(
   provider : @orbit_runtime.RuntimeResourceProvider?,
+  remote_navigation : @orbit_runtime.RemoteNavigation?,
+  url : String,
+) -> String? {
+  match remote_navigation {
+    Some(navigation) =>
+      match remote_origin(navigation, url) {
+        Some(origin) => Some(origin)
+        None =>
+          match provider {
+            Some(provider) if url_has_origin(url, embedded_origin(provider)) =>
+              Some(embedded_origin(provider))
+            _ => None
+          }
+      }
+    None =>
+      match provider {
+        Some(provider) if url_has_origin(url, embedded_origin(provider)) =>
+          Some(embedded_origin(provider))
+        _ => None
+      }
+  }
+}
+
+///|
+fn allows_navigation(
+  provider : @orbit_runtime.RuntimeResourceProvider?,
+  remote_navigation : @orbit_runtime.RemoteNavigation?,
   external_navigation_handler : (String) -> Bool,
   url : String,
 ) -> Bool {
-  match provider {
-    Some(provider) => {
-      let origin = embedded_origin(provider)
-      if url == origin || url.has_prefix("\{origin}/") {
-        true
-      } else {
-        external_navigation_handler(url)
+  match remote_navigation {
+    Some(navigation) =>
+      remote_origin(navigation, url) is Some(_) ||
+      url == navigation.fallback_url() ||
+      external_navigation_handler(url)
+    None =>
+      match provider {
+        Some(provider) => {
+          let origin = embedded_origin(provider)
+          if url_has_origin(url, origin) {
+            true
+          } else {
+            external_navigation_handler(url)
+          }
+        }
+        None => external_navigation_handler(url)
       }
-    }
-    None => external_navigation_handler(url)
   }
 }
 
 ///|
 fn navigation_decision(
   provider : @orbit_runtime.RuntimeResourceProvider?,
+  remote_navigation : @orbit_runtime.RemoteNavigation?,
   external_navigation_handler : (String) -> Bool,
   url : String,
 ) -> @moonview.NavigationDecision {
-  if allows_embedded_navigation(provider, external_navigation_handler, url) {
+  if allows_navigation(
+      provider, remote_navigation, external_navigation_handler, url,
+    ) {
     Allow
   } else {
     Deny
+  }
+}
+
+///|
+fn navigate_fallback(
+  view : @moonview.WebView?,
+  remote_navigation : @orbit_runtime.RemoteNavigation?,
+  fallback_active : Ref[Bool],
+) -> Unit {
+  match (view, remote_navigation) {
+    (Some(view), Some(navigation)) if !fallback_active.val => {
+      fallback_active.val = true
+      ignore(view.navigate(navigation.fallback_url()))
+    }
+    _ => ()
   }
 }
 
@@ -214,8 +287,9 @@ pub fn MoonViewRuntimeFactory::new() -> MoonViewRuntimeFactory {
 struct MoonViewRuntime {
   view : @moonview.WebView
   resource_provider : @orbit_runtime.RuntimeResourceProvider?
+  remote_navigation : @orbit_runtime.RemoteNavigation?
   external_navigation_handler : (String) -> Bool
-  message_handler : Ref[((String) -> Unit)?]
+  message_handler : Ref[((@orbit_runtime.RuntimePageMessage) -> Unit)?]
   lifecycle_handler : Ref[(@orbit_runtime.RuntimeLifecycleEvent) -> Unit]
   mut destroyed : Bool
 }
@@ -231,9 +305,12 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     raise Unavailable("MoonView is unavailable")
   }
   let resource_provider = options.resource_provider()
+  let remote_navigation = options.remote_navigation()
   let external_navigation_handler = options.external_navigation_handler()
   ensure_resource_scheme(resource_provider)
-  let message_handler : Ref[((String) -> Unit)?] = Ref(None)
+  let message_handler : Ref[((@orbit_runtime.RuntimePageMessage) -> Unit)?] = Ref(
+    None,
+  )
   let lifecycle_handler = Ref(options.lifecycle_handler())
   let view_slot : Ref[@moonview.WebView?] = Ref(None)
   let initial_url = match options.initial_content {
@@ -244,6 +321,11 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     Url(_) => ""
     Html(value) => value
   }
+  let initial_origin = page_origin(
+    resource_provider, remote_navigation, initial_url,
+  )
+  let current_origin = Ref(initial_origin)
+  let fallback_active = Ref(false)
   let bounds = options.bounds
   let moonview_options = @moonview.WebViewOptions::new(
     bounds=@moonview.Rect::new(
@@ -257,7 +339,17 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     initialization_script=options.initialization_script,
     visible=options.visible,
     on_navigation=url => {
-      navigation_decision(resource_provider, external_navigation_handler, url)
+      let decision = navigation_decision(
+        resource_provider, remote_navigation, external_navigation_handler, url,
+      )
+      match decision {
+        Allow =>
+          current_origin.val = page_origin(
+            resource_provider, remote_navigation, url,
+          )
+        Deny => current_origin.val = None
+      }
+      decision
     },
     on_event=event => {
       match event {
@@ -269,9 +361,27 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
           )
         PageMessage(message) =>
           match message_handler.val {
-            Some(handler) => handler(message)
+            Some(handler) =>
+              handler(
+                @orbit_runtime.RuntimePageMessage::new(
+                  body=message,
+                  origin=current_origin.val,
+                ),
+              )
             None => ()
           }
+        SourceChanged(url) => {
+          current_origin.val = page_origin(
+            resource_provider, remote_navigation, url,
+          )
+          match remote_navigation {
+            Some(navigation) if url_has_origin(url, navigation.fallback_url()) =>
+              fallback_active.val = false
+            _ => ()
+          }
+        }
+        NavigationFailed(_url, _error) =>
+          navigate_fallback(view_slot.val, remote_navigation, fallback_active)
         ProtocolRequest(request) =>
           match view_slot.val {
             Some(view) =>
@@ -288,6 +398,7 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
       MoonViewRuntime::{
         view,
         resource_provider,
+        remote_navigation,
         external_navigation_handler,
         message_handler,
         lifecycle_handler,
@@ -327,8 +438,9 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn navigate(
   url,
 ) {
   self.require_live()
-  if !allows_embedded_navigation(
+  if !allows_navigation(
       self.resource_provider,
+      self.remote_navigation,
       self.external_navigation_handler,
       url,
     ) {
@@ -417,19 +529,44 @@ test "embedded resource providers block external navigation" {
     }),
   )
   let deny = _url => false
+  assert_true(allows_navigation(provider, None, deny, "orbit://app/index.html"))
   assert_true(
-    allows_embedded_navigation(provider, deny, "orbit://app/index.html"),
-  )
-  assert_true(
-    allows_embedded_navigation(provider, deny, "orbit://app/assets/app.js"),
+    allows_navigation(provider, None, deny, "orbit://app/assets/app.js"),
   )
   assert_false(
-    allows_embedded_navigation(provider, deny, "orbit://application/index.html"),
+    allows_navigation(provider, None, deny, "orbit://application/index.html"),
   )
-  assert_false(
-    allows_embedded_navigation(provider, deny, "https://example.com/"),
+  assert_false(allows_navigation(provider, None, deny, "https://example.com/"))
+  assert_true(
+    allows_navigation(provider, None, _url => true, "https://example.com/"),
+  )
+}
+
+///|
+test "remote navigation accepts allowed origins and its fallback only" {
+  let navigation = Some(
+    @orbit_runtime.RemoteNavigation::new(
+      allowed_origins=["https://app.example"],
+      fallback_url="orbit://app/fallback.html",
+    ),
   )
   assert_true(
-    allows_embedded_navigation(provider, _url => true, "https://example.com/"),
+    allows_navigation(
+      None,
+      navigation,
+      _url => false,
+      "https://app.example/path",
+    ),
+  )
+  assert_true(
+    allows_navigation(
+      None,
+      navigation,
+      _url => false,
+      "orbit://app/fallback.html",
+    ),
+  )
+  assert_false(
+    allows_navigation(None, navigation, _url => false, "https://other.example/"),
   )
 }

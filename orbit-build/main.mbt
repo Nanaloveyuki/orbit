@@ -72,7 +72,20 @@ fn shared_resource_root(config : @utils.OrbitConfig) -> String {
       abort_build("all window entry documents must share one resource root")
     }
   }
+  match config.web.remote {
+    Some(remote) if parent_path(remote.fallback_entry) != root =>
+      abort_build("remote fallback entry must share the window resource root")
+    _ => ()
+  }
   root
+}
+
+///|
+fn embedded_entry(config : @utils.OrbitConfig) -> String {
+  match config.web.remote {
+    Some(remote) => remote.fallback_entry
+    None => primary_window(config).entry
+  }
 }
 
 ///|
@@ -215,6 +228,7 @@ fn principal_expression(principal : @utils.PrincipalConfig) -> String {
   let identifier = Json::string(principal.identifier).stringify()
   match principal.kind {
     "window" => "@ipc.PrincipalSelector::window(\{identifier})"
+    "remote_page" => "@ipc.PrincipalSelector::remote_page(\{identifier})"
     "http_client" => "@ipc.PrincipalSelector::http_client(\{identifier})"
     "plugin" => "@ipc.PrincipalSelector::plugin(\{identifier})"
     "background_task" =>
@@ -296,7 +310,11 @@ fn windows_expression(
     let entry = match development_url {
       Some(url) => Json::string(url).stringify()
       None =>
-        Json::string("\{scheme}://app/\{file_name(window.entry)}").stringify()
+        match config.web.remote {
+          Some(remote) => Json::string(remote.http_url).stringify()
+          None =>
+            Json::string("\{scheme}://app/\{file_name(window.entry)}").stringify()
+        }
     }
     let external_navigation = match development_url {
       Some(url) => {
@@ -310,8 +328,23 @@ fn windows_expression(
       None =>
         "      resource_provider=Some(\n        @runtime.RuntimeResourceProvider::new(\n          scheme=resource_scheme,\n          handler=handle_resource,\n        ),\n      ),\n"
     }
+    let remote_navigation = match (development_url, config.web.remote) {
+      (None, Some(remote)) => {
+        let origins = string_array_expression(remote.allowed_origins)
+        let fallback = Json::string(
+          "\{scheme}://app/\{file_name(remote.fallback_entry)}",
+        ).stringify()
+        "      remote_navigation=Some(\n        @runtime.RemoteNavigation::new(\n          allowed_origins=\{origins},\n          fallback_url=\{fallback},\n        ),\n      ),\n"
+      }
+      _ => ""
+    }
+    let ipc_principal = match (development_url, config.web.remote) {
+      (None, Some(_)) =>
+        "    ipc_principal=@core.DesktopIpcPrincipal::remote_page(),\n"
+      _ => ""
+    }
     declarations.push(
-      "  @core.DesktopWindowOptions::new(\n    \{title},\n    @runtime.RuntimeOptions::new(\n      label=\{label},\n      bounds=@runtime.RuntimeBounds::new(width=\{window.width}, height=\{window.height}),\n      initial_content=Url(\{entry}),\n      visible=\{window.visible},\n\{external_navigation}\{resource_provider}    ) catch {\n      _ => abort(\"invalid generated runtime options\")\n    },\n    resizable=\{window.resizable},\n  ) catch {\n    _ => abort(\"invalid generated window options\")\n  },",
+      "  @core.DesktopWindowOptions::new(\n    \{title},\n    @runtime.RuntimeOptions::new(\n      label=\{label},\n      bounds=@runtime.RuntimeBounds::new(width=\{window.width}, height=\{window.height}),\n      initial_content=Url(\{entry}),\n      visible=\{window.visible},\n\{external_navigation}\{resource_provider}\{remote_navigation}    ) catch {\n      _ => abort(\"invalid generated runtime options\")\n    },\n    resizable=\{window.resizable},\n\{ipc_principal}  ) catch {\n    _ => abort(\"invalid generated window options\")\n  },",
     )
   }
   declarations.join(",\n")
@@ -338,7 +371,11 @@ fn generated_source(
   let entry_url = match development_url {
     Some(url) => Json::string(url).stringify()
     None =>
-      Json::string("\{scheme}://app/\{file_name(window.entry)}").stringify()
+      match config.web.remote {
+        Some(remote) => Json::string(remote.http_url).stringify()
+        None =>
+          Json::string("\{scheme}://app/\{file_name(window.entry)}").stringify()
+      }
   }
   let scheme = Json::string(scheme).stringify()
   let app_identifier = Json::string(config.app.identifier).stringify()
@@ -410,7 +447,9 @@ fn vite_workflow_json(config : @utils.OrbitConfig) -> String {
 
 ///|
 fn capability_matches_page(capability : @utils.CapabilityConfig) -> Bool {
-  if !capability.principals.any(principal => principal.kind == "window") {
+  if !capability.principals.any(principal => {
+      principal.kind == "window" || principal.kind == "remote_page"
+    }) {
     return false
   }
   for scope in capability.scopes {
@@ -519,8 +558,7 @@ async fn generate(
     let asset_root = @fs.realpath(
       asset_root(configuration_directory, orbit_config, true),
     )
-    let window = primary_window(orbit_config)
-    let entry = window.entry
+    let entry = embedded_entry(orbit_config)
     let entry_path = @fs.realpath(join_path(asset_root, entry))
     if !has_path_prefix(
         normalized_path(entry_path),
@@ -619,4 +657,55 @@ async fn main {
     )
   }
   generate(args[1], args[2], None)
+}
+
+///|
+test "remote web generation uses the HTTPS entry and embedded fallback" {
+  let config_source =
+    #|{
+    #|  "schema_version": 2,
+    #|  "app": {
+    #|    "identifier": "dev.orbit.remote",
+    #|    "name": "Orbit Remote",
+    #|    "version": "0.1.0",
+    #|    "windows": [{
+    #|      "label": "main",
+    #|      "title": "Orbit Remote",
+    #|      "width": 800,
+    #|      "height": 600,
+    #|      "entry": "assets/index.html",
+    #|      "visible": true,
+    #|      "resizable": true
+    #|    }]
+    #|  },
+    #|  "bundle": { "icons": [] },
+    #|  "web": {
+    #|    "embedded": { "csp": "default-src 'self'" },
+    #|    "remote": {
+    #|      "http_url": "https://app.example/start",
+    #|      "allowed_origins": ["https://app.example"],
+    #|      "fallback_entry": "assets/fallback.html"
+    #|    }
+    #|  },
+    #|  "build": {},
+    #|  "capabilities": [{
+    #|    "identifier": "remote-command",
+    #|    "effect": "allow",
+    #|    "principals": [{ "kind": "remote_page", "identifier": "main" }],
+    #|    "scopes": [
+    #|      { "kind": "transport", "value": "moonview" },
+    #|      { "kind": "origin", "value": "https://app.example" }
+    #|    ],
+    #|    "commands": ["remote.ping"]
+    #|  }],
+    #|  "plugins": []
+    #|}
+  let config = @utils.parse_config(config_source)
+  let source = generated_source("orbit", config, "fingerprint", "{}", [], None)
+  assert_true(
+    source.contains("initial_content=Url(\"https://app.example/start\")"),
+  )
+  assert_true(source.contains("fallback_url=\"orbit://app/fallback.html\""))
+  assert_true(source.contains("DesktopIpcPrincipal::remote_page"))
+  assert_true(source.contains("PrincipalSelector::remote_page"))
 }

@@ -10,6 +10,23 @@ pub struct DesktopWindowOptions {
   window_title : String
   runtime_options : @runtime.RuntimeOptions
   resizable : Bool
+  ipc_principal : DesktopIpcPrincipal
+}
+
+///|
+pub enum DesktopIpcPrincipal {
+  Window
+  RemotePage
+} derive(Eq, Debug)
+
+///|
+pub fn DesktopIpcPrincipal::window() -> DesktopIpcPrincipal {
+  Window
+}
+
+///|
+pub fn DesktopIpcPrincipal::remote_page() -> DesktopIpcPrincipal {
+  RemotePage
 }
 
 ///|
@@ -17,11 +34,12 @@ pub fn DesktopWindowOptions::new(
   window_title : String,
   runtime_options : @runtime.RuntimeOptions,
   resizable? : Bool = true,
+  ipc_principal? : DesktopIpcPrincipal = Window,
 ) -> DesktopWindowOptions raise CoreError {
   if window_title.is_empty() {
     raise InitializationFailed("window title must not be empty")
   }
-  { window_title, runtime_options, resizable }
+  { window_title, runtime_options, resizable, ipc_principal }
 }
 
 ///|
@@ -154,9 +172,11 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
 fn DesktopApp::dispatch_ipc_message(
   self : DesktopApp,
   label : String,
+  ipc_principal : DesktopIpcPrincipal,
   runtime : &@runtime.WebViewRuntime,
-  message : String,
+  page_message : @runtime.RuntimePageMessage,
 ) -> Unit {
+  let message = page_message.body()
   self.emit_event(
     "orbit://ipc/request",
     Ipc(label),
@@ -165,7 +185,18 @@ fn DesktopApp::dispatch_ipc_message(
   )
   match (self.options.ipc_registry, self.options.ipc_policy) {
     (Some(registry), Some(policy)) => {
-      let context = @ipc.InvocationContext::window(label) catch { _ => return }
+      let context = try {
+        match ipc_principal {
+          Window => @ipc.InvocationContext::window(label)
+          RemotePage =>
+            @ipc.InvocationContext::remote_page(
+              label,
+              origin=page_message.origin(),
+            )
+        }
+      } catch {
+        _ => return
+      }
       let response = registry.dispatch_with_context(message, policy, context)
       self.emit_event(
         "orbit://ipc/response",
@@ -284,6 +315,7 @@ fn DesktopApp::mount_window(
         Some(message => {
           self.dispatch_ipc_message(
             options.runtime_options.label(),
+            options.ipc_principal,
             runtime,
             message,
           )

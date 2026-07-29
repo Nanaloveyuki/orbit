@@ -2,6 +2,7 @@
 fn ipc_bridge_script() -> String {
   (
     #|(() => {
+    #|  if (window.top !== window) return;
     #|  const api = window.moonview;
     #|  if (!api || typeof api.postMessage !== "function") return;
     #|
@@ -109,6 +110,7 @@ test "IPC bridge exposes promise invocation and preserves legacy handlers" {
   assert_true(script.contains("setTimeout"))
   assert_true(script.contains("TextEncoder"))
   assert_true(script.contains("legacyHandler"))
+  assert_true(script.contains("window.top !== window"))
   assert_true(script.contains("message_too_large"))
 }
 
