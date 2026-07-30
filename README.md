@@ -159,6 +159,9 @@ node orbit-cli/bin/orbit verify-package --package-dir dist
 node orbit-cli/bin/orbit installer --package-dir dist --allow-unsigned
 node orbit-cli/bin/orbit installer --package-dir dist --webview2-bootstrapper path/to/MicrosoftEdgeWebview2Setup.exe --sign-command "sign-tool {installer} {package_dir} {package_manifest}"
 node orbit-cli/bin/orbit verify-installer --installer dist/dev.orbit.example-0.1.0-setup.exe
+node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --allow-unsigned
+node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --sign-command "sign-linux {archive} {package_dir} {package_manifest}"
+node orbit-cli/bin/orbit verify-archive --archive artifacts/dev.orbit.example-0.1.0-linux-x64.tar.gz
 ```
 
 `orbit-cli` is the npm-published boundary: its package contains only the Node
@@ -213,6 +216,22 @@ backward-compatible packages:
 system Evergreen runtime through its WebView2 loader and has no fixed-runtime
 path API. `--webview2-bootstrapper` remains an explicit local payload override
 for `embed_bootstrapper` and `offline_installer`.
+
+`orbit archive` creates a deterministic Linux `tar.gz` from a verified Linux
+directory package. It requires an external detached `--sign-command` for
+production; the command receives quoted `{archive}`, `{package_dir}` and
+`{package_manifest}` paths. `--allow-unsigned` is the explicit local-development
+opt-out. The adjacent `*.orbit-archive.json` records the final archive hash,
+package compatibility profile and signing status; `orbit verify-archive`
+checks that metadata and hash before extraction.
+
+The archive root contains `orbit-package/`, which is the unchanged directory
+package and can be verified after extraction with `orbit verify-package`, plus
+an executable `run` launcher. Extract it and invoke `./run` from the archive
+root. Linux remains dependent on the target system's GTK3 and WebKitGTK 4.1
+runtime; the portable archive neither bundles those libraries nor installs a
+desktop-entry file. Archive output defaults to `artifacts/` so it cannot alter
+the source directory package.
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`
