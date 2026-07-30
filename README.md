@@ -152,6 +152,7 @@ node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
 node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --out-dir dist
+node orbit-cli/bin/orbit verify-package --package-dir dist
 ```
 
 `orbit-cli` is the npm-published boundary: its package contains only the Node
@@ -161,7 +162,10 @@ an explicit override. It copies the application `plugins/` directory and
 optional `--runtime-dir` into the output. `orbit-package.json` records the
 application identity, configuration fingerprint, host platform and
 architecture, Orbit, MoonView, and fixed plugin-ABI compatibility values. The
-generated Web assets remain embedded in the executable.
+generated Web assets remain embedded in the executable. The same manifest
+contains a deterministic SHA-256 inventory of every packaged payload file;
+`orbit verify-package` rejects missing, modified and undeclared files before
+an installer or updater consumes the directory.
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`
