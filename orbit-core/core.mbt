@@ -58,6 +58,24 @@ pub struct DesktopOptions {
 }
 
 ///|
+fn resolve_plugin_development_directory(
+  configured_directory : String?,
+  environment_directory : String?,
+) -> String? raise CoreError {
+  let directory = match configured_directory {
+    Some(directory) => Some(directory)
+    None => environment_directory
+  }
+  match directory {
+    Some(directory) if directory.trim().is_empty() =>
+      raise InitializationFailed(
+        "plugin development directory must not be empty",
+      )
+    _ => directory
+  }
+}
+
+///|
 pub fn DesktopOptions::new(
   windows~ : Array[DesktopWindowOptions],
   ipc_registry? : @ipc.CommandRegistry? = None,
@@ -91,6 +109,10 @@ pub fn DesktopOptions::new(
       "plugins require an IPC registry and command policy",
     )
   }
+  let plugin_development_directory = resolve_plugin_development_directory(
+    plugin_development_directory,
+    @env.get_env_var("ORBIT_PLUGIN_DIRECTORY"),
+  )
   {
     windows,
     ipc_registry,

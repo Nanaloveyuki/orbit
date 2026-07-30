@@ -63,3 +63,49 @@ test "desktop options reject duplicate window labels" {
   }
   assert_true(rejected)
 }
+
+///|
+test "desktop options use the plugin directory from the environment" {
+  @env.set_env_var("ORBIT_PLUGIN_DIRECTORY", "environment-plugins")
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let from_environment = DesktopOptions::new(windows=[
+    DesktopWindowOptions::new("Orbit", runtime_options),
+  ])
+  assert_eq(
+    from_environment.plugin_development_directory,
+    Some("environment-plugins"),
+  )
+  let configured = DesktopOptions::new(
+    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+    plugin_development_directory=Some("configured-plugins"),
+  )
+  assert_eq(configured.plugin_development_directory, Some("configured-plugins"))
+  @env.unset_env_var("ORBIT_PLUGIN_DIRECTORY")
+}
+
+///|
+test "desktop options reject an empty plugin directory from the environment" {
+  @env.set_env_var("ORBIT_PLUGIN_DIRECTORY", "   ")
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let rejected = try {
+    ignore(
+      DesktopOptions::new(windows=[
+        DesktopWindowOptions::new("Orbit", runtime_options),
+      ]),
+    )
+    false
+  } catch {
+    InitializationFailed(_) => true
+    _ => false
+  }
+  @env.unset_env_var("ORBIT_PLUGIN_DIRECTORY")
+  assert_true(rejected)
+}
