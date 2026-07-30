@@ -6,6 +6,12 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import process from "node:process";
 
 const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "migrate-config", "icon"]);
+const webviewInstallModes = new Set([
+  "download_bootstrapper",
+  "embed_bootstrapper",
+  "offline_installer",
+  "skip",
+]);
 
 export function usage() {
   return [
@@ -360,6 +366,7 @@ function loadPackageMetadata(invocation) {
     !["product_name", "publisher"].every((key) =>
       application[key] === null || typeof application[key] === "string"
     ) ||
+    !webviewInstallModes.has(metadata?.windows?.webview_install_mode) ||
     !Array.isArray(metadata.plugins) ||
     !metadata.plugins.every((plugin) =>
       plugin && ["id", "library", "manifest"].every((key) =>
@@ -492,6 +499,7 @@ export function packageDescriptor(metadata, binary, discovered) {
       fingerprint: metadata.configuration_fingerprint,
     },
     application: metadata.application,
+    windows: metadata.windows,
     executable: `bin/${basename(binary)}`,
     executableDiscovered: discovered,
     plugins: metadata.plugins.length === 0 ? null : "plugins",
@@ -688,7 +696,17 @@ export function createNsisScript({
   packageDirectory,
   bootstrapper,
   application,
+  webviewInstallMode = "embed_bootstrapper",
+  webview2DownloadUrl = WEBVIEW2_BOOTSTRAPPER_URL,
 }) {
+  if (!webviewInstallModes.has(webviewInstallMode)) {
+    throw new Error(`unsupported WebView2 install mode: ${webviewInstallMode}`);
+  }
+  const webview2Lines = webview2NsisLines(
+    webviewInstallMode,
+    bootstrapper,
+    webview2DownloadUrl,
+  );
   const installDirectory = `$LOCALAPPDATA\\${application.identifier}`;
   const uninstallKey = `Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${application.identifier}`;
   return [
@@ -700,13 +718,7 @@ export function createNsisScript({
     "ShowInstDetails show",
     "",
     'Section "Install"',
-    "  InitPluginsDir",
-    '  SetOutPath "$PLUGINSDIR"',
-    `  File /oname=webview2-bootstrapper.exe ${nsisQuoted(bootstrapper)}`,
-    '  ExecWait \'"$PLUGINSDIR\\webview2-bootstrapper.exe" /silent /install\' $0',
-    "  StrCmp $0 0 +3",
-    "  StrCmp $0 3010 +2",
-    '  Abort "Evergreen WebView2 Runtime installation failed."',
+    ...webview2Lines,
     '  SetOutPath "$INSTDIR"',
     `  File /r ${nsisQuoted(join(packageDirectory, "*"))}`,
     '  WriteUninstaller "$INSTDIR\\Uninstall.exe"',
@@ -723,6 +735,36 @@ export function createNsisScript({
   ].join("\r\n");
 }
 
+function webview2NsisLines(mode, installer, downloadUrl) {
+  if (mode === "skip") {
+    return [];
+  }
+  const executable = mode === "offline_installer"
+    ? "webview2-offline-installer.exe"
+    : "webview2-bootstrapper.exe";
+  const lines = ["  InitPluginsDir", '  SetOutPath "$PLUGINSDIR"'];
+  if (mode === "download_bootstrapper") {
+    lines.push(
+      `  NSISdl::download /TIMEOUT=30000 ${nsisQuoted(downloadUrl)} "$PLUGINSDIR\\${executable}"`,
+      "  Pop $0",
+      '  StrCmp $0 "success" +2',
+      '  Abort "Evergreen WebView2 Runtime download failed."',
+    );
+  } else {
+    if (typeof installer !== "string" || installer.length === 0) {
+      throw new Error(`${mode} requires a WebView2 installer payload`);
+    }
+    lines.push(`  File /oname=${executable} ${nsisQuoted(installer)}`);
+  }
+  lines.push(
+    `  ExecWait '\"$PLUGINSDIR\\${executable}\" /silent /install' $0`,
+    "  StrCmp $0 0 +3",
+    "  StrCmp $0 3010 +2",
+    '  Abort "Evergreen WebView2 Runtime installation failed."',
+  );
+  return lines;
+}
+
 export function installerDescriptor(packageManifest, installer, signed) {
   const size = statSync(installer).size;
   return {
@@ -737,6 +779,9 @@ export function installerDescriptor(packageManifest, installer, signed) {
       pluginAbi: packageManifest.pluginAbi,
       target: packageManifest.target,
       configuration: packageManifest.configuration,
+      windows: {
+        webview_install_mode: packageWebviewInstallMode(packageManifest),
+      },
       integrityAlgorithm: packageManifest.integrity.algorithm,
     },
     artifact: {
@@ -771,6 +816,7 @@ export function verifyInstaller(installer, metadataPath = installerMetadataPath(
     typeof metadata.package?.target?.arch !== "string" ||
     metadata.package?.configuration?.schemaVersion !== 2 ||
     typeof metadata.package?.configuration?.fingerprint !== "string" ||
+    !webviewInstallModes.has(metadata.package?.windows?.webview_install_mode) ||
     metadata.package?.integrityAlgorithm !== "sha256" ||
     metadata?.artifact?.file !== basename(installer) ||
     !Number.isInteger(metadata.artifact?.size) ||
@@ -812,6 +858,7 @@ const NSIS_URL = "https://github.com/tauri-apps/binary-releases/releases/downloa
 const NSIS_SHA1 = "ef7ff767e5cbd9edd22add3a32c9b8f4500bb10d";
 const NSIS_SHA256 = "c7d27f780ddb6cffb4730138cd1591e841f4b7edb155856901cdf5f214394fa1";
 const WEBVIEW2_BOOTSTRAPPER_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+const WEBVIEW2_OFFLINE_INSTALLER_X64_URL = "https://go.microsoft.com/fwlink/?linkid=2124701";
 
 export function windowsToolCacheDirectory() {
   return join(homedir(), ".orbit", "tools", "windows");
@@ -878,7 +925,8 @@ async function ensureNsisCompiler() {
   const toolRoot = windowsToolCacheDirectory();
   const toolDirectory = join(toolRoot, "nsis", NSIS_VERSION);
   const compiler = join(toolDirectory, "makensis.exe");
-  if (existsSync(compiler)) {
+  const downloadPlugin = join(toolDirectory, "Plugins", "x86-unicode", "NSISdl.dll");
+  if (existsSync(compiler) && existsSync(downloadPlugin)) {
     return compiler;
   }
   mkdirSync(toolRoot, { recursive: true });
@@ -896,8 +944,8 @@ async function ensureNsisCompiler() {
   try {
     extractZip(archive, extracted);
     const source = join(extracted, `nsis-${NSIS_VERSION}`);
-    if (!existsSync(join(source, "makensis.exe"))) {
-      throw new Error("downloaded NSIS archive does not contain makensis.exe");
+    if (!existsSync(join(source, "makensis.exe")) || !existsSync(join(source, "Plugins", "x86-unicode", "NSISdl.dll"))) {
+      throw new Error("downloaded NSIS archive does not contain the required compiler and download plugin");
     }
     rmSync(toolDirectory, { recursive: true, force: true });
     mkdirSync(dirname(toolDirectory), { recursive: true });
@@ -924,6 +972,30 @@ async function resolveWebview2Bootstrapper(invocation) {
   return bootstrapper;
 }
 
+async function resolveWebview2OfflineInstaller(invocation) {
+  if (invocation.webview2Bootstrapper) {
+    if (!existsSync(invocation.webview2Bootstrapper) || !statSync(invocation.webview2Bootstrapper).isFile()) {
+      throw new Error(`WebView2 offline installer does not exist: ${invocation.webview2Bootstrapper}`);
+    }
+    return invocation.webview2Bootstrapper;
+  }
+  const directory = join(windowsToolCacheDirectory(), "webview2", "offline", "x64");
+  const installer = join(directory, "MicrosoftEdgeWebView2RuntimeInstallerX64.exe");
+  if (!existsSync(installer)) {
+    mkdirSync(directory, { recursive: true });
+    await downloadFile(WEBVIEW2_OFFLINE_INSTALLER_X64_URL, installer);
+  }
+  return installer;
+}
+
+function packageWebviewInstallMode(packageManifest) {
+  const mode = packageManifest.windows?.webview_install_mode ?? "embed_bootstrapper";
+  if (!webviewInstallModes.has(mode)) {
+    throw new Error("installer package manifest has an unsupported Windows WebView2 install mode");
+  }
+  return mode;
+}
+
 async function buildWindowsInstaller(invocation) {
   if (process.platform !== "win32") {
     throw new Error("NSIS installer generation is available only on Windows");
@@ -944,7 +1016,18 @@ async function buildWindowsInstaller(invocation) {
   if (packageManifest.runtime !== null) {
     throw new Error("installer does not support --runtime-dir because MoonView uses Evergreen WebView2");
   }
-  const bootstrapper = await resolveWebview2Bootstrapper(invocation);
+  const webviewInstallMode = packageWebviewInstallMode(packageManifest);
+  if (
+    invocation.webview2Bootstrapper &&
+    (webviewInstallMode === "download_bootstrapper" || webviewInstallMode === "skip")
+  ) {
+    throw new Error(`--webview2-bootstrapper cannot override ${webviewInstallMode}`);
+  }
+  const bootstrapper = webviewInstallMode === "embed_bootstrapper"
+    ? await resolveWebview2Bootstrapper(invocation)
+    : webviewInstallMode === "offline_installer"
+      ? await resolveWebview2OfflineInstaller(invocation)
+      : undefined;
   const makensis = invocation.makensisProvided
     ? invocation.makensis
     : await ensureNsisCompiler();
@@ -961,6 +1044,7 @@ async function buildWindowsInstaller(invocation) {
       packageDirectory: invocation.packageDir,
       bootstrapper,
       application: packageManifest.application,
+      webviewInstallMode,
     }));
     const result = spawnSync(makensis, [scriptPath], {
       cwd: invocation.workspace,

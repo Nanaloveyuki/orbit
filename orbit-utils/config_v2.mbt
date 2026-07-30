@@ -22,6 +22,12 @@ pub(all) struct WindowConfig {
 ///|
 pub(all) struct BundleConfig {
   icons : Array[String]
+  windows : WindowsBundleConfig?
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub(all) struct WindowsBundleConfig {
+  webview_install_mode : String
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
@@ -152,6 +158,14 @@ fn valid_optional_metadata(value : String?) -> Bool {
 fn valid_vite_url(value : String) -> Bool {
   (value.has_prefix("http://") || value.has_prefix("https://")) &&
   !value.has_suffix("/")
+}
+
+///|
+fn valid_webview_install_mode(value : String) -> Bool {
+  value == "download_bootstrapper" ||
+  value == "embed_bootstrapper" ||
+  value == "offline_installer" ||
+  value == "skip"
 }
 
 ///|
@@ -340,6 +354,18 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
           ),
         )
     }
+  }
+  match config.bundle.windows {
+    Some(windows) =>
+      if !valid_webview_install_mode(windows.webview_install_mode) {
+        diagnostics.push(
+          diagnostic(
+            "invalid_webview_install_mode", "$.bundle.windows.webview_install_mode",
+            "webview_install_mode must be download_bootstrapper, embed_bootstrapper, offline_installer or skip",
+          ),
+        )
+      }
+    None => ()
   }
   if config.web.embedded.csp.trim().is_empty() {
     diagnostics.push(
@@ -691,6 +717,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     build_command: vite.build_command.trim().to_owned(),
     dist_dir: normalize_resource_path(vite.dist_dir).unwrap_or(vite.dist_dir),
   })
+  let bundle_windows = config.bundle.windows.map(windows => {
+    webview_install_mode: windows.webview_install_mode.trim().to_owned(),
+  })
   let capabilities = config.capabilities.map(capability => CapabilityConfig::{
     identifier: capability.identifier.trim().to_owned(),
     effect: capability.effect.trim().to_owned(),
@@ -728,6 +757,7 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
       icons: config.bundle.icons.map(icon => {
         normalize_resource_path(icon).unwrap_or(icon)
       }),
+      windows: bundle_windows,
     },
     web: {
       embedded: { csp: config.web.embedded.csp.trim().to_owned() },
@@ -813,7 +843,7 @@ pub fn migrate_config_v1(source : StringView) -> String raise ConfigError {
       publisher: None,
       windows,
     },
-    bundle: { icons: [] },
+    bundle: { icons: [], windows: None },
     web: { embedded: { csp: config.security.csp }, remote: None },
     build: { vite: None },
     capabilities,

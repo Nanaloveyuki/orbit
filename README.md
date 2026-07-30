@@ -26,8 +26,9 @@ capabilities remain intentionally deferred.
   `orbit.conf.json`, emits a canonical configuration fingerprint, injects CSP
   from `web.embedded` into the HTML entry or remote fallback, and embeds the
   required resource directory.
-  Application metadata and windows live below `app`; package assets live below
-  `bundle`; explicit optional Vite commands live below `build.vite`.
+  Application metadata and windows live below `app`; package assets and Windows
+  installer settings live below `bundle`; explicit optional Vite commands live
+  below `build.vite`.
 - `orbit-core` owns the Orby window and destroys the selected runtime before
   its parent window. `orbit-runtime` remains free of Orby and MoonView types;
   factories receive an abstract `RuntimeHost`.
@@ -181,6 +182,35 @@ invocations must supply a `--sign-command`; it receives quoted `{installer}`,
 explicit local-development opt-out. The installer rejects `--runtime-dir`
 payloads because MoonView uses the system Evergreen runtime rather than a
 fixed copied runtime.
+
+`bundle.windows.webview_install_mode` controls how the installer handles that
+Evergreen runtime. It is optional and defaults to `embed_bootstrapper` for
+backward-compatible packages:
+
+```json
+{
+  "bundle": {
+    "icons": [],
+    "windows": { "webview_install_mode": "embed_bootstrapper" }
+  }
+}
+```
+
+- `embed_bootstrapper`: downloads the small Microsoft bootstrapper while
+  building the installer, then embeds it. The target machine still needs
+  network access when the bootstrapper runs.
+- `download_bootstrapper`: keeps the installer small and downloads the
+  bootstrapper during installation through NSIS over HTTPS.
+- `offline_installer`: downloads and embeds Microsoft's x64 offline Evergreen
+  installer while building the installer. This is substantially larger, but
+  installation itself does not need network access.
+- `skip`: packages no WebView2 installer action; use only where Evergreen
+  WebView2 is managed by the deployment environment.
+
+`fixed_runtime` is intentionally unsupported: MoonView currently locates the
+system Evergreen runtime through its WebView2 loader and has no fixed-runtime
+path API. `--webview2-bootstrapper` remains an explicit local payload override
+for `embed_bootstrapper` and `offline_installer`.
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`

@@ -205,12 +205,14 @@ test("package metadata stays in orbit-build and the package descriptor records c
       product_name: null,
       publisher: null,
     },
+    windows: { webview_install_mode: "embed_bootstrapper" },
     plugins: [],
   }, resolve(cwd, "app/orbit-example.exe"), true);
   assert.equal(descriptor.format, 2);
   assert.equal(descriptor.configuration.fingerprint, "f00d");
   assert.equal(descriptor.executable, "bin/orbit-example.exe");
   assert.equal(descriptor.executableDiscovered, true);
+  assert.equal(descriptor.windows.webview_install_mode, "embed_bootstrapper");
   assert.deepEqual(descriptor.plugins, null);
   assert.equal(descriptor.target.platform, process.platform);
   assert.equal(descriptor.target.arch, process.arch);
@@ -274,6 +276,45 @@ test("installer requires explicit signing policy and creates a current-user NSIS
   assert.match(script, /DeleteRegKey HKCU/);
 });
 
+test("NSIS scripts implement each configured Evergreen WebView2 mode", () => {
+  const base = {
+    installer: resolve("dist/dev.orbit.example-0.1.0-setup.exe"),
+    packageDirectory: resolve("package"),
+    bootstrapper: resolve("webview2.exe"),
+    application: {
+      identifier: "dev.orbit.example",
+      name: "Orbit Example",
+      version: "0.1.0",
+      product_name: null,
+    },
+  };
+  const downloaded = createNsisScript({
+    ...base,
+    webviewInstallMode: "download_bootstrapper",
+  });
+  assert.match(downloaded, /NSISdl::download/);
+  assert.match(downloaded, /WebView2 Runtime download failed/);
+  assert.doesNotMatch(downloaded, /File \/oname=webview2-bootstrapper\.exe/);
+
+  const offline = createNsisScript({
+    ...base,
+    webviewInstallMode: "offline_installer",
+  });
+  assert.match(offline, /File \/oname=webview2-offline-installer\.exe/);
+  assert.match(offline, /webview2-offline-installer\.exe" \/silent \/install/);
+
+  const skipped = createNsisScript({
+    ...base,
+    webviewInstallMode: "skip",
+  });
+  assert.doesNotMatch(skipped, /WebView2 Runtime installation failed/);
+  assert.doesNotMatch(skipped, /InitPluginsDir/);
+  assert.throws(
+    () => createNsisScript({ ...base, webviewInstallMode: "fixed_runtime" }),
+    /unsupported WebView2 install mode/,
+  );
+});
+
 test("installer metadata verifies its artifact and signing commands require all paths", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "orbit-installer-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -286,6 +327,7 @@ test("installer metadata verifies its artifact and signing commands require all 
     pluginAbi: 1,
     target: { platform: "win32", arch: "x64" },
     configuration: { schemaVersion: 2, fingerprint: "f00d" },
+    windows: { webview_install_mode: "skip" },
     application: { identifier: "dev.orbit.example", name: "Orbit Example", version: "0.1.0" },
     integrity: { algorithm: "sha256" },
   };
@@ -293,6 +335,16 @@ test("installer metadata verifies its artifact and signing commands require all 
     installerDescriptor(packageManifest, installer, false),
   )}\n`);
   assert.equal(verifyInstaller(installer).signed, false);
+  assert.equal(verifyInstaller(installer).package.windows.webview_install_mode, "skip");
+  const legacyDescriptor = installerDescriptor(
+    { ...packageManifest, windows: undefined },
+    installer,
+    false,
+  );
+  assert.equal(
+    legacyDescriptor.package.windows.webview_install_mode,
+    "embed_bootstrapper",
+  );
   assert.match(
     expandSigningCommand("sign {installer} {package_dir} {package_manifest}", {
       installer,
