@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
 const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "migrate-config", "icon"]);
@@ -18,7 +18,7 @@ export function usage() {
     "  --workspace <path>    Working directory for Moon (default: current directory)",
     "  --plugin-dir <path>   Development-only plugin root passed as ORBIT_PLUGIN_DIRECTORY",
     "  --json                Emit structured diagnostics for the wrapper",
-    "  --binary <path>       Executable copied by package",
+    "  --binary <path>       Explicit executable copied by package (default: discover Moon native output)",
     "  --out-dir <path>      Package output directory (default: dist)",
     "  --runtime-dir <path>  Optional WebView runtime files copied by package",
     "  --source <path>       Required 1024x1024 PNG source for icon generation",
@@ -117,7 +117,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     workspace,
     config,
     output,
-    packagePath: values.package ?? dirname(config),
+    packagePath: resolve(workspace, values.package ?? dirname(config)),
     orbitBuild: values["orbit-build"] ?? "orbit-build",
     moon: resolveExecutable(workspace, values.moon, "moon"),
     pluginDir: values["plugin-dir"] ? resolve(workspace, values["plugin-dir"]) : undefined,
@@ -171,6 +171,17 @@ export function viteWorkflowCommand(invocation) {
     "native",
     invocation.orbitBuild,
     "vite-workflow",
+    invocation.config,
+  ];
+}
+
+export function packageMetadataCommand(invocation) {
+  return [
+    "run",
+    "--target",
+    "native",
+    invocation.orbitBuild,
+    "package-metadata",
     invocation.config,
   ];
 }
@@ -277,6 +288,48 @@ function loadViteWorkflow(invocation) {
   return workflow.vite;
 }
 
+function loadPackageMetadata(invocation) {
+  const processSpec = moonProcess(invocation, packageMetadataCommand(invocation));
+  const result = spawnSync(processSpec.command, processSpec.args, {
+    cwd: invocation.workspace,
+    encoding: "utf8",
+    env: commandEnvironment(invocation),
+  });
+  if (result.error) {
+    throw new Error(`failed to inspect package metadata: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error("failed to inspect package metadata");
+  }
+  let metadata;
+  try {
+    metadata = JSON.parse(result.stdout.trim());
+  } catch {
+    throw new Error("orbit-build returned invalid package metadata");
+  }
+  const application = metadata?.application;
+  if (
+    metadata?.schema_version !== 2 ||
+    typeof metadata.configuration_fingerprint !== "string" ||
+    !application ||
+    !["identifier", "name", "version"].every((key) =>
+      typeof application[key] === "string" && application[key].length > 0
+    ) ||
+    !["product_name", "publisher"].every((key) =>
+      application[key] === null || typeof application[key] === "string"
+    ) ||
+    !Array.isArray(metadata.plugins) ||
+    !metadata.plugins.every((plugin) =>
+      plugin && ["id", "library", "manifest"].every((key) =>
+        typeof plugin[key] === "string" && plugin[key].length > 0
+      )
+    )
+  ) {
+    throw new Error("orbit-build returned incomplete package metadata");
+  }
+  return metadata;
+}
+
 function runWorkflowCommand(invocation, command) {
   const result = spawnSync(command, {
     cwd: dirname(invocation.config),
@@ -337,19 +390,109 @@ function stopDevelopmentServer(server) {
   }
 }
 
-function packageApplication(invocation) {
-  if (!invocation.binary) {
-    throw new Error("package requires --binary <path>");
+function packageBuildDirectory(invocation) {
+  const packageRelative = relative(invocation.workspace, invocation.packagePath);
+  if (
+    packageRelative === ".." ||
+    packageRelative.startsWith(`..${sep}`) ||
+    isAbsolute(packageRelative)
+  ) {
+    throw new Error("package path must remain within the Moon workspace");
   }
-  if (!existsSync(invocation.binary)) {
-    throw new Error(`package binary does not exist: ${invocation.binary}`);
+  return resolve(
+    invocation.workspace,
+    "_build",
+    "native",
+    "debug",
+    "build",
+    packageRelative || basename(invocation.workspace),
+  );
+}
+
+export function discoverPackageBinary(invocation) {
+  const buildDirectory = packageBuildDirectory(invocation);
+  if (!existsSync(buildDirectory)) {
+    throw new Error(`Moon native build output does not exist: ${buildDirectory}`);
+  }
+  const extension = process.platform === "win32" ? ".exe" : "";
+  const expected = resolve(buildDirectory, `${basename(invocation.packagePath)}${extension}`);
+  if (existsSync(expected) && statSync(expected).isFile()) {
+    return expected;
+  }
+  const candidates = readdirSync(buildDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && (
+      process.platform === "win32"
+        ? entry.name.toLowerCase().endsWith(".exe")
+        : !entry.name.includes(".")
+    ))
+    .map((entry) => resolve(buildDirectory, entry.name));
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+  if (candidates.length === 0) {
+    throw new Error(`could not discover a native executable in ${buildDirectory}`);
+  }
+  throw new Error(`native build output is ambiguous in ${buildDirectory}; pass --binary explicitly`);
+}
+
+export function packageDescriptor(metadata, binary, discovered) {
+  return {
+    format: 2,
+    orbit: "0.1.0-alpha.1",
+    moonview: "0.1.0-beta.3",
+    pluginAbi: 1,
+    target: {
+      platform: process.platform,
+      arch: process.arch,
+    },
+    configuration: {
+      schemaVersion: metadata.schema_version,
+      fingerprint: metadata.configuration_fingerprint,
+    },
+    application: metadata.application,
+    executable: `bin/${basename(binary)}`,
+    executableDiscovered: discovered,
+    plugins: metadata.plugins.length === 0 ? null : "plugins",
+    pluginDeclarations: metadata.plugins,
+  };
+}
+
+function applicationResourcePath(applicationRoot, resource) {
+  const path = resolve(applicationRoot, resource);
+  const resourceRelative = relative(applicationRoot, path);
+  if (
+    resourceRelative === ".." ||
+    resourceRelative.startsWith(`..${sep}`) ||
+    isAbsolute(resourceRelative)
+  ) {
+    throw new Error(`package metadata resource escapes application root: ${resource}`);
+  }
+  return path;
+}
+
+function packageApplication(invocation, metadata) {
+  const discovered = !invocation.binary;
+  const binary = invocation.binary ?? discoverPackageBinary(invocation);
+  if (!existsSync(binary) || !statSync(binary).isFile()) {
+    throw new Error(`package binary does not exist: ${binary}`);
   }
   mkdirSync(invocation.outDir, { recursive: true });
   const binaryDir = resolve(invocation.outDir, "bin");
   mkdirSync(binaryDir, { recursive: true });
-  cpSync(invocation.binary, resolve(binaryDir, basename(invocation.binary)));
+  cpSync(binary, resolve(binaryDir, basename(binary)));
   const appRoot = dirname(invocation.config);
   const plugins = resolve(appRoot, "plugins");
+  if (metadata.plugins.length > 0 && !existsSync(plugins)) {
+    throw new Error("package declares plugins but the application plugins directory does not exist");
+  }
+  for (const plugin of metadata.plugins) {
+    for (const [field, resource] of [["library", plugin.library], ["manifest", plugin.manifest]]) {
+      const path = applicationResourcePath(appRoot, resource);
+      if (!existsSync(path) || !statSync(path).isFile()) {
+        throw new Error(`declared plugin ${field} does not exist: ${resource}`);
+      }
+    }
+  }
   if (existsSync(plugins)) {
     cpSync(plugins, resolve(invocation.outDir, "plugins"), { recursive: true });
   }
@@ -360,11 +503,7 @@ function packageApplication(invocation) {
     cpSync(invocation.runtimeDir, resolve(invocation.outDir, "runtime"), { recursive: true });
   }
   writeFileSync(resolve(invocation.outDir, "orbit-package.json"), `${JSON.stringify({
-    format: 1,
-    orbit: "0.1.0-alpha.1",
-    pluginAbi: 1,
-    moonview: "0.1.0-beta.3",
-    executable: `bin/${basename(invocation.binary)}`,
+    ...packageDescriptor(metadata, binary, discovered),
     plugins: existsSync(plugins) ? "plugins" : null,
     runtime: invocation.runtimeDir ? "runtime" : null,
   }, null, 2)}\n`);
@@ -387,6 +526,9 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
 
   let developmentServer;
   try {
+    const packageMetadata = invocation.command === "package"
+      ? loadPackageMetadata(invocation)
+      : null;
     const needsViteWorkflow = ["dev", "build", "run", "package"].includes(invocation.command);
     const viteWorkflow = needsViteWorkflow ? loadViteWorkflow(invocation) : null;
     if (viteWorkflow && invocation.command === "dev") {
@@ -404,7 +546,7 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
       }
     }
     if (invocation.command === "package") {
-      packageApplication(invocation);
+      packageApplication(invocation, packageMetadata);
     }
   } catch (error) {
     const code = invocation.command === "package" ? "package_failed" : "workflow_failed";
