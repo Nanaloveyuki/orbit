@@ -16,6 +16,7 @@ import {
   verifyInstaller,
   verifyPackage,
   viteWorkflowCommand,
+  windowsToolCacheDirectory,
 } from "../src/cli.mjs";
 
 test("generate defaults output and package to the configuration directory", () => {
@@ -242,8 +243,6 @@ test("installer requires explicit signing policy and creates a current-user NSIS
       "installer",
       "--package-dir",
       "package",
-      "--webview2-bootstrapper",
-      "webview2.exe",
     ], cwd),
     /requires --sign-command <command> or --allow-unsigned/,
   );
@@ -251,11 +250,11 @@ test("installer requires explicit signing policy and creates a current-user NSIS
     "installer",
     "--package-dir",
     "package",
-    "--webview2-bootstrapper",
-    "webview2.exe",
     "--allow-unsigned",
   ], cwd);
   assert.equal(invocation.allowUnsigned, true);
+  assert.equal(invocation.webview2Bootstrapper, undefined);
+  assert.match(windowsToolCacheDirectory(), /\.orbit[\\/]tools[\\/]windows$/);
   const script = createNsisScript({
     installer: resolve(cwd, "dist/dev.orbit.example-0.1.0-setup.exe"),
     packageDirectory: resolve(cwd, "package"),
