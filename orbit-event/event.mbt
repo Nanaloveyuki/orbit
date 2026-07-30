@@ -82,11 +82,33 @@ pub(open) trait EventSink {
 type EventHandler = (EventEnvelope) -> Result[Unit, EventDeliveryFailure]
 
 ///|
+/// Identifies an additional router subscription. It can only be removed through
+/// the router that created it.
+pub struct EventSubscription {
+  priv router_identifier : Int
+  priv target : String
+  priv identifier : Int
+}
+
+///|
+let next_router_identifier : Ref[Int] = Ref(1)
+
+///|
+fn allocate_router_identifier() -> Int {
+  let identifier = next_router_identifier.val
+  next_router_identifier.val += 1
+  identifier
+}
+
+///|
 /// A process-local routed event channel. Delivery is callback-driven so it can
 /// be safely used from the desktop UI thread without introducing a second
 /// runtime or changing the native plugin ABI.
 pub struct EventRouter {
+  priv identifier : Int
   priv handlers : Map[String, EventHandler]
+  priv additional_handlers : Map[String, Map[Int, EventHandler]]
+  priv mut next_subscription_identifier : Int
 }
 
 ///|
@@ -102,7 +124,12 @@ fn target_key(target : EventTarget) -> String {
 
 ///|
 pub fn EventRouter::new() -> EventRouter {
-  { handlers: Map([]) }
+  {
+    identifier: allocate_router_identifier(),
+    handlers: Map([]),
+    additional_handlers: Map([]),
+    next_subscription_identifier: 1,
+  }
 }
 
 ///|
@@ -133,14 +160,79 @@ pub fn EventRouter::unsubscribe(
 }
 
 ///|
+/// Registers a second handler without replacing the primary handler installed
+/// through `subscribe`. The returned token removes only this handler.
+pub fn EventRouter::subscribe_additional(
+  self : EventRouter,
+  target : EventTarget,
+  handler : EventHandler,
+) -> EventSubscription {
+  let target = target_key(target)
+  let identifier = self.next_subscription_identifier
+  self.next_subscription_identifier += 1
+  let handlers = self.additional_handlers.get_or_init(target, () => Map([]))
+  handlers[identifier] = handler
+  { router_identifier: self.identifier, target, identifier }
+}
+
+///|
+pub fn EventRouter::unsubscribe_additional(
+  self : EventRouter,
+  subscription : EventSubscription,
+) -> Unit {
+  if subscription.router_identifier != self.identifier {
+    return
+  }
+  match self.additional_handlers.get(subscription.target) {
+    Some(handlers) => {
+      handlers.remove(subscription.identifier)
+      if handlers.is_empty() {
+        self.additional_handlers.remove(subscription.target)
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn EventRouter::deliver(
+  self : EventRouter,
+  target : String,
+  event : EventEnvelope,
+) -> Result[Unit, EventDeliveryFailure] {
+  let mut failure : EventDeliveryFailure? = None
+  match self.handlers.get(target) {
+    Some(handler) =>
+      match handler(event) {
+        Ok(_) => ()
+        Err(error) => failure = Some(error)
+      }
+    None => ()
+  }
+  match self.additional_handlers.get(target) {
+    Some(handlers) =>
+      for _, handler in handlers {
+        match handler(event) {
+          Ok(_) => ()
+          Err(error) if failure is None => failure = Some(error)
+          Err(_) => ()
+        }
+      }
+    None => ()
+  }
+  match failure {
+    Some(error) => Err(error)
+    None => Ok(())
+  }
+}
+
+///|
 pub impl EventSink for EventRouter with fn emit(self, event) {
   let specific = target_key(event.target)
-  match self.handlers.get(specific) {
-    Some(handler) => handler(event)
-    None =>
-      match self.handlers.get("any") {
-        Some(handler) => handler(event)
-        None => Ok(())
-      }
+  if self.handlers.contains(specific) ||
+    self.additional_handlers.contains(specific) {
+    self.deliver(specific, event)
+  } else {
+    self.deliver("any", event)
   }
 }

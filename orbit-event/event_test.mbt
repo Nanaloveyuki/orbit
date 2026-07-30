@@ -71,3 +71,38 @@ test "router delivers target events and rejects duplicate subscriptions" {
     Ok(_) => abort("duplicate subscription was accepted")
   }
 }
+
+///|
+test "additional router subscriptions coexist and unsubscribe independently" {
+  let router = EventRouter::new()
+  let primary_count = Ref(0)
+  let additional_count = Ref(0)
+  assert_eq(
+    router.subscribe(Window("main"), _event => {
+      primary_count.val += 1
+      Ok(())
+    }),
+    Ok(()),
+  )
+  let subscription = router.subscribe_additional(Window("main"), _event => {
+    additional_count.val += 1
+    Ok(())
+  })
+  let event = EventEnvelope::new(
+    name=EventName::new("orbit://application/changed"),
+    payload=null,
+    target=Window("main"),
+  )
+  assert_eq((router as &EventSink).emit(event), Ok(()))
+  assert_eq(primary_count.val, 1)
+  assert_eq(additional_count.val, 1)
+  let other_router = EventRouter::new()
+  other_router.unsubscribe_additional(subscription)
+  assert_eq((router as &EventSink).emit(event), Ok(()))
+  assert_eq(primary_count.val, 2)
+  assert_eq(additional_count.val, 2)
+  router.unsubscribe_additional(subscription)
+  assert_eq((router as &EventSink).emit(event), Ok(()))
+  assert_eq(primary_count.val, 3)
+  assert_eq(additional_count.val, 2)
+}
