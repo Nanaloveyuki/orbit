@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-ipc-moonview"
+
+import {
+  "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-runtime",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn dispatch(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, String, PagePrincipal, @orbit-runtime.RuntimePageMessage) -> String?
+
+pub fn initialization_script(String) -> String
+
+// Errors
+
+// Types and methods
+pub enum PagePrincipal {
+  Window
+  RemotePage
+} derive(Eq, @debug.Debug)
+pub fn PagePrincipal::remote_page() -> Self
+pub fn PagePrincipal::window() -> Self
+
+// Type aliases
+
+// Traits
+

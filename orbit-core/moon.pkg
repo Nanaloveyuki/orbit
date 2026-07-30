@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/json",
   "Nanaloveyuki/orbit/orbit-event" @event,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-ipc-moonview" @ipc_moonview,
   "Nanaloveyuki/orbit/orbit-plugin" @plugin,
   "Nanaloveyuki/orbit/orbit-runtime" @runtime,
   "Nanaloveyuki/orby",
