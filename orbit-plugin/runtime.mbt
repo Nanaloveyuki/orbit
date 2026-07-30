@@ -19,6 +19,7 @@ pub fn PluginDeclaration::new(
 ///|
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
+  IncompatibleSidecar(String)
   IdentityMismatch(String, String)
   SidecarMismatch(String)
   MissingPermission(String, String)
@@ -88,6 +89,11 @@ pub fn PluginRuntime::start(
     None => ()
   }
   for declaration in declarations {
+    if declaration.sidecar.schema_version != 2 ||
+      declaration.sidecar.abi_version != 1 {
+      self.shutdown()
+      return Err(IncompatibleSidecar(declaration.id))
+    }
     let path = match development_directory {
       Some(directory) => path_join(directory, declaration.library)
       None => declaration.library
