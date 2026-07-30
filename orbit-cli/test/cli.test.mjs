@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { dirname, resolve } from "node:path";
 import { test } from "node:test";
-import { moonCommands, parseInvocation, viteWorkflowCommand } from "../src/cli.mjs";
+import {
+  moonCommands,
+  packageDescriptor,
+  packageMetadataCommand,
+  parseInvocation,
+  viteWorkflowCommand,
+} from "../src/cli.mjs";
 
 test("generate defaults output and package to the configuration directory", () => {
   const cwd = resolve("workspace");
@@ -161,4 +167,41 @@ test("icon generation requires a source and passes explicit output settings", ()
     resolve(cwd, "artifacts/icons"),
     "9",
   ]]);
+});
+
+test("package metadata stays in orbit-build and the package descriptor records compatibility", () => {
+  const cwd = resolve("workspace");
+  const invocation = parseInvocation([
+    "package",
+    "--config",
+    "app/orbit.conf.json",
+  ], cwd);
+  assert.equal(invocation.binary, undefined);
+  assert.deepEqual(packageMetadataCommand(invocation), [
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "package-metadata",
+    resolve(cwd, "app/orbit.conf.json"),
+  ]);
+  const descriptor = packageDescriptor({
+    schema_version: 2,
+    configuration_fingerprint: "f00d",
+    application: {
+      identifier: "dev.orbit.example",
+      name: "Orbit Example",
+      version: "0.1.0",
+      product_name: null,
+      publisher: null,
+    },
+    plugins: [],
+  }, resolve(cwd, "app/orbit-example.exe"), true);
+  assert.equal(descriptor.format, 2);
+  assert.equal(descriptor.configuration.fingerprint, "f00d");
+  assert.equal(descriptor.executable, "bin/orbit-example.exe");
+  assert.equal(descriptor.executableDiscovered, true);
+  assert.deepEqual(descriptor.plugins, null);
+  assert.equal(descriptor.target.platform, process.platform);
+  assert.equal(descriptor.target.arch, process.arch);
 });
