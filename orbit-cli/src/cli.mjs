@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
@@ -127,9 +127,6 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     if (!values["package-dir"]) {
       throw new Error("installer requires --package-dir <path>");
     }
-    if (!values["webview2-bootstrapper"]) {
-      throw new Error("installer requires --webview2-bootstrapper <path>");
-    }
     if (!values["sign-command"] && !values["allow-unsigned"]) {
       throw new Error("installer requires --sign-command <command> or --allow-unsigned");
     }
@@ -164,6 +161,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       ? resolve(workspace, values["webview2-bootstrapper"])
       : undefined,
     makensis: resolveExecutable(workspace, values.makensis, "makensis"),
+    makensisProvided: Boolean(values.makensis),
     signCommand: values["sign-command"],
     allowUnsigned: values["allow-unsigned"] ?? false,
     installer: values.installer ? resolve(workspace, values.installer) : undefined,
@@ -809,7 +807,124 @@ function runSigningCommand(invocation, installer, packageDirectory) {
   return true;
 }
 
-function buildWindowsInstaller(invocation) {
+const NSIS_VERSION = "3.11";
+const NSIS_URL = "https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip";
+const NSIS_SHA1 = "ef7ff767e5cbd9edd22add3a32c9b8f4500bb10d";
+const NSIS_SHA256 = "c7d27f780ddb6cffb4730138cd1591e841f4b7edb155856901cdf5f214394fa1";
+const WEBVIEW2_BOOTSTRAPPER_URL = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+
+export function windowsToolCacheDirectory() {
+  return join(homedir(), ".orbit", "tools", "windows");
+}
+
+function sha1File(path) {
+  return createHash("sha1").update(readFileSync(path)).digest("hex");
+}
+
+async function downloadFile(url, output, expectedHashes = null) {
+  const temporary = `${output}.tmp`;
+  rmSync(temporary, { force: true });
+  try {
+    if (process.platform === "win32") {
+      const result = spawnSync("curl.exe", [
+        "--fail",
+        "--location",
+        "--silent",
+        "--show-error",
+        "--output",
+        temporary,
+        url,
+      ], { stdio: "inherit" });
+      if (result.error) {
+        throw new Error(`failed to start Windows download client: ${result.error.message}`);
+      }
+      if (result.status !== 0) {
+        throw new Error(`Windows download client failed with exit code ${result.status ?? 1}`);
+      }
+    } else {
+      const response = await fetch(url, { redirect: "follow" });
+      if (!response.ok) {
+        throw new Error(`download failed with HTTP ${response.status}: ${url}`);
+      }
+      writeFileSync(temporary, Buffer.from(await response.arrayBuffer()));
+    }
+    if (
+      expectedHashes &&
+      (
+        sha1File(temporary) !== expectedHashes.sha1 ||
+        sha256File(temporary) !== expectedHashes.sha256
+      )
+    ) {
+      throw new Error(`downloaded file failed integrity verification: ${url}`);
+    }
+    renameSync(temporary, output);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
+}
+
+function extractZip(archive, destination) {
+  const result = spawnSync("tar", ["-xf", archive, "-C", destination], { stdio: "inherit" });
+  if (result.error) {
+    throw new Error(`failed to start ZIP extractor tar: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`ZIP extractor failed with exit code ${result.status ?? 1}`);
+  }
+}
+
+async function ensureNsisCompiler() {
+  const toolRoot = windowsToolCacheDirectory();
+  const toolDirectory = join(toolRoot, "nsis", NSIS_VERSION);
+  const compiler = join(toolDirectory, "makensis.exe");
+  if (existsSync(compiler)) {
+    return compiler;
+  }
+  mkdirSync(toolRoot, { recursive: true });
+  const archive = join(toolRoot, `nsis-${NSIS_VERSION}.zip`);
+  const expectedHashes = { sha1: NSIS_SHA1, sha256: NSIS_SHA256 };
+  if (
+    !existsSync(archive) ||
+    sha1File(archive) !== expectedHashes.sha1 ||
+    sha256File(archive) !== expectedHashes.sha256
+  ) {
+    rmSync(archive, { force: true });
+    await downloadFile(NSIS_URL, archive, expectedHashes);
+  }
+  const extracted = mkdtempSync(join(toolRoot, ".nsis-extract-"));
+  try {
+    extractZip(archive, extracted);
+    const source = join(extracted, `nsis-${NSIS_VERSION}`);
+    if (!existsSync(join(source, "makensis.exe"))) {
+      throw new Error("downloaded NSIS archive does not contain makensis.exe");
+    }
+    rmSync(toolDirectory, { recursive: true, force: true });
+    mkdirSync(dirname(toolDirectory), { recursive: true });
+    renameSync(source, toolDirectory);
+  } finally {
+    rmSync(extracted, { recursive: true, force: true });
+  }
+  return compiler;
+}
+
+async function resolveWebview2Bootstrapper(invocation) {
+  if (invocation.webview2Bootstrapper) {
+    if (!existsSync(invocation.webview2Bootstrapper) || !statSync(invocation.webview2Bootstrapper).isFile()) {
+      throw new Error(`WebView2 bootstrapper does not exist: ${invocation.webview2Bootstrapper}`);
+    }
+    return invocation.webview2Bootstrapper;
+  }
+  const directory = join(windowsToolCacheDirectory(), "webview2");
+  const bootstrapper = join(directory, "MicrosoftEdgeWebview2Setup.exe");
+  if (!existsSync(bootstrapper)) {
+    mkdirSync(directory, { recursive: true });
+    await downloadFile(WEBVIEW2_BOOTSTRAPPER_URL, bootstrapper);
+  }
+  return bootstrapper;
+}
+
+async function buildWindowsInstaller(invocation) {
   if (process.platform !== "win32") {
     throw new Error("NSIS installer generation is available only on Windows");
   }
@@ -829,9 +944,10 @@ function buildWindowsInstaller(invocation) {
   if (packageManifest.runtime !== null) {
     throw new Error("installer does not support --runtime-dir because MoonView uses Evergreen WebView2");
   }
-  if (!existsSync(invocation.webview2Bootstrapper) || !statSync(invocation.webview2Bootstrapper).isFile()) {
-    throw new Error(`WebView2 bootstrapper does not exist: ${invocation.webview2Bootstrapper}`);
-  }
+  const bootstrapper = await resolveWebview2Bootstrapper(invocation);
+  const makensis = invocation.makensisProvided
+    ? invocation.makensis
+    : await ensureNsisCompiler();
   mkdirSync(invocation.outDir, { recursive: true });
   const installer = resolve(
     invocation.outDir,
@@ -843,15 +959,15 @@ function buildWindowsInstaller(invocation) {
     writeFileSync(scriptPath, createNsisScript({
       installer,
       packageDirectory: invocation.packageDir,
-      bootstrapper: invocation.webview2Bootstrapper,
+      bootstrapper,
       application: packageManifest.application,
     }));
-    const result = spawnSync(invocation.makensis, [scriptPath], {
+    const result = spawnSync(makensis, [scriptPath], {
       cwd: invocation.workspace,
       stdio: "inherit",
     });
     if (result.error) {
-      throw new Error(`failed to start NSIS compiler ${invocation.makensis}: ${result.error.message}`);
+      throw new Error(`failed to start NSIS compiler ${makensis}: ${result.error.message}`);
     }
     if (result.status !== 0) {
       throw new Error(`NSIS compiler failed with exit code ${result.status ?? 1}`);
@@ -872,7 +988,7 @@ function buildWindowsInstaller(invocation) {
   }
 }
 
-export function main(argv, environment = { cwd: process.cwd(), stdout: process.stdout }) {
+export async function main(argv, environment = { cwd: process.cwd(), stdout: process.stdout }) {
   let invocation;
   try {
     invocation = parseInvocation(argv, environment.cwd);
@@ -923,7 +1039,7 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
 
   if (invocation.command === "installer") {
     try {
-      const result = buildWindowsInstaller(invocation);
+      const result = await buildWindowsInstaller(invocation);
       if (invocation.json) {
         environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, installer: result.installer })}\n`);
       }
