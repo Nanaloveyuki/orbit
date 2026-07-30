@@ -263,9 +263,9 @@ moon info
 
 The native plugin integration fixture compiles a small ABI v1 DLL and loads it
 through the published `dynlib` and `orbit-plugin-abi` packages. It verifies
-explicit permission denial, duplicate identifiers, JSON command dispatch,
-plugin command failures, and that instance destruction occurs before DLL
-unload.
+explicit permission denial, duplicate identifiers, ABI create failures, JSON
+command dispatch, malformed plugin responses, plugin command failures, and
+that instance destruction occurs before DLL unload.
 
 ```powershell
 ./orbit-plugin-fixtures/run-integration.ps1

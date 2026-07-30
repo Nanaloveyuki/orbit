@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <windows.h>
 
@@ -37,13 +38,15 @@ __declspec(dllexport) uint32_t orbit_plugin_abi_version(void) {
 }
 
 __declspec(dllexport) const char *orbit_plugin_manifest_json(void) {
-  return "{\"id\":\"fixture.echo\",\"name\":\"Orbit fixture\",\"version\":\"1\",\"commands\":[\"echo\",\"fail\"],\"permissions\":[\"test.invoke\"]}";
+  return "{\"id\":\"fixture.echo\",\"name\":\"Orbit fixture\",\"version\":\"1\",\"commands\":[\"echo\",\"fail\",\"malformed\"],\"permissions\":[\"test.invoke\"]}";
 }
 
 __declspec(dllexport) int32_t orbit_plugin_create(
     const OrbitHostV1 *host,
     void **out_instance) {
   if (host == NULL || out_instance == NULL) return -1;
+  if (getenv("ORBIT_PLUGIN_FIXTURE_MODE") != NULL &&
+      strcmp(getenv("ORBIT_PLUGIN_FIXTURE_MODE"), "create_fail") == 0) return -6;
   FixtureInstance *instance = host->alloc(sizeof(FixtureInstance));
   if (instance == NULL) return -2;
   instance->host = host;
@@ -61,6 +64,15 @@ __declspec(dllexport) int32_t orbit_plugin_invoke(
   FixtureInstance *instance = raw_instance;
   if (instance == NULL || command == NULL || out_response == NULL) return -3;
   if (strcmp(command, "fail") == 0) return -42;
+  if (strcmp(command, "malformed") == 0) {
+    static const uint8_t response[] = "not-json";
+    uint8_t *bytes = instance->host->alloc(sizeof(response) - 1);
+    if (bytes == NULL) return -5;
+    memcpy(bytes, response, sizeof(response) - 1);
+    out_response->data = bytes;
+    out_response->len = sizeof(response) - 1;
+    return 0;
+  }
   if (strcmp(command, "echo") != 0) return -4;
   uint8_t *response = instance->host->alloc(request_len);
   if (response == NULL && request_len != 0) return -5;

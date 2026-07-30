@@ -19,6 +19,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 moon -C $root run --target native orbit-plugin-fixtures $fixture
 
+$env:ORBIT_PLUGIN_FIXTURE_MODE = "create_fail"
+moon -C $root run --target native orbit-plugin-fixtures $fixture create-failure
+Remove-Item Env:ORBIT_PLUGIN_FIXTURE_MODE
+
 $events = Get-Content -LiteralPath $orderLog
 if (($events -join ",") -ne "destroy,unload-after-destroy") {
   throw "unexpected plugin teardown order: $($events -join ',')"
