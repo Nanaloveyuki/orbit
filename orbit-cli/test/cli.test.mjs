@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import {
   moonCommands,
   packageDescriptor,
   packageMetadataCommand,
+  packageIntegrity,
   parseInvocation,
+  verifyPackage,
   viteWorkflowCommand,
 } from "../src/cli.mjs";
 
@@ -204,4 +208,24 @@ test("package metadata stays in orbit-build and the package descriptor records c
   assert.deepEqual(descriptor.plugins, null);
   assert.equal(descriptor.target.platform, process.platform);
   assert.equal(descriptor.target.arch, process.arch);
+});
+
+test("package integrity rejects modified and undeclared payload files", (context) => {
+  const packageDirectory = mkdtempSync(join(tmpdir(), "orbit-package-"));
+  context.after(() => rmSync(packageDirectory, { recursive: true, force: true }));
+  mkdirSync(join(packageDirectory, "bin"));
+  writeFileSync(join(packageDirectory, "bin", "app.exe"), "original");
+  writeFileSync(join(packageDirectory, "orbit-package.json"), `${JSON.stringify({
+    format: 2,
+    application: { identifier: "dev.orbit.example" },
+    integrity: packageIntegrity(packageDirectory),
+  })}\n`);
+  assert.equal(verifyPackage(packageDirectory).format, 2);
+
+  writeFileSync(join(packageDirectory, "bin", "app.exe"), "modified");
+  assert.throws(() => verifyPackage(packageDirectory), /integrity verification failed/);
+
+  writeFileSync(join(packageDirectory, "bin", "app.exe"), "original");
+  writeFileSync(join(packageDirectory, "unexpected.txt"), "unexpected");
+  assert.throws(() => verifyPackage(packageDirectory), /integrity verification failed/);
 });

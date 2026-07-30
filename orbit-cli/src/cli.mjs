@@ -1,13 +1,14 @@
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "migrate-config", "icon"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "migrate-config", "icon"]);
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|diagnose|package|migrate-config|icon> [options]",
+    "Usage: orbit <generate|bindings|build|run|diagnose|package|verify-package|migrate-config|icon> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
@@ -21,6 +22,7 @@ export function usage() {
     "  --binary <path>       Explicit executable copied by package (default: discover Moon native output)",
     "  --out-dir <path>      Package output directory (default: dist)",
     "  --runtime-dir <path>  Optional WebView runtime files copied by package",
+    "  --package-dir <path>  Package directory verified by verify-package",
     "  --source <path>       Required 1024x1024 PNG source for icon generation",
     "  --compression <level> PNG compression level for icon generation (0-9, default: 6)",
     "  --dev-timeout <ms>    Vite readiness timeout (default: 30000)",
@@ -74,6 +76,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "binary",
       "out-dir",
       "runtime-dir",
+      "package-dir",
       "source",
       "compression",
       "dev-timeout",
@@ -104,6 +107,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "icon" && !values.source) {
     throw new Error("icon requires --source <path>");
   }
+  if (command === "verify-package" && !values["package-dir"]) {
+    throw new Error("verify-package requires --package-dir <path>");
+  }
   const compression = Number(values.compression ?? "6");
   if (!Number.isInteger(compression) || compression < 0 || compression > 9) {
     throw new Error("--compression must be an integer between 0 and 9");
@@ -126,6 +132,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     source: values.source ? resolve(workspace, values.source) : undefined,
     compression,
     runtimeDir: values["runtime-dir"] ? resolve(workspace, values["runtime-dir"]) : undefined,
+    packageDir: values["package-dir"] ? resolve(workspace, values["package-dir"]) : undefined,
     devTimeout,
     json: values.json ?? false,
   };
@@ -457,6 +464,100 @@ export function packageDescriptor(metadata, binary, discovered) {
   };
 }
 
+function packageFilePath(packageDirectory, relativePath) {
+  if (
+    relativePath.length === 0 ||
+    relativePath === ".." ||
+    relativePath.startsWith("../") ||
+    relativePath.includes("\\")
+  ) {
+    throw new Error(`invalid package file path: ${relativePath}`);
+  }
+  const path = resolve(packageDirectory, relativePath);
+  const pathRelative = relative(packageDirectory, path);
+  if (
+    pathRelative === ".." ||
+    pathRelative.startsWith(`..${sep}`) ||
+    isAbsolute(pathRelative)
+  ) {
+    throw new Error(`package file path escapes package directory: ${relativePath}`);
+  }
+  return path;
+}
+
+export function packageIntegrity(packageDirectory) {
+  const files = [];
+  function collect(directory, prefix = "") {
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
+    for (const entry of entries) {
+      if (prefix.length === 0 && entry.name === "orbit-package.json") {
+        continue;
+      }
+      const relativePath = prefix.length === 0 ? entry.name : `${prefix}/${entry.name}`;
+      const path = resolve(directory, entry.name);
+      if (entry.isDirectory()) {
+        collect(path, relativePath);
+      } else if (entry.isFile()) {
+        const content = readFileSync(path);
+        files.push({
+          path: relativePath,
+          size: content.length,
+          sha256: createHash("sha256").update(content).digest("hex"),
+        });
+      } else {
+        throw new Error(`package contains unsupported filesystem entry: ${relativePath}`);
+      }
+    }
+  }
+  collect(packageDirectory);
+  return { algorithm: "sha256", files };
+}
+
+export function verifyPackage(packageDirectory) {
+  const manifestPath = resolve(packageDirectory, "orbit-package.json");
+  if (!existsSync(manifestPath)) {
+    throw new Error(`package manifest does not exist: ${manifestPath}`);
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  } catch {
+    throw new Error("package manifest is not valid JSON");
+  }
+  if (
+    manifest?.format !== 2 ||
+    manifest?.integrity?.algorithm !== "sha256" ||
+    !Array.isArray(manifest.integrity.files)
+  ) {
+    throw new Error("package manifest does not contain format-2 integrity data");
+  }
+  const expected = manifest.integrity.files;
+  const seen = new Set();
+  for (const entry of expected) {
+    if (
+      !entry ||
+      typeof entry.path !== "string" ||
+      !Number.isInteger(entry.size) ||
+      entry.size < 0 ||
+      !/^[a-f0-9]{64}$/.test(entry.sha256) ||
+      seen.has(entry.path)
+    ) {
+      throw new Error("package manifest contains an invalid integrity entry");
+    }
+    seen.add(entry.path);
+    const path = packageFilePath(packageDirectory, entry.path);
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      throw new Error(`package file is missing: ${entry.path}`);
+    }
+  }
+  const actual = packageIntegrity(packageDirectory);
+  if (JSON.stringify(actual.files) !== JSON.stringify(expected)) {
+    throw new Error("package integrity verification failed");
+  }
+  return manifest;
+}
+
 function applicationResourcePath(applicationRoot, resource) {
   const path = resolve(applicationRoot, resource);
   const resourceRelative = relative(applicationRoot, path);
@@ -502,10 +603,14 @@ function packageApplication(invocation, metadata) {
     }
     cpSync(invocation.runtimeDir, resolve(invocation.outDir, "runtime"), { recursive: true });
   }
-  writeFileSync(resolve(invocation.outDir, "orbit-package.json"), `${JSON.stringify({
+  const descriptor = {
     ...packageDescriptor(metadata, binary, discovered),
     plugins: existsSync(plugins) ? "plugins" : null,
     runtime: invocation.runtimeDir ? "runtime" : null,
+  };
+  writeFileSync(resolve(invocation.outDir, "orbit-package.json"), `${JSON.stringify({
+    ...descriptor,
+    integrity: packageIntegrity(invocation.outDir),
   }, null, 2)}\n`);
 }
 
@@ -521,6 +626,23 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
 
   if (invocation.help) {
     environment.stdout.write(`${usage()}\n`);
+    return;
+  }
+
+  if (invocation.command === "verify-package") {
+    try {
+      const manifest = verifyPackage(invocation.packageDir);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, application: manifest.application.identifier })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "package_verification_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
     return;
   }
 
