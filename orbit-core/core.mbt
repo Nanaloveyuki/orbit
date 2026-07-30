@@ -6,6 +6,11 @@ pub(all) suberror CoreError {
 } derive(Debug)
 
 ///|
+pub fn ipc_initialization_script(initialization_script : String) -> String {
+  @ipc_moonview.initialization_script(initialization_script)
+}
+
+///|
 pub struct DesktopWindowOptions {
   window_title : String
   runtime_options : @runtime.RuntimeOptions
@@ -185,19 +190,16 @@ fn DesktopApp::dispatch_ipc_message(
   )
   match (self.options.ipc_registry, self.options.ipc_policy) {
     (Some(registry), Some(policy)) => {
-      let context = try {
-        match ipc_principal {
-          Window => @ipc.InvocationContext::window(label)
-          RemotePage =>
-            @ipc.InvocationContext::remote_page(
-              label,
-              origin=page_message.origin(),
-            )
-        }
-      } catch {
-        _ => return
+      let principal = match ipc_principal {
+        Window => @ipc_moonview.PagePrincipal::window()
+        RemotePage => @ipc_moonview.PagePrincipal::remote_page()
       }
-      let response = registry.dispatch_with_context(message, policy, context)
+      let response = match @ipc_moonview.dispatch(
+        registry, policy, label, principal, page_message,
+      ) {
+        Some(response) => response
+        None => return
+      }
       self.emit_event(
         "orbit://ipc/response",
         Ipc(label),
@@ -294,7 +296,9 @@ fn DesktopApp::mount_window(
   let runtime_options = match self.options.ipc_registry {
     Some(_) =>
       options.runtime_options.with_initialization_script(
-        ipc_initialization_script(options.runtime_options.initialization_script),
+        @ipc_moonview.initialization_script(
+          options.runtime_options.initialization_script,
+        ),
       )
     None => options.runtime_options
   }
