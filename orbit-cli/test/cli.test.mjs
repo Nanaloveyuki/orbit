@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { gunzipSync } from "node:zlib";
 import {
+  archiveDescriptor,
+  archiveMetadataPath,
+  buildLinuxArchive,
   compatibilityProfile,
+  createLinuxArchive,
   createNsisScript,
+  expandArchiveSigningCommand,
   expandSigningCommand,
   installerDescriptor,
   installerMetadataPath,
@@ -15,10 +21,49 @@ import {
   packageIntegrity,
   parseInvocation,
   verifyInstaller,
+  verifyArchive,
   verifyPackage,
   viteWorkflowCommand,
   windowsToolCacheDirectory,
 } from "../src/cli.mjs";
+
+function tarEntryNames(archive) {
+  const contents = gunzipSync(readFileSync(archive));
+  const names = [];
+  let offset = 0;
+  while (offset + 512 <= contents.length && contents[offset] !== 0) {
+    const field = (start, length) => contents.subarray(offset + start, offset + start + length)
+      .toString("utf8").replace(/\0.*$/, "");
+    const prefix = field(345, 155);
+    const name = field(0, 100);
+    names.push(prefix.length === 0 ? name : `${prefix}/${name}`);
+    const size = Number.parseInt(field(124, 12).trim() || "0", 8);
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return names;
+}
+
+function createLinuxPackage(directory) {
+  mkdirSync(join(directory, "bin"), { recursive: true });
+  writeFileSync(join(directory, "bin", "orbit-example"), "linux application");
+  const manifest = {
+    format: 3,
+    compatibility: { ...compatibilityProfile },
+    target: { platform: "linux", arch: "x64" },
+    configuration: { schemaVersion: 2, fingerprint: "f00d" },
+    application: {
+      identifier: "dev.orbit.example",
+      name: "Orbit Example",
+      version: "0.1.0",
+    },
+    executable: "bin/orbit-example",
+    plugins: null,
+    pluginDeclarations: [],
+  };
+  manifest.integrity = packageIntegrity(directory);
+  writeFileSync(join(directory, "orbit-package.json"), `${JSON.stringify(manifest)}\n`);
+  return manifest;
+}
 
 test("generate defaults output and package to the configuration directory", () => {
   const cwd = resolve("workspace");
@@ -421,4 +466,133 @@ test("installer metadata verifies its artifact and signing commands require all 
 
   writeFileSync(installer, "modified installer bytes");
   assert.throws(() => verifyInstaller(installer), /installer integrity verification failed/);
+});
+
+test("Linux archives require explicit signing policy and preserve a verified package", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-linux-archive-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const packageDirectory = join(directory, "package");
+  const manifest = createLinuxPackage(packageDirectory);
+  assert.throws(
+    () => parseInvocation(["archive", "--package-dir", "package"], directory),
+    /requires --sign-command <command> or --allow-unsigned/,
+  );
+  const invocation = parseInvocation([
+    "archive",
+    "--package-dir",
+    "package",
+    "--out-dir",
+    "artifacts",
+    "--allow-unsigned",
+  ], directory);
+  const result = await buildLinuxArchive(invocation);
+  assert.match(result.archive, /dev\.orbit\.example-0\.1\.0-linux-x64\.tar\.gz$/);
+  assert.equal(verifyArchive(result.archive).signed, false);
+  assert.deepEqual(tarEntryNames(result.archive), [
+    "dev.orbit.example-0.1.0/",
+    "dev.orbit.example-0.1.0/run",
+    "dev.orbit.example-0.1.0/orbit-package/",
+    "dev.orbit.example-0.1.0/orbit-package/bin/",
+    "dev.orbit.example-0.1.0/orbit-package/orbit-package.json",
+    "dev.orbit.example-0.1.0/orbit-package/bin/orbit-example",
+  ]);
+  const copy = join(directory, "copy.tar.gz");
+  createLinuxArchive(packageDirectory, copy, manifest);
+  assert.deepEqual(readFileSync(copy), readFileSync(result.archive));
+  const nestedOutput = parseInvocation([
+    "archive",
+    "--package-dir",
+    "package",
+    "--out-dir",
+    "package/artifacts",
+    "--allow-unsigned",
+  ], directory);
+  await assert.rejects(
+    () => buildLinuxArchive(nestedOutput),
+    /output directory must not be inside the package directory/,
+  );
+  const signedInvocation = parseInvocation([
+    "archive",
+    "--package-dir",
+    "package",
+    "--out-dir",
+    "signed-artifacts",
+    "--sign-command",
+    "node -e \"require('node:fs').writeFileSync(process.argv[1] + '.sig', 'signature')\" {archive} {package_dir} {package_manifest}",
+  ], directory);
+  const signed = await buildLinuxArchive(signedInvocation);
+  assert.equal(verifyArchive(signed.archive).signed, true);
+  assert.deepEqual(readFileSync(`${signed.archive}.sig`, "utf8"), "signature");
+  const modifyingInvocation = parseInvocation([
+    "archive",
+    "--package-dir",
+    "package",
+    "--out-dir",
+    "modified-artifacts",
+    "--sign-command",
+    "node -e \"require('node:fs').appendFileSync(process.argv[1], 'x')\" {archive} {package_dir} {package_manifest}",
+  ], directory);
+  await assert.rejects(
+    () => buildLinuxArchive(modifyingInvocation),
+    /sign-command must not modify the archive/,
+  );
+  assert.match(
+    gunzipSync(readFileSync(result.archive)).toString("utf8"),
+    /cd "\$root\/orbit-package"/,
+  );
+  writeFileSync(result.archive, "modified archive");
+  assert.throws(() => verifyArchive(result.archive), /archive integrity verification failed/);
+});
+
+test("Linux archive metadata validates target and archive signing placeholders", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-linux-archive-metadata-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const archive = join(directory, "dev.orbit.example-0.1.0-linux-x64.tar.gz");
+  writeFileSync(archive, "archive bytes");
+  const manifest = createLinuxPackage(join(directory, "package"));
+  writeFileSync(archiveMetadataPath(archive), `${JSON.stringify(
+    archiveDescriptor(manifest, archive, true),
+  )}\n`);
+  assert.equal(verifyArchive(archive).signed, true);
+  assert.match(
+    expandArchiveSigningCommand("sign {archive} {package_dir} {package_manifest}", {
+      archive,
+      packageDirectory: directory,
+      packageManifest: join(directory, "orbit-package.json"),
+    }),
+    /sign/,
+  );
+  assert.throws(
+    () => expandArchiveSigningCommand("sign {archive}", {
+      archive,
+      packageDirectory: directory,
+      packageManifest: "manifest",
+    }),
+    /must include \{package_dir\}/,
+  );
+  const nonLinux = { ...manifest, target: { platform: "win32", arch: "x64" } };
+  writeFileSync(archiveMetadataPath(archive), `${JSON.stringify(
+    archiveDescriptor(nonLinux, archive, false),
+  )}\n`);
+  assert.throws(() => verifyArchive(archive), /incomplete or incompatible/);
+
+  const invalidVersionPackage = join(directory, "invalid-version-package");
+  const invalidVersion = createLinuxPackage(invalidVersionPackage);
+  invalidVersion.application.version = "../invalid";
+  writeFileSync(
+    join(invalidVersionPackage, "orbit-package.json"),
+    `${JSON.stringify(invalidVersion)}\n`,
+  );
+  const invalidVersionInvocation = parseInvocation([
+    "archive",
+    "--package-dir",
+    "invalid-version-package",
+    "--out-dir",
+    "artifacts",
+    "--allow-unsigned",
+  ], directory);
+  await assert.rejects(
+    () => buildLinuxArchive(invalidVersionInvocation),
+    /application version must use ASCII letters/,
+  );
 });

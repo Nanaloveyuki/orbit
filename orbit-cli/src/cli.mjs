@@ -4,8 +4,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
+import { gzipSync } from "node:zlib";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "migrate-config", "icon"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "archive", "verify-archive", "migrate-config", "icon"]);
 const webviewInstallModes = new Set([
   "download_bootstrapper",
   "embed_bootstrapper",
@@ -44,7 +45,7 @@ function packagePlatformName(platform) {
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|diagnose|package|verify-package|installer|verify-installer|migrate-config|icon> [options]",
+    "Usage: orbit <generate|bindings|build|run|dev|diagnose|package|verify-package|installer|verify-installer|archive|verify-archive|migrate-config|icon> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
@@ -61,10 +62,12 @@ export function usage() {
     "  --package-dir <path>  Package directory verified by verify-package",
     "  --webview2-bootstrapper <path>  Local Evergreen WebView2 bootstrapper for installer",
     "  --makensis <command>  NSIS compiler (default: makensis)",
-    "  --sign-command <command>  External installer signing command",
-    "  --allow-unsigned       Permit an unsigned installer",
+    "  --sign-command <command>  External installer or archive signing command",
+    "  --allow-unsigned       Permit an unsigned installer or archive",
     "  --installer <path>    Installer verified by verify-installer",
     "  --installer-metadata <path>  Installer metadata path (default: adjacent file)",
+    "  --archive <path>      Archive verified by verify-archive",
+    "  --archive-metadata <path>  Archive metadata path (default: adjacent file)",
     "  --source <path>       Required 1024x1024 PNG source for icon generation",
     "  --compression <level> PNG compression level for icon generation (0-9, default: 6)",
     "  --dev-timeout <ms>    Vite readiness timeout (default: 30000)",
@@ -125,6 +128,8 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "allow-unsigned",
       "installer",
       "installer-metadata",
+      "archive",
+      "archive-metadata",
       "source",
       "compression",
       "dev-timeout",
@@ -169,6 +174,17 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "verify-installer" && !values.installer) {
     throw new Error("verify-installer requires --installer <path>");
   }
+  if (command === "archive") {
+    if (!values["package-dir"]) {
+      throw new Error("archive requires --package-dir <path>");
+    }
+    if (!values["sign-command"] && !values["allow-unsigned"]) {
+      throw new Error("archive requires --sign-command <command> or --allow-unsigned");
+    }
+  }
+  if (command === "verify-archive" && !values.archive) {
+    throw new Error("verify-archive requires --archive <path>");
+  }
   const compression = Number(values.compression ?? "6");
   if (!Number.isInteger(compression) || compression < 0 || compression > 9) {
     throw new Error("--compression must be an integer between 0 and 9");
@@ -187,7 +203,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     moon: resolveExecutable(workspace, values.moon, "moon"),
     pluginDir: values["plugin-dir"] ? resolve(workspace, values["plugin-dir"]) : undefined,
     binary: values.binary ? resolve(workspace, values.binary) : undefined,
-    outDir: resolve(workspace, values["out-dir"] ?? (command === "icon" ? "icons" : "dist")),
+    outDir: resolve(workspace, values["out-dir"] ?? (command === "icon" ? "icons" : command === "archive" ? "artifacts" : "dist")),
     source: values.source ? resolve(workspace, values.source) : undefined,
     compression,
     runtimeDir: values["runtime-dir"] ? resolve(workspace, values["runtime-dir"]) : undefined,
@@ -202,6 +218,10 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     installer: values.installer ? resolve(workspace, values.installer) : undefined,
     installerMetadata: values["installer-metadata"]
       ? resolve(workspace, values["installer-metadata"])
+      : undefined,
+    archive: values.archive ? resolve(workspace, values.archive) : undefined,
+    archiveMetadata: values["archive-metadata"]
+      ? resolve(workspace, values["archive-metadata"])
       : undefined,
     devTimeout,
     json: values.json ?? false,
@@ -913,6 +933,190 @@ export function verifyInstaller(installer, metadataPath = installerMetadataPath(
   return metadata;
 }
 
+export function archiveMetadataPath(archive) {
+  return `${archive}.orbit-archive.json`;
+}
+
+function archivePackageDescriptor(packageManifest) {
+  return {
+    format: packageManifest.format,
+    compatibility: packageManifest.compatibility,
+    target: packageManifest.target,
+    configuration: packageManifest.configuration,
+    integrityAlgorithm: packageManifest.integrity.algorithm,
+  };
+}
+
+export function archiveDescriptor(packageManifest, archive, signed) {
+  const size = statSync(archive).size;
+  return {
+    format: 1,
+    archive: "tar.gz",
+    signed,
+    application: packageManifest.application,
+    package: archivePackageDescriptor(packageManifest),
+    artifact: {
+      file: basename(archive),
+      size,
+      sha256: sha256File(archive),
+    },
+  };
+}
+
+export function verifyArchive(archive, metadataPath = archiveMetadataPath(archive)) {
+  if (!existsSync(archive) || !statSync(archive).isFile()) {
+    throw new Error(`archive does not exist: ${archive}`);
+  }
+  if (!existsSync(metadataPath)) {
+    throw new Error(`archive metadata does not exist: ${metadataPath}`);
+  }
+  let metadata;
+  try {
+    metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+  } catch {
+    throw new Error("archive metadata is not valid JSON");
+  }
+  if (
+    metadata?.format !== 1 ||
+    metadata?.archive !== "tar.gz" ||
+    typeof metadata.signed !== "boolean" ||
+    !metadata.application ||
+    typeof metadata.application.identifier !== "string" ||
+    typeof metadata.application.name !== "string" ||
+    typeof metadata.application.version !== "string" ||
+    metadata?.package?.format !== 3 ||
+    metadata.package?.target?.platform !== "linux" ||
+    typeof metadata.package?.target?.arch !== "string" ||
+    metadata.package?.configuration?.schemaVersion !== 2 ||
+    typeof metadata.package?.configuration?.fingerprint !== "string" ||
+    metadata.package?.integrityAlgorithm !== "sha256" ||
+    metadata?.artifact?.file !== basename(archive) ||
+    !Number.isInteger(metadata.artifact?.size) ||
+    !/^[a-f0-9]{64}$/.test(metadata.artifact?.sha256)
+  ) {
+    throw new Error("archive metadata is incomplete or incompatible");
+  }
+  verifyCompatibilityProfile(metadata.package.compatibility, "archive package metadata");
+  if (metadata.artifact.size !== statSync(archive).size || metadata.artifact.sha256 !== sha256File(archive)) {
+    throw new Error("archive integrity verification failed");
+  }
+  return metadata;
+}
+
+function safeArchiveSegment(value, label) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9._+-]+$/.test(value)) {
+    throw new Error(`archive application ${label} must use ASCII letters, digits, dot, dash, underscore, or plus`);
+  }
+  return value;
+}
+
+function pathInside(directory, path) {
+  const pathRelative = relative(directory, path);
+  return pathRelative.length === 0 || (!pathRelative.startsWith(`..${sep}`) && pathRelative !== ".." && !isAbsolute(pathRelative));
+}
+
+function writeTarString(buffer, offset, length, value) {
+  const encoded = Buffer.from(value, "utf8");
+  if (encoded.length > length) {
+    throw new Error(`archive path is too long for ustar: ${value}`);
+  }
+  encoded.copy(buffer, offset);
+}
+
+function writeTarOctal(buffer, offset, length, value) {
+  const encoded = value.toString(8);
+  if (encoded.length >= length) {
+    throw new Error("archive metadata field exceeds ustar limits");
+  }
+  writeTarString(buffer, offset, length, `${encoded.padStart(length - 1, "0")}\0`);
+}
+
+function writeTarPath(header, path) {
+  if (Buffer.byteLength(path, "utf8") <= 100) {
+    writeTarString(header, 0, 100, path);
+    return;
+  }
+  for (let index = path.length - 1; index > 0; index -= 1) {
+    if (path[index] !== "/") continue;
+    const prefix = path.slice(0, index);
+    const name = path.slice(index + 1);
+    if (Buffer.byteLength(prefix, "utf8") <= 155 && Buffer.byteLength(name, "utf8") <= 100) {
+      writeTarString(header, 0, 100, name);
+      writeTarString(header, 345, 155, prefix);
+      return;
+    }
+  }
+  throw new Error(`archive path is too long for ustar: ${path}`);
+}
+
+function tarHeader(path, mode, size, type) {
+  const header = Buffer.alloc(512);
+  writeTarPath(header, path);
+  writeTarOctal(header, 100, 8, mode);
+  writeTarOctal(header, 108, 8, 0);
+  writeTarOctal(header, 116, 8, 0);
+  writeTarOctal(header, 124, 12, size);
+  writeTarOctal(header, 136, 12, 0);
+  header.fill(0x20, 148, 156);
+  header[156] = type.charCodeAt(0);
+  writeTarString(header, 257, 6, "ustar\0");
+  writeTarString(header, 263, 2, "00");
+  const checksum = header.reduce((total, byte) => total + byte, 0);
+  writeTarOctal(header, 148, 8, checksum);
+  return header;
+}
+
+function tarEntry(path, mode, type, content = Buffer.alloc(0)) {
+  const padding = (512 - (content.length % 512)) % 512;
+  return [tarHeader(path, mode, content.length, type), content, Buffer.alloc(padding)];
+}
+
+function packageDirectories(files) {
+  const directories = new Set();
+  for (const file of files) {
+    let directory = dirname(file.path).replaceAll("\\", "/");
+    while (directory !== "." && directory.length > 0) {
+      directories.add(directory);
+      directory = dirname(directory).replaceAll("\\", "/");
+    }
+  }
+  return [...directories].sort();
+}
+
+function shellSingleQuoted(value) {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function createLinuxArchive(packageDirectory, archive, packageManifest) {
+  const identifier = safeArchiveSegment(packageManifest.application?.identifier, "identifier");
+  const version = safeArchiveSegment(packageManifest.application?.version, "version");
+  const root = `${identifier}-${version}`;
+  const files = packageIntegrity(packageDirectory).files;
+  const executable = packageManifest.executable;
+  const launcher = Buffer.from(
+    `#!/bin/sh\nset -eu\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\ncd "$root/orbit-package"\nexec ./${shellSingleQuoted(executable)} "$@"\n`,
+    "utf8",
+  );
+  const entries = [
+    ...tarEntry(`${root}/`, 0o755, "5"),
+    ...tarEntry(`${root}/run`, 0o755, "0", launcher),
+    ...tarEntry(`${root}/orbit-package/`, 0o755, "5"),
+  ];
+  for (const directory of packageDirectories(files)) {
+    entries.push(...tarEntry(`${root}/orbit-package/${directory}/`, 0o755, "5"));
+  }
+  for (const file of [
+    { path: "orbit-package.json", source: resolve(packageDirectory, "orbit-package.json") },
+    ...files.map((entry) => ({ path: entry.path, source: packageFilePath(packageDirectory, entry.path) })),
+  ]) {
+    const content = readFileSync(file.source);
+    const sourceMode = statSync(file.source).mode & 0o777;
+    const mode = file.path === executable ? 0o755 : sourceMode;
+    entries.push(...tarEntry(`${root}/orbit-package/${file.path}`, mode, "0", content));
+  }
+  writeFileSync(archive, gzipSync(Buffer.concat([...entries, Buffer.alloc(1024)]), { mtime: 0 }));
+}
+
 function runSigningCommand(invocation, installer, packageDirectory) {
   if (!invocation.signCommand) {
     return false;
@@ -934,6 +1138,75 @@ function runSigningCommand(invocation, installer, packageDirectory) {
     throw new Error(`sign-command failed with exit code ${result.status ?? 1}`);
   }
   return true;
+}
+
+export function expandArchiveSigningCommand(command, values) {
+  for (const placeholder of ["archive", "package_dir", "package_manifest"]) {
+    if (!command.includes(`{${placeholder}}`)) {
+      throw new Error(`archive sign-command must include {${placeholder}}`);
+    }
+  }
+  return command
+    .replaceAll("{archive}", shellQuoted(values.archive))
+    .replaceAll("{package_dir}", shellQuoted(values.packageDirectory))
+    .replaceAll("{package_manifest}", shellQuoted(values.packageManifest));
+}
+
+function runArchiveSigningCommand(invocation, archive) {
+  if (!invocation.signCommand) {
+    return false;
+  }
+  const hashBeforeSigning = sha256File(archive);
+  const command = expandArchiveSigningCommand(invocation.signCommand, {
+    archive,
+    packageDirectory: invocation.packageDir,
+    packageManifest: resolve(invocation.packageDir, "orbit-package.json"),
+  });
+  const result = spawnSync(command, {
+    cwd: invocation.packageDir,
+    shell: true,
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw new Error(`failed to start archive sign-command: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`archive sign-command failed with exit code ${result.status ?? 1}`);
+  }
+  if (sha256File(archive) !== hashBeforeSigning) {
+    throw new Error("archive sign-command must not modify the archive; use a detached signature");
+  }
+  return true;
+}
+
+export async function buildLinuxArchive(invocation) {
+  const packageManifest = verifyPackage(invocation.packageDir);
+  if (packageManifest.target?.platform !== "linux") {
+    throw new Error("archive requires a Linux package artifact");
+  }
+  const identifier = safeArchiveSegment(packageManifest.application?.identifier, "identifier");
+  const version = safeArchiveSegment(packageManifest.application?.version, "version");
+  const arch = safeArchiveSegment(packageManifest.target?.arch, "architecture");
+  if (typeof packageManifest.application?.name !== "string" || packageManifest.application.name.trim().length === 0) {
+    throw new Error("archive package manifest has invalid application metadata");
+  }
+  if (pathInside(invocation.packageDir, invocation.outDir)) {
+    throw new Error("archive output directory must not be inside the package directory");
+  }
+  mkdirSync(invocation.outDir, { recursive: true });
+  const archive = resolve(
+    invocation.outDir,
+    `${identifier}-${version}-linux-${arch}.tar.gz`,
+  );
+  createLinuxArchive(invocation.packageDir, archive, packageManifest);
+  const signed = runArchiveSigningCommand(invocation, archive);
+  const metadataPath = archiveMetadataPath(archive);
+  writeFileSync(metadataPath, `${JSON.stringify(
+    archiveDescriptor(packageManifest, archive, signed),
+    null,
+    2,
+  )}\n`);
+  return { archive, metadataPath };
 }
 
 const NSIS_VERSION = "3.11";
@@ -1204,6 +1477,23 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     return;
   }
 
+  if (invocation.command === "verify-archive") {
+    try {
+      const metadata = verifyArchive(invocation.archive, invocation.archiveMetadata);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, application: metadata.application.identifier })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "archive_verification_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
   if (invocation.command === "installer") {
     try {
       const result = await buildWindowsInstaller(invocation);
@@ -1213,6 +1503,23 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     } catch (error) {
       if (invocation.json) {
         environment.stdout.write(`${JSON.stringify({ code: "installer_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
+  if (invocation.command === "archive") {
+    try {
+      const result = await buildLinuxArchive(invocation);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, archive: result.archive })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "archive_failed", message: error.message })}\n`);
       } else {
         environment.stdout.write(`orbit: ${error.message}\n`);
       }
