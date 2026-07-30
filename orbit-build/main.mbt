@@ -552,6 +552,14 @@ fn optional_json_string(value : String?) -> String {
 }
 
 ///|
+fn webview_install_mode(config : @utils.OrbitConfig) -> String {
+  match config.bundle.windows {
+    Some(windows) => windows.webview_install_mode
+    None => "embed_bootstrapper"
+  }
+}
+
+///|
 fn package_metadata_json(
   config : @utils.OrbitConfig,
   fingerprint : String,
@@ -561,7 +569,7 @@ fn package_metadata_json(
       "{\"id\":\{Json::string(plugin.id).stringify()},\"library\":\{Json::string(plugin.library).stringify()},\"manifest\":\{Json::string(plugin.manifest).stringify()}}"
     })
     .join(",")
-  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"plugins\":[\{plugins}]}"
+  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"windows\":{\"webview_install_mode\":\{Json::string(webview_install_mode(config)).stringify()}},\"plugins\":[\{plugins}]}"
 }
 
 ///|

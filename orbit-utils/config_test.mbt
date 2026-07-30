@@ -146,6 +146,29 @@ test "optional application metadata remains absent when not declared" {
 }
 
 ///|
+test "Windows WebView installer mode is optional and rejects unsupported values" {
+  let configured = valid_config_source.replace_all(
+    old="\"bundle\": { \"icons\": [] },",
+    new="\"bundle\": { \"icons\": [], \"windows\": { \"webview_install_mode\": \"skip\" } },",
+  )
+  let config = parse_config(configured)
+  match config.bundle.windows {
+    Some(windows) => inspect(windows.webview_install_mode, content="skip")
+    None => fail("expected Windows bundle configuration")
+  }
+  let unsupported = configured.replace_all(
+    old="\"skip\"",
+    new="\"fixed_runtime\"",
+  )
+  inspect(failure_code(unsupported), content="invalid_webview_install_mode")
+  let unknown = configured.replace_all(
+    old="\"webview_install_mode\": \"skip\"",
+    new="\"unknown\": \"skip\"",
+  )
+  inspect(failure_code(unknown), content="unknown_field")
+}
+
+///|
 test "window capabilities must reference configured windows" {
   let invalid = valid_config_source.replace_all(
     old="\"identifier\": \"main\" }],",

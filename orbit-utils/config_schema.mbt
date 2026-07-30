@@ -475,10 +475,36 @@ fn validate_v2_bundle_shape(
 ) -> Unit {
   match value {
     Object(object) => {
-      validate_object_keys(object, "$.bundle", ["icons"], diagnostics)
+      validate_object_keys_with_optional(
+        object,
+        "$.bundle",
+        ["icons"],
+        ["windows"],
+        diagnostics,
+      )
       match object.get("icons") {
         Some(value) =>
           validate_string_array(value, "$.bundle.icons", diagnostics)
+        None => ()
+      }
+      match object.get("windows") {
+        Some(Object(windows)) => {
+          validate_object_keys(
+            windows,
+            "$.bundle.windows",
+            ["webview_install_mode"],
+            diagnostics,
+          )
+          validate_string_field(
+            windows, "webview_install_mode", "$.bundle.windows", diagnostics,
+          )
+        }
+        Some(_) =>
+          diagnostics.push(
+            diagnostic(
+              "invalid_type", "$.bundle.windows", "field must be an object",
+            ),
+          )
         None => ()
       }
     }
