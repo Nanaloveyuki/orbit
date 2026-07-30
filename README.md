@@ -25,7 +25,9 @@ capabilities remain intentionally deferred.
 - `orbit-build` strictly parses and validates schema-version 2
   `orbit.conf.json`, emits a canonical configuration fingerprint, injects CSP
   from `web.embedded` into the HTML entry or remote fallback, and embeds the
-  required resource directory.
+  required resource directory. Each configured window owns its own embedded
+  resource root, so identical relative asset names in separate window bundles
+  do not collide.
   Application metadata and windows live below `app`; package assets and Windows
   installer settings live below `bundle`; explicit optional Vite commands live
   below `build.vite`.
