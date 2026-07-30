@@ -577,6 +577,11 @@ fn webview_install_mode(config : @utils.OrbitConfig) -> String {
 }
 
 ///|
+fn package_compatibility_json() -> String {
+  "{\"orbit\":\"0.1.0-alpha.1\",\"orby\":\"0.1.0-beta.1\",\"moonview\":\"0.1.0-beta.3\",\"plugin_abi\":1,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
+}
+
+///|
 fn package_metadata_json(
   config : @utils.OrbitConfig,
   fingerprint : String,
@@ -586,7 +591,7 @@ fn package_metadata_json(
       "{\"id\":\{Json::string(plugin.id).stringify()},\"library\":\{Json::string(plugin.library).stringify()},\"manifest\":\{Json::string(plugin.manifest).stringify()}}"
     })
     .join(",")
-  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"windows\":{\"webview_install_mode\":\{Json::string(webview_install_mode(config)).stringify()}},\"plugins\":[\{plugins}]}"
+  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"compatibility\":\{package_compatibility_json()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"windows\":{\"webview_install_mode\":\{Json::string(webview_install_mode(config)).stringify()}},\"plugins\":[\{plugins}]}"
 }
 
 ///|
@@ -945,4 +950,15 @@ test "generated windows keep same-named entry documents in separate resource bun
 ///|
 test "icon generation targets deterministic desktop icon sizes" {
   debug_inspect(icon_sizes(), content="[16, 32, 48, 64, 128, 256, 512, 1024]")
+}
+
+///|
+test "package metadata declares the compiled compatibility profile" {
+  let profile = package_compatibility_json()
+  assert_true(profile.contains("\"orbit\":\"0.1.0-alpha.1\""))
+  assert_true(profile.contains("\"orby\":\"0.1.0-beta.1\""))
+  assert_true(profile.contains("\"moonview\":\"0.1.0-beta.3\""))
+  assert_true(profile.contains("\"plugin_abi\":1"))
+  assert_true(profile.contains("\"plugin_sidecar_schema\":2"))
+  assert_true(profile.contains("\"configuration_schema\":2"))
 }

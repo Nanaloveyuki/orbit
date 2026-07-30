@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import {
+  compatibilityProfile,
   createNsisScript,
   expandSigningCommand,
   installerDescriptor,
@@ -198,6 +199,7 @@ test("package metadata stays in orbit-build and the package descriptor records c
   const descriptor = packageDescriptor({
     schema_version: 2,
     configuration_fingerprint: "f00d",
+    compatibility: { ...compatibilityProfile },
     application: {
       identifier: "dev.orbit.example",
       name: "Orbit Example",
@@ -208,7 +210,8 @@ test("package metadata stays in orbit-build and the package descriptor records c
     windows: { webview_install_mode: "embed_bootstrapper" },
     plugins: [],
   }, resolve(cwd, "app/orbit-example.exe"), true);
-  assert.equal(descriptor.format, 2);
+  assert.equal(descriptor.format, 3);
+  assert.deepEqual(descriptor.compatibility, compatibilityProfile);
   assert.equal(descriptor.configuration.fingerprint, "f00d");
   assert.equal(descriptor.executable, "bin/orbit-example.exe");
   assert.equal(descriptor.executableDiscovered, true);
@@ -218,17 +221,39 @@ test("package metadata stays in orbit-build and the package descriptor records c
   assert.equal(descriptor.target.arch, process.arch);
 });
 
-test("package integrity rejects modified and undeclared payload files", (context) => {
+test("package verification enforces compatibility before integrity", (context) => {
   const packageDirectory = mkdtempSync(join(tmpdir(), "orbit-package-"));
   context.after(() => rmSync(packageDirectory, { recursive: true, force: true }));
   mkdirSync(join(packageDirectory, "bin"));
   writeFileSync(join(packageDirectory, "bin", "app.exe"), "original");
-  writeFileSync(join(packageDirectory, "orbit-package.json"), `${JSON.stringify({
-    format: 2,
+  const manifest = {
+    format: 3,
+    compatibility: { ...compatibilityProfile },
+    target: { platform: process.platform, arch: process.arch },
+    configuration: { schemaVersion: 2, fingerprint: "f00d" },
+    executable: "bin/app.exe",
+    plugins: null,
+    pluginDeclarations: [],
     application: { identifier: "dev.orbit.example" },
-    integrity: packageIntegrity(packageDirectory),
-  })}\n`);
-  assert.equal(verifyPackage(packageDirectory).format, 2);
+  };
+  const writeManifest = () => {
+    manifest.integrity = packageIntegrity(packageDirectory);
+    writeFileSync(join(packageDirectory, "orbit-package.json"), `${JSON.stringify(manifest)}\n`);
+  };
+  writeManifest();
+  assert.equal(verifyPackage(packageDirectory).format, 3);
+
+  manifest.compatibility.moonview = "0.0.0";
+  writeManifest();
+  assert.throws(() => verifyPackage(packageDirectory), /incompatible: moonview/);
+  manifest.compatibility.moonview = compatibilityProfile.moonview;
+  writeManifest();
+
+  manifest.executable = "orbit-package.json";
+  writeManifest();
+  assert.throws(() => verifyPackage(packageDirectory), /incomplete or incompatible/);
+  manifest.executable = "bin/app.exe";
+  writeManifest();
 
   writeFileSync(join(packageDirectory, "bin", "app.exe"), "modified");
   assert.throws(() => verifyPackage(packageDirectory), /integrity verification failed/);
@@ -236,6 +261,44 @@ test("package integrity rejects modified and undeclared payload files", (context
   writeFileSync(join(packageDirectory, "bin", "app.exe"), "original");
   writeFileSync(join(packageDirectory, "unexpected.txt"), "unexpected");
   assert.throws(() => verifyPackage(packageDirectory), /integrity verification failed/);
+});
+
+test("package verification rejects incompatible plugin sidecars", (context) => {
+  const packageDirectory = mkdtempSync(join(tmpdir(), "orbit-plugin-package-"));
+  context.after(() => rmSync(packageDirectory, { recursive: true, force: true }));
+  mkdirSync(join(packageDirectory, "bin"));
+  mkdirSync(join(packageDirectory, "plugins"));
+  writeFileSync(join(packageDirectory, "bin", "app.exe"), "application");
+  writeFileSync(join(packageDirectory, "plugins", "demo.dll"), "plugin");
+  const platform = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux";
+  const sidecar = {
+    schema_version: 2,
+    abi_version: 1,
+    id: "demo.echo",
+    platforms: [platform],
+  };
+  const sidecarPath = join(packageDirectory, "plugins", "demo.json");
+  const manifest = {
+    format: 3,
+    compatibility: { ...compatibilityProfile },
+    target: { platform: process.platform, arch: process.arch },
+    configuration: { schemaVersion: 2, fingerprint: "f00d" },
+    executable: "bin/app.exe",
+    plugins: "plugins",
+    pluginDeclarations: [{ id: "demo.echo", library: "plugins/demo.dll", manifest: "plugins/demo.json" }],
+  };
+  const writeManifest = () => {
+    manifest.integrity = packageIntegrity(packageDirectory);
+    writeFileSync(join(packageDirectory, "orbit-package.json"), `${JSON.stringify(manifest)}\n`);
+  };
+  writeFileSync(sidecarPath, `${JSON.stringify(sidecar)}\n`);
+  writeManifest();
+  assert.equal(verifyPackage(packageDirectory).plugins, "plugins");
+
+  sidecar.abi_version = 2;
+  writeFileSync(sidecarPath, `${JSON.stringify(sidecar)}\n`);
+  writeManifest();
+  assert.throws(() => verifyPackage(packageDirectory), /plugin sidecar is incompatible/);
 });
 
 test("installer requires explicit signing policy and creates a current-user NSIS script", () => {
@@ -321,10 +384,8 @@ test("installer metadata verifies its artifact and signing commands require all 
   const installer = join(directory, "dev.orbit.example-0.1.0-setup.exe");
   writeFileSync(installer, "installer bytes");
   const packageManifest = {
-    format: 2,
-    orbit: "0.1.0-alpha.1",
-    moonview: "0.1.0-beta.3",
-    pluginAbi: 1,
+    format: 3,
+    compatibility: { ...compatibilityProfile },
     target: { platform: "win32", arch: "x64" },
     configuration: { schemaVersion: 2, fingerprint: "f00d" },
     windows: { webview_install_mode: "skip" },

@@ -36,3 +36,33 @@ test "sidecar manifests require v2 descriptors and JSON Schema objects" {
   )
   assert_true(invalid is Err(_))
 }
+
+///|
+test "runtime rejects manually constructed incompatible sidecars before loading" {
+  let runtime = PluginRuntime::new()
+  let sidecar = PluginSidecarManifest::{
+    schema_version: 2,
+    abi_version: 2,
+    id: "demo.incompatible",
+    name: "Demo",
+    version: "1",
+    platforms: ["windows"],
+    requested_permissions: [],
+    commands: [
+      {
+        name: "echo",
+        request_schema: Json::empty_object(),
+        response_schema: Json::empty_object(),
+      },
+    ],
+  }
+  let declaration = PluginDeclaration::new(
+    id="demo.incompatible",
+    library="missing.dll",
+    sidecar~,
+  )
+  match runtime.start([declaration]) {
+    Err(IncompatibleSidecar(id)) => inspect(id, content="demo.incompatible")
+    _ => fail("expected incompatible sidecar rejection")
+  }
+}

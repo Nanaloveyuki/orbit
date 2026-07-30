@@ -79,6 +79,7 @@ pub fn PluginRuntime::start(Self, Array[PluginDeclaration], development_director
 
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
+  IncompatibleSidecar(String)
   IdentityMismatch(String, String)
   SidecarMismatch(String)
   MissingPermission(String, String)

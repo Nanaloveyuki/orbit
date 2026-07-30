@@ -13,6 +13,35 @@ const webviewInstallModes = new Set([
   "skip",
 ]);
 
+export const compatibilityProfile = Object.freeze({
+  orbit: "0.1.0-alpha.1",
+  orby: "0.1.0-beta.1",
+  moonview: "0.1.0-beta.3",
+  plugin_abi: 1,
+  plugin_sidecar_schema: 2,
+  configuration_schema: 2,
+});
+
+const compatibilityKeys = Object.keys(compatibilityProfile);
+
+function verifyCompatibilityProfile(profile, subject) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    throw new Error(`${subject} does not contain a compatibility profile`);
+  }
+  for (const key of compatibilityKeys) {
+    if (profile[key] !== compatibilityProfile[key]) {
+      throw new Error(`${subject} is incompatible: ${key}`);
+    }
+  }
+}
+
+function packagePlatformName(platform) {
+  if (platform === "win32") return "windows";
+  if (platform === "darwin") return "macos";
+  if (platform === "linux") return "linux";
+  throw new Error(`unsupported package platform: ${platform}`);
+}
+
 export function usage() {
   return [
     "Usage: orbit <generate|bindings|build|run|diagnose|package|verify-package|installer|verify-installer|migrate-config|icon> [options]",
@@ -376,6 +405,7 @@ function loadPackageMetadata(invocation) {
   ) {
     throw new Error("orbit-build returned incomplete package metadata");
   }
+  verifyCompatibilityProfile(metadata.compatibility, "orbit-build package metadata");
   return metadata;
 }
 
@@ -486,10 +516,8 @@ export function discoverPackageBinary(invocation) {
 
 export function packageDescriptor(metadata, binary, discovered) {
   return {
-    format: 2,
-    orbit: "0.1.0-alpha.1",
-    moonview: "0.1.0-beta.3",
-    pluginAbi: 1,
+    format: 3,
+    compatibility: metadata.compatibility,
     target: {
       platform: process.platform,
       arch: process.arch,
@@ -569,11 +597,29 @@ export function verifyPackage(packageDirectory) {
     throw new Error("package manifest is not valid JSON");
   }
   if (
-    manifest?.format !== 2 ||
+    manifest?.format !== 3 ||
     manifest?.integrity?.algorithm !== "sha256" ||
     !Array.isArray(manifest.integrity.files)
   ) {
-    throw new Error("package manifest does not contain format-2 integrity data");
+    throw new Error("package manifest does not contain format-3 integrity data");
+  }
+  verifyCompatibilityProfile(manifest.compatibility, "package manifest");
+  if (
+    !manifest.target ||
+    typeof manifest.target.platform !== "string" ||
+    typeof manifest.target.arch !== "string" ||
+    !manifest.configuration ||
+    manifest.configuration.schemaVersion !== compatibilityProfile.configuration_schema ||
+    typeof manifest.configuration.fingerprint !== "string" ||
+    manifest.configuration.fingerprint.length === 0 ||
+    typeof manifest.executable !== "string" ||
+    !manifest.executable.startsWith("bin/")
+  ) {
+    throw new Error("package manifest is incomplete or incompatible");
+  }
+  const executable = packageFilePath(packageDirectory, manifest.executable);
+  if (!existsSync(executable) || !statSync(executable).isFile()) {
+    throw new Error("package executable is missing");
   }
   const expected = manifest.integrity.files;
   const seen = new Set();
@@ -594,9 +640,47 @@ export function verifyPackage(packageDirectory) {
       throw new Error(`package file is missing: ${entry.path}`);
     }
   }
+  if (!seen.has(manifest.executable)) {
+    throw new Error("package executable is not covered by integrity data");
+  }
   const actual = packageIntegrity(packageDirectory);
   if (JSON.stringify(actual.files) !== JSON.stringify(expected)) {
     throw new Error("package integrity verification failed");
+  }
+  const declarations = manifest.pluginDeclarations;
+  if (!Array.isArray(declarations) ||
+    (declarations.length === 0 && manifest.plugins !== null) ||
+    (declarations.length > 0 && manifest.plugins !== "plugins")) {
+    throw new Error("package plugin declarations are incomplete or incompatible");
+  }
+  const pluginIds = new Set();
+  const platform = packagePlatformName(manifest.target.platform);
+  for (const declaration of declarations) {
+    if (!declaration ||
+      typeof declaration.id !== "string" || declaration.id.length === 0 ||
+      typeof declaration.library !== "string" || !declaration.library.startsWith("plugins/") ||
+      typeof declaration.manifest !== "string" || !declaration.manifest.startsWith("plugins/") ||
+      pluginIds.has(declaration.id)) {
+      throw new Error("package plugin declaration is invalid");
+    }
+    pluginIds.add(declaration.id);
+    const library = packageFilePath(packageDirectory, declaration.library);
+    const sidecarPath = packageFilePath(packageDirectory, declaration.manifest);
+    if (!existsSync(library) || !statSync(library).isFile() || !existsSync(sidecarPath) || !statSync(sidecarPath).isFile()) {
+      throw new Error(`package plugin payload is missing: ${declaration.id}`);
+    }
+    let sidecar;
+    try {
+      sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
+    } catch {
+      throw new Error(`package plugin sidecar is not valid JSON: ${declaration.id}`);
+    }
+    if (sidecar?.schema_version !== compatibilityProfile.plugin_sidecar_schema ||
+      sidecar?.abi_version !== compatibilityProfile.plugin_abi ||
+      sidecar?.id !== declaration.id ||
+      !Array.isArray(sidecar?.platforms) || !sidecar.platforms.includes(platform)) {
+      throw new Error(`package plugin sidecar is incompatible: ${declaration.id}`);
+    }
   }
   return manifest;
 }
@@ -768,15 +852,13 @@ function webview2NsisLines(mode, installer, downloadUrl) {
 export function installerDescriptor(packageManifest, installer, signed) {
   const size = statSync(installer).size;
   return {
-    format: 1,
+    format: 2,
     installer: "nsis",
     signed,
     application: packageManifest.application,
     package: {
       format: packageManifest.format,
-      orbit: packageManifest.orbit,
-      moonview: packageManifest.moonview,
-      pluginAbi: packageManifest.pluginAbi,
+      compatibility: packageManifest.compatibility,
       target: packageManifest.target,
       configuration: packageManifest.configuration,
       windows: {
@@ -806,12 +888,12 @@ export function verifyInstaller(installer, metadataPath = installerMetadataPath(
     throw new Error("installer metadata is not valid JSON");
   }
   if (
-    metadata?.format !== 1 ||
+    metadata?.format !== 2 ||
     metadata?.installer !== "nsis" ||
     typeof metadata.signed !== "boolean" ||
     !metadata.application ||
     typeof metadata.application.identifier !== "string" ||
-    metadata?.package?.format !== 2 ||
+    metadata?.package?.format !== 3 ||
     metadata.package?.target?.platform !== "win32" ||
     typeof metadata.package?.target?.arch !== "string" ||
     metadata.package?.configuration?.schemaVersion !== 2 ||
@@ -824,6 +906,7 @@ export function verifyInstaller(installer, metadataPath = installerMetadataPath(
   ) {
     throw new Error("installer metadata is incomplete or incompatible");
   }
+  verifyCompatibilityProfile(metadata.package.compatibility, "installer package metadata");
   if (metadata.artifact.size !== statSync(installer).size || metadata.artifact.sha256 !== sha256File(installer)) {
     throw new Error("installer integrity verification failed");
   }
