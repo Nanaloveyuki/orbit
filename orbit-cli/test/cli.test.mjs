@@ -4,11 +4,16 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import {
+  createNsisScript,
+  expandSigningCommand,
+  installerDescriptor,
+  installerMetadataPath,
   moonCommands,
   packageDescriptor,
   packageMetadataCommand,
   packageIntegrity,
   parseInvocation,
+  verifyInstaller,
   verifyPackage,
   viteWorkflowCommand,
 } from "../src/cli.mjs";
@@ -228,4 +233,80 @@ test("package integrity rejects modified and undeclared payload files", (context
   writeFileSync(join(packageDirectory, "bin", "app.exe"), "original");
   writeFileSync(join(packageDirectory, "unexpected.txt"), "unexpected");
   assert.throws(() => verifyPackage(packageDirectory), /integrity verification failed/);
+});
+
+test("installer requires explicit signing policy and creates a current-user NSIS script", () => {
+  const cwd = resolve("workspace");
+  assert.throws(
+    () => parseInvocation([
+      "installer",
+      "--package-dir",
+      "package",
+      "--webview2-bootstrapper",
+      "webview2.exe",
+    ], cwd),
+    /requires --sign-command <command> or --allow-unsigned/,
+  );
+  const invocation = parseInvocation([
+    "installer",
+    "--package-dir",
+    "package",
+    "--webview2-bootstrapper",
+    "webview2.exe",
+    "--allow-unsigned",
+  ], cwd);
+  assert.equal(invocation.allowUnsigned, true);
+  const script = createNsisScript({
+    installer: resolve(cwd, "dist/dev.orbit.example-0.1.0-setup.exe"),
+    packageDirectory: resolve(cwd, "package"),
+    bootstrapper: resolve(cwd, "webview2.exe"),
+    application: {
+      identifier: "dev.orbit.example",
+      name: "Orbit Example",
+      version: "0.1.0",
+      product_name: null,
+    },
+  });
+  assert.match(script, /RequestExecutionLevel user/);
+  assert.match(script, /\$LOCALAPPDATA\\dev\.orbit\.example/);
+  assert.match(script, /webview2-bootstrapper\.exe" \/silent \/install/);
+  assert.match(script, /File \/r/);
+  assert.match(script, /WriteUninstaller/);
+  assert.match(script, /DeleteRegKey HKCU/);
+});
+
+test("installer metadata verifies its artifact and signing commands require all paths", (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-installer-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const installer = join(directory, "dev.orbit.example-0.1.0-setup.exe");
+  writeFileSync(installer, "installer bytes");
+  const packageManifest = {
+    format: 2,
+    orbit: "0.1.0-alpha.1",
+    moonview: "0.1.0-beta.3",
+    pluginAbi: 1,
+    target: { platform: "win32", arch: "x64" },
+    configuration: { schemaVersion: 2, fingerprint: "f00d" },
+    application: { identifier: "dev.orbit.example", name: "Orbit Example", version: "0.1.0" },
+    integrity: { algorithm: "sha256" },
+  };
+  writeFileSync(installerMetadataPath(installer), `${JSON.stringify(
+    installerDescriptor(packageManifest, installer, false),
+  )}\n`);
+  assert.equal(verifyInstaller(installer).signed, false);
+  assert.match(
+    expandSigningCommand("sign {installer} {package_dir} {package_manifest}", {
+      installer,
+      packageDirectory: directory,
+      packageManifest: join(directory, "orbit-package.json"),
+    }),
+    /sign/,
+  );
+  assert.throws(
+    () => expandSigningCommand("sign {installer}", { installer, packageDirectory: directory, packageManifest: "manifest" }),
+    /must include \{package_dir\}/,
+  );
+
+  writeFileSync(installer, "modified installer bytes");
+  assert.throws(() => verifyInstaller(installer), /installer integrity verification failed/);
 });
