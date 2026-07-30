@@ -39,8 +39,14 @@ pub struct EventRouter {
 }
 pub fn EventRouter::new() -> Self
 pub fn EventRouter::subscribe(Self, EventTarget, (EventEnvelope) -> Result[Unit, EventDeliveryFailure]) -> Result[Unit, EventDeliveryFailure]
+pub fn EventRouter::subscribe_additional(Self, EventTarget, (EventEnvelope) -> Result[Unit, EventDeliveryFailure]) -> EventSubscription
 pub fn EventRouter::unsubscribe(Self, EventTarget) -> Unit
+pub fn EventRouter::unsubscribe_additional(Self, EventSubscription) -> Unit
 pub impl EventSink for EventRouter
+
+pub struct EventSubscription {
+  // private fields
+}
 
 pub(all) enum EventTarget {
   Any

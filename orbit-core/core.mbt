@@ -150,6 +150,59 @@ struct DesktopApp {
 priv struct MountedWindow {
   window : @orby.Window
   runtime : &@runtime.WebViewRuntime
+  page_event_subscription : @event.EventSubscription?
+}
+
+///|
+fn deliver_page_event(
+  runtime : &@runtime.WebViewRuntime,
+  event : @event.EventEnvelope,
+) -> Result[Unit, @event.EventDeliveryFailure] {
+  match @ipc_moonview.encode_page_event(event) {
+    Err(error) => Err(error)
+    Ok(message) => {
+      runtime.post_message(message) catch {
+        error =>
+          return Err(
+            @event.EventDeliveryFailure::new(
+              code="page_event_delivery_failed",
+              message=runtime_reason(error),
+            ),
+          )
+      }
+      Ok(())
+    }
+  }
+}
+
+///|
+fn subscribe_page_events(
+  router : @event.EventRouter?,
+  label : String,
+  principal : DesktopIpcPrincipal,
+  runtime : &@runtime.WebViewRuntime,
+) -> @event.EventSubscription? {
+  match (router, principal) {
+    (Some(router), Window) =>
+      Some(
+        router.subscribe_additional(Window(label), event => {
+          deliver_page_event(runtime, event)
+        }),
+      )
+    _ => None
+  }
+}
+
+///|
+fn DesktopApp::unsubscribe_page_events(
+  self : DesktopApp,
+  mounted : MountedWindow,
+) -> Unit {
+  match (self.options.event_router, mounted.page_event_subscription) {
+    (Some(router), Some(subscription)) =>
+      router.unsubscribe_additional(subscription)
+    _ => ()
+  }
 }
 
 ///|
@@ -158,6 +211,9 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     return
   }
   self.shutting_down = true
+  for mounted in self.windows {
+    self.unsubscribe_page_events(mounted)
+  }
   self.plugins.shutdown()
   for mounted in self.windows {
     mounted.runtime.set_message_handler(None) catch {
@@ -194,9 +250,8 @@ fn DesktopApp::dispatch_ipc_message(
         Window => @ipc_moonview.PagePrincipal::window()
         RemotePage => @ipc_moonview.PagePrincipal::remote_page()
       }
-      let response = match @ipc_moonview.dispatch(
-        registry, policy, label, principal, page_message,
-      ) {
+      let response = match
+        @ipc_moonview.dispatch(registry, policy, label, principal, page_message) {
         Some(response) => response
         None => return
       }
@@ -293,14 +348,22 @@ fn DesktopApp::mount_window(
     }
     _ => raise StartupFailed("runtime host creation failed")
   }
-  let runtime_options = match self.options.ipc_registry {
-    Some(_) =>
+  let page_events_enabled = self.options.event_router is Some(_) &&
+    options.ipc_principal == Window
+  let runtime_options = match (self.options.ipc_registry, page_events_enabled) {
+    (Some(_), _) =>
       options.runtime_options.with_initialization_script(
         @ipc_moonview.initialization_script(
           options.runtime_options.initialization_script,
         ),
       )
-    None => options.runtime_options
+    (None, true) =>
+      options.runtime_options.with_initialization_script(
+        @ipc_moonview.event_initialization_script(
+          options.runtime_options.initialization_script,
+        ),
+      )
+    (None, false) => options.runtime_options
   }
   let supplied_lifecycle_handler = runtime_options.lifecycle_handler()
   let runtime_options = runtime_options.with_lifecycle_handler(event => {
@@ -335,7 +398,13 @@ fn DesktopApp::mount_window(
       }
     None => ()
   }
-  { window, runtime }
+  let page_event_subscription = subscribe_page_events(
+    self.options.event_router,
+    options.runtime_options.label(),
+    options.ipc_principal,
+    runtime,
+  )
+  { window, runtime, page_event_subscription }
 }
 
 ///|
@@ -433,6 +502,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         }
       }
     CloseRequested => {
+      self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
       }
@@ -442,6 +512,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
       mounted.window.destroy()
     }
     Destroyed => {
+      self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
       }

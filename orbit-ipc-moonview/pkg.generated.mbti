@@ -2,6 +2,7 @@
 package "Nanaloveyuki/orbit/orbit-ipc-moonview"
 
 import {
+  "Nanaloveyuki/orbit/orbit-event",
   "Nanaloveyuki/orbit/orbit-ipc",
   "Nanaloveyuki/orbit/orbit-runtime",
   "moonbitlang/core/debug",
@@ -9,6 +10,10 @@ import {
 
 // Values
 pub fn dispatch(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, String, PagePrincipal, @orbit-runtime.RuntimePageMessage) -> String?
+
+pub fn encode_page_event(@orbit-event.EventEnvelope) -> Result[String, @orbit-event.EventDeliveryFailure]
+
+pub fn event_initialization_script(String) -> String
 
 pub fn initialization_script(String) -> String
 
