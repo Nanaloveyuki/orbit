@@ -153,6 +153,8 @@ node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
 node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --out-dir dist
 node orbit-cli/bin/orbit verify-package --package-dir dist
+node orbit-cli/bin/orbit installer --package-dir dist --webview2-bootstrapper path/to/MicrosoftEdgeWebview2Setup.exe --sign-command "sign-tool {installer} {package_dir} {package_manifest}"
+node orbit-cli/bin/orbit verify-installer --installer dist/dev.orbit.example-0.1.0-setup.exe
 ```
 
 `orbit-cli` is the npm-published boundary: its package contains only the Node
@@ -166,6 +168,14 @@ generated Web assets remain embedded in the executable. The same manifest
 contains a deterministic SHA-256 inventory of every packaged payload file;
 `orbit verify-package` rejects missing, modified and undeclared files before
 an installer or updater consumes the directory.
+
+`orbit installer` produces a Windows NSIS installer for the current user. It
+requires `makensis` on `PATH` (or `--makensis`) and embeds an explicit local
+Evergreen WebView2 bootstrapper. Production invocations must supply a
+`--sign-command`; it receives quoted `{installer}`, `{package_dir}` and
+`{package_manifest}` paths. `--allow-unsigned` is an explicit local-development
+opt-out. The installer rejects `--runtime-dir` payloads because MoonView uses
+the system Evergreen runtime rather than a fixed copied runtime.
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`

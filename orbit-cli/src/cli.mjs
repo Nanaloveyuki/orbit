@@ -1,14 +1,15 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "migrate-config", "icon"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "migrate-config", "icon"]);
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|diagnose|package|verify-package|migrate-config|icon> [options]",
+    "Usage: orbit <generate|bindings|build|run|diagnose|package|verify-package|installer|verify-installer|migrate-config|icon> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
@@ -23,6 +24,12 @@ export function usage() {
     "  --out-dir <path>      Package output directory (default: dist)",
     "  --runtime-dir <path>  Optional WebView runtime files copied by package",
     "  --package-dir <path>  Package directory verified by verify-package",
+    "  --webview2-bootstrapper <path>  Local Evergreen WebView2 bootstrapper for installer",
+    "  --makensis <command>  NSIS compiler (default: makensis)",
+    "  --sign-command <command>  External installer signing command",
+    "  --allow-unsigned       Permit an unsigned installer",
+    "  --installer <path>    Installer verified by verify-installer",
+    "  --installer-metadata <path>  Installer metadata path (default: adjacent file)",
     "  --source <path>       Required 1024x1024 PNG source for icon generation",
     "  --compression <level> PNG compression level for icon generation (0-9, default: 6)",
     "  --dev-timeout <ms>    Vite readiness timeout (default: 30000)",
@@ -77,6 +84,12 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "out-dir",
       "runtime-dir",
       "package-dir",
+      "webview2-bootstrapper",
+      "makensis",
+      "sign-command",
+      "allow-unsigned",
+      "installer",
+      "installer-metadata",
       "source",
       "compression",
       "dev-timeout",
@@ -84,7 +97,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     ].includes(key)) {
       throw new Error(`unknown option: ${argument}`);
     }
-    if (key === "json") {
+    if (["json", "allow-unsigned"].includes(key)) {
       values[key] = true;
     } else {
       values[key] = optionValue(argv, index, argument);
@@ -110,6 +123,20 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "verify-package" && !values["package-dir"]) {
     throw new Error("verify-package requires --package-dir <path>");
   }
+  if (command === "installer") {
+    if (!values["package-dir"]) {
+      throw new Error("installer requires --package-dir <path>");
+    }
+    if (!values["webview2-bootstrapper"]) {
+      throw new Error("installer requires --webview2-bootstrapper <path>");
+    }
+    if (!values["sign-command"] && !values["allow-unsigned"]) {
+      throw new Error("installer requires --sign-command <command> or --allow-unsigned");
+    }
+  }
+  if (command === "verify-installer" && !values.installer) {
+    throw new Error("verify-installer requires --installer <path>");
+  }
   const compression = Number(values.compression ?? "6");
   if (!Number.isInteger(compression) || compression < 0 || compression > 9) {
     throw new Error("--compression must be an integer between 0 and 9");
@@ -133,6 +160,16 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     compression,
     runtimeDir: values["runtime-dir"] ? resolve(workspace, values["runtime-dir"]) : undefined,
     packageDir: values["package-dir"] ? resolve(workspace, values["package-dir"]) : undefined,
+    webview2Bootstrapper: values["webview2-bootstrapper"]
+      ? resolve(workspace, values["webview2-bootstrapper"])
+      : undefined,
+    makensis: resolveExecutable(workspace, values.makensis, "makensis"),
+    signCommand: values["sign-command"],
+    allowUnsigned: values["allow-unsigned"] ?? false,
+    installer: values.installer ? resolve(workspace, values.installer) : undefined,
+    installerMetadata: values["installer-metadata"]
+      ? resolve(workspace, values["installer-metadata"])
+      : undefined,
     devTimeout,
     json: values.json ?? false,
   };
@@ -614,6 +651,227 @@ function packageApplication(invocation, metadata) {
   }, null, 2)}\n`);
 }
 
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function nsisQuoted(value) {
+  if (value.includes("\r") || value.includes("\n") || value.includes("\0")) {
+    throw new Error("NSIS values must not contain line breaks or null bytes");
+  }
+  return `"${value.replaceAll("$", "$$").replaceAll('"', "$\\\"")}"`;
+}
+
+function shellQuoted(value) {
+  if (process.platform === "win32") {
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function installerMetadataPath(installer) {
+  return `${installer}.orbit-installer.json`;
+}
+
+export function expandSigningCommand(command, values) {
+  for (const placeholder of ["installer", "package_dir", "package_manifest"]) {
+    if (!command.includes(`{${placeholder}}`)) {
+      throw new Error(`sign-command must include {${placeholder}}`);
+    }
+  }
+  return command
+    .replaceAll("{installer}", shellQuoted(values.installer))
+    .replaceAll("{package_dir}", shellQuoted(values.packageDirectory))
+    .replaceAll("{package_manifest}", shellQuoted(values.packageManifest));
+}
+
+export function createNsisScript({
+  installer,
+  packageDirectory,
+  bootstrapper,
+  application,
+}) {
+  const installDirectory = `$LOCALAPPDATA\\${application.identifier}`;
+  const uninstallKey = `Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${application.identifier}`;
+  return [
+    "Unicode True",
+    "RequestExecutionLevel user",
+    `Name ${nsisQuoted(application.product_name ?? application.name)}`,
+    `OutFile ${nsisQuoted(installer)}`,
+    `InstallDir "${installDirectory}"`,
+    "ShowInstDetails show",
+    "",
+    'Section "Install"',
+    "  InitPluginsDir",
+    '  SetOutPath "$PLUGINSDIR"',
+    `  File /oname=webview2-bootstrapper.exe ${nsisQuoted(bootstrapper)}`,
+    '  ExecWait \'"$PLUGINSDIR\\webview2-bootstrapper.exe" /silent /install\' $0',
+    "  StrCmp $0 0 +3",
+    "  StrCmp $0 3010 +2",
+    '  Abort "Evergreen WebView2 Runtime installation failed."',
+    '  SetOutPath "$INSTDIR"',
+    `  File /r ${nsisQuoted(join(packageDirectory, "*"))}`,
+    '  WriteUninstaller "$INSTDIR\\Uninstall.exe"',
+    `  WriteRegStr HKCU ${nsisQuoted(uninstallKey)} "DisplayName" ${nsisQuoted(application.product_name ?? application.name)}`,
+    `  WriteRegStr HKCU ${nsisQuoted(uninstallKey)} "DisplayVersion" ${nsisQuoted(application.version)}`,
+    `  WriteRegStr HKCU ${nsisQuoted(uninstallKey)} "UninstallString" '"$INSTDIR\\Uninstall.exe"'`,
+    'SectionEnd',
+    "",
+    'Section "Uninstall"',
+    `  DeleteRegKey HKCU ${nsisQuoted(uninstallKey)}`,
+    '  RMDir /r "$INSTDIR"',
+    'SectionEnd',
+    "",
+  ].join("\r\n");
+}
+
+export function installerDescriptor(packageManifest, installer, signed) {
+  const size = statSync(installer).size;
+  return {
+    format: 1,
+    installer: "nsis",
+    signed,
+    application: packageManifest.application,
+    package: {
+      format: packageManifest.format,
+      orbit: packageManifest.orbit,
+      moonview: packageManifest.moonview,
+      pluginAbi: packageManifest.pluginAbi,
+      target: packageManifest.target,
+      configuration: packageManifest.configuration,
+      integrityAlgorithm: packageManifest.integrity.algorithm,
+    },
+    artifact: {
+      file: basename(installer),
+      size,
+      sha256: sha256File(installer),
+    },
+  };
+}
+
+export function verifyInstaller(installer, metadataPath = installerMetadataPath(installer)) {
+  if (!existsSync(installer) || !statSync(installer).isFile()) {
+    throw new Error(`installer does not exist: ${installer}`);
+  }
+  if (!existsSync(metadataPath)) {
+    throw new Error(`installer metadata does not exist: ${metadataPath}`);
+  }
+  let metadata;
+  try {
+    metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+  } catch {
+    throw new Error("installer metadata is not valid JSON");
+  }
+  if (
+    metadata?.format !== 1 ||
+    metadata?.installer !== "nsis" ||
+    typeof metadata.signed !== "boolean" ||
+    !metadata.application ||
+    typeof metadata.application.identifier !== "string" ||
+    metadata?.package?.format !== 2 ||
+    metadata.package?.target?.platform !== "win32" ||
+    typeof metadata.package?.target?.arch !== "string" ||
+    metadata.package?.configuration?.schemaVersion !== 2 ||
+    typeof metadata.package?.configuration?.fingerprint !== "string" ||
+    metadata.package?.integrityAlgorithm !== "sha256" ||
+    metadata?.artifact?.file !== basename(installer) ||
+    !Number.isInteger(metadata.artifact?.size) ||
+    !/^[a-f0-9]{64}$/.test(metadata.artifact?.sha256)
+  ) {
+    throw new Error("installer metadata is incomplete or incompatible");
+  }
+  if (metadata.artifact.size !== statSync(installer).size || metadata.artifact.sha256 !== sha256File(installer)) {
+    throw new Error("installer integrity verification failed");
+  }
+  return metadata;
+}
+
+function runSigningCommand(invocation, installer, packageDirectory) {
+  if (!invocation.signCommand) {
+    return false;
+  }
+  const command = expandSigningCommand(invocation.signCommand, {
+    installer,
+    packageDirectory,
+    packageManifest: resolve(packageDirectory, "orbit-package.json"),
+  });
+  const result = spawnSync(command, {
+    cwd: packageDirectory,
+    shell: true,
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw new Error(`failed to start sign-command: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(`sign-command failed with exit code ${result.status ?? 1}`);
+  }
+  return true;
+}
+
+function buildWindowsInstaller(invocation) {
+  if (process.platform !== "win32") {
+    throw new Error("NSIS installer generation is available only on Windows");
+  }
+  const packageManifest = verifyPackage(invocation.packageDir);
+  if (packageManifest.target?.platform !== "win32") {
+    throw new Error("installer requires a Windows package artifact");
+  }
+  if (
+    !/^[A-Za-z0-9._-]+$/.test(packageManifest.application?.identifier ?? "") ||
+    typeof packageManifest.application?.name !== "string" ||
+    packageManifest.application.name.trim().length === 0 ||
+    typeof packageManifest.application?.version !== "string" ||
+    packageManifest.application.version.trim().length === 0
+  ) {
+    throw new Error("installer package manifest has invalid application metadata");
+  }
+  if (packageManifest.runtime !== null) {
+    throw new Error("installer does not support --runtime-dir because MoonView uses Evergreen WebView2");
+  }
+  if (!existsSync(invocation.webview2Bootstrapper) || !statSync(invocation.webview2Bootstrapper).isFile()) {
+    throw new Error(`WebView2 bootstrapper does not exist: ${invocation.webview2Bootstrapper}`);
+  }
+  mkdirSync(invocation.outDir, { recursive: true });
+  const installer = resolve(
+    invocation.outDir,
+    `${packageManifest.application.identifier}-${packageManifest.application.version}-setup.exe`,
+  );
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), "orbit-nsis-"));
+  const scriptPath = resolve(temporaryDirectory, "installer.nsi");
+  try {
+    writeFileSync(scriptPath, createNsisScript({
+      installer,
+      packageDirectory: invocation.packageDir,
+      bootstrapper: invocation.webview2Bootstrapper,
+      application: packageManifest.application,
+    }));
+    const result = spawnSync(invocation.makensis, [scriptPath], {
+      cwd: invocation.workspace,
+      stdio: "inherit",
+    });
+    if (result.error) {
+      throw new Error(`failed to start NSIS compiler ${invocation.makensis}: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+      throw new Error(`NSIS compiler failed with exit code ${result.status ?? 1}`);
+    }
+    if (!existsSync(installer) || !statSync(installer).isFile()) {
+      throw new Error("NSIS compiler did not produce the expected installer");
+    }
+    const signed = runSigningCommand(invocation, installer, invocation.packageDir);
+    const metadataPath = installerMetadataPath(installer);
+    writeFileSync(metadataPath, `${JSON.stringify(
+      installerDescriptor(packageManifest, installer, signed),
+      null,
+      2,
+    )}\n`);
+    return { installer, metadataPath };
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 export function main(argv, environment = { cwd: process.cwd(), stdout: process.stdout }) {
   let invocation;
   try {
@@ -638,6 +896,40 @@ export function main(argv, environment = { cwd: process.cwd(), stdout: process.s
     } catch (error) {
       if (invocation.json) {
         environment.stdout.write(`${JSON.stringify({ code: "package_verification_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
+  if (invocation.command === "verify-installer") {
+    try {
+      const metadata = verifyInstaller(invocation.installer, invocation.installerMetadata);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, application: metadata.application.identifier })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "installer_verification_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
+  if (invocation.command === "installer") {
+    try {
+      const result = buildWindowsInstaller(invocation);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, installer: result.installer })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "installer_failed", message: error.message })}\n`);
       } else {
         environment.stdout.write(`orbit: ${error.message}\n`);
       }
