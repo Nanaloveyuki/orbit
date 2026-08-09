@@ -18,7 +18,7 @@ import {
   "gmlewis/sha256@0.17.32",
   "Nanaloveyuki/ajni@0.2.2",
   "Nanaloveyuki/parsec@0.1.3",
-  "Nanaloveyuki/moonview@0.1.0-beta.4",
+  "Nanaloveyuki/moonview@0.1.0-beta.5",
   "Nanaloveyuki/sync@0.7.1",
   "Nanaloveyuki/orby@0.1.0-beta.3",
   "moonbitlang/async@0.20.4",
