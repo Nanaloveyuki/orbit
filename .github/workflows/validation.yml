@@ -73,7 +73,7 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
-      - run: bash orbit-plugin-fixtures/run-integration.sh
+      - run: xvfb-run -a bash orbit-plugin-fixtures/run-integration.sh
 
   linux-deb:
     runs-on: ubuntu-24.04
