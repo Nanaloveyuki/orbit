@@ -31,6 +31,10 @@ test "sidecar manifests require v2 descriptors and JSON Schema objects" {
     "{\"schema_version\":2,\"abi_version\":1,\"id\":\"demo.echo\",\"name\":\"Demo\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[],\"commands\":[{\"name\":\"echo\",\"request_schema\":{},\"response_schema\":{}}]}",
   )
   assert_true(valid is Ok(_))
+  let valid_v2 = parse_sidecar_manifest(
+    "{\"schema_version\":2,\"abi_version\":2,\"id\":\"demo.echo\",\"name\":\"Demo\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[],\"commands\":[{\"name\":\"echo\",\"request_schema\":{},\"response_schema\":{}}]}",
+  )
+  assert_true(valid_v2 is Ok(_))
   let invalid = parse_sidecar_manifest(
     "{\"schema_version\":1,\"abi_version\":1,\"id\":\"demo.echo\",\"name\":\"Demo\",\"version\":\"1\",\"platforms\":[\"windows\"],\"requested_permissions\":[],\"commands\":[{\"name\":\"echo\",\"request_schema\":[],\"response_schema\":{}}]}",
   )
@@ -42,7 +46,7 @@ test "runtime rejects manually constructed incompatible sidecars before loading"
   let runtime = PluginRuntime::new()
   let sidecar = PluginSidecarManifest::{
     schema_version: 2,
-    abi_version: 2,
+    abi_version: 3,
     id: "demo.incompatible",
     name: "Demo",
     version: "1",
@@ -65,4 +69,11 @@ test "runtime rejects manually constructed incompatible sidecars before loading"
     Err(IncompatibleSidecar(id)) => inspect(id, content="demo.incompatible")
     _ => fail("expected incompatible sidecar rejection")
   }
+}
+
+///|
+test "empty runtime shutdown is idempotent and observable" {
+  let runtime = PluginRuntime::new()
+  assert_eq(runtime.shutdown(), Ok(()))
+  assert_eq(runtime.shutdown(), Ok(()))
 }

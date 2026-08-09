@@ -23,6 +23,6 @@ import {
   "Nanaloveyuki/orby@0.1.0-beta.3",
   "moonbitlang/async@0.20.4",
   "Nanaloveyuki/dynlib@0.1.0",
-  "Nanaloveyuki/orbit-plugin-abi@0.1.0",
+  "Nanaloveyuki/orbit-plugin-abi@0.2.2",
   "Nanaloveyuki/image@0.1.1",
 }

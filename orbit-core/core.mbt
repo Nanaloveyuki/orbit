@@ -159,6 +159,43 @@ fn app_reason(error : @orby.AppError) -> CoreError {
 }
 
 ///|
+fn plugin_start_reason(error : @plugin.PluginRuntimeError) -> String {
+  match error {
+    @plugin.LoadFailure(id, @plugin.AsyncRuntimeRequired) =>
+      "plugin requires run_async: \{id}"
+    @plugin.LoadFailure(id, @plugin.ExecutorFailed) =>
+      "plugin executor failed: \{id}"
+    _ => "plugin activation failed"
+  }
+}
+
+///|
+fn start_configured_plugins(
+  plugins : @plugin.PluginRuntime,
+  options : DesktopOptions,
+) -> Result[Unit, String] {
+  if options.plugin_declarations.is_empty() {
+    return Ok(())
+  }
+  match
+    plugins.start(
+      options.plugin_declarations,
+      development_directory=options.plugin_development_directory,
+    ) {
+    Err(error) => return Err(plugin_start_reason(error))
+    Ok(_) => ()
+  }
+  match options.ipc_registry {
+    Some(registry) =>
+      match plugins.register_ipc(registry) {
+        Err(_) => Err("plugin IPC registration failed")
+        Ok(_) => Ok(())
+      }
+    None => Err("plugins require an IPC registry")
+  }
+}
+
+///|
 struct DesktopApp {
   factory : &@runtime.RuntimeFactory
   options : DesktopOptions
@@ -167,6 +204,7 @@ struct DesktopApp {
   async_exit : AsyncExit?
   async_ipc : AsyncIpcDispatcher?
   mut pending_runtime_failure : String?
+  mut teardown_failure : String?
   mut shutting_down : Bool
 }
 
@@ -242,7 +280,10 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
   for mounted in self.windows {
     self.unsubscribe_page_events(mounted)
   }
-  self.plugins.shutdown()
+  match self.plugins.shutdown() {
+    Err(_) => self.teardown_failure = Some("plugin shutdown failed")
+    Ok(_) => ()
+  }
   for mounted in self.windows {
     mounted.runtime.set_message_handler(None) catch {
       _ => ()
@@ -546,31 +587,13 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     self.windows.push(mounted)
   }
-  if !self.options.plugin_declarations.is_empty() {
-    match
-      self.plugins.start(
-        self.options.plugin_declarations,
-        development_directory=self.options.plugin_development_directory,
-      ) {
-      Err(_) => {
+  if self.async_exit is None {
+    match start_configured_plugins(self.plugins, self.options) {
+      Err(reason) => {
         self.teardown()
-        raise StartupFailed("plugin activation failed")
+        raise StartupFailed(self.teardown_failure.unwrap_or(reason))
       }
       Ok(_) => ()
-    }
-    match self.options.ipc_registry {
-      Some(registry) =>
-        match self.plugins.register_ipc(registry) {
-          Err(_) => {
-            self.teardown()
-            raise StartupFailed("plugin IPC registration failed")
-          }
-          Ok(_) => ()
-        }
-      None => {
-        self.teardown()
-        raise StartupFailed("plugins require an IPC registry")
-      }
     }
   }
 }
@@ -632,21 +655,32 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
 
 ///|
 pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
+  if !self.shutting_down {
+    match self.plugins.poll_events() {
+      Err(error) =>
+        self.pending_runtime_failure = Some(plugin_start_reason(error))
+      Ok(_) => ()
+    }
+  }
   match self.pending_runtime_failure {
     Some(reason) => {
       self.pending_runtime_failure = None
       self.teardown()
       self.finish_async_exit()
-      active.fail(reason)
+      active.fail(self.teardown_failure.unwrap_or(reason))
     }
     None => ()
   }
 }
 
 ///|
-pub impl @orby.App for DesktopApp with fn exiting(self, _active) {
+pub impl @orby.App for DesktopApp with fn exiting(self, active) {
   self.teardown()
   self.finish_async_exit()
+  match self.teardown_failure {
+    Some(reason) => active.fail(reason)
+    None => ()
+  }
 }
 
 ///|
@@ -665,6 +699,7 @@ pub fn run(
     async_exit: None,
     async_ipc: None,
     pending_runtime_failure: None,
+    teardown_failure: None,
     shutting_down: false,
   }
   event_loop.run_app(app) catch {
@@ -691,26 +726,63 @@ pub fn run_async(
   }
   let async_exit = AsyncExit::new()
   let async_ipc = AsyncIpcDispatcher::new()
+  let plugins = @plugin.PluginRuntime::new()
+  let ipc_registry = options.ipc_registry
+  let ipc_policy = options.ipc_policy
+  let plugin_options = options
+  let startup_failure : Ref[String?] = Ref(None)
   let app = {
     factory,
     options,
     windows: [],
-    plugins: @plugin.PluginRuntime::new(),
+    plugins,
     async_exit: Some(async_exit),
     async_ipc: Some(async_ipc),
     pending_runtime_failure: None,
+    teardown_failure: None,
     shutting_down: false,
   }
   let app_loop = event_loop.start_external_app(app) catch {
     error => raise app_reason(error)
   }
-  let external_loop = { app_loop, }
+  let wakeup_callback = app_loop.wakeup_callback_for_foreign_thread()
+  let loop_control = app_loop
+  let loop_failure : Ref[@orby.AppError?] = Ref(None)
+  let external_loop = { app_loop, failure: loop_failure }
   @async.set_external_event_loop(external_loop)
   @async.run_async_main(() => {
     @async.with_task_group() <| group => {
       async_ipc.bind(group)
+      match (ipc_registry, ipc_policy) {
+        (Some(registry), Some(policy)) =>
+          plugins.bind_async(group, wakeup_callback, registry, policy)
+        _ => ()
+      }
+      match start_configured_plugins(plugins, plugin_options) {
+        Err(reason) => {
+          startup_failure.val = Some(reason)
+          ignore(
+            loop_control.terminate() catch {
+              error => {
+                loop_failure.val = Some(error)
+                0
+              }
+            },
+          )
+          return
+        }
+        Ok(_) => ()
+      }
       main()
       async_exit.wait()
     }
   })
+  match loop_failure.val {
+    Some(error) => raise app_reason(error)
+    None => ()
+  }
+  match startup_failure.val {
+    Some(reason) => raise StartupFailed(reason)
+    None => ()
+  }
 }

@@ -3,6 +3,7 @@ package "Nanaloveyuki/orbit/orbit-plugin"
 
 import {
   "Nanaloveyuki/orbit/orbit-ipc",
+  "moonbitlang/async",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
@@ -44,13 +45,15 @@ pub(all) enum PluginError {
   CommandDenied(String)
   ActivationFailed
   InvocationFailed
+  AsyncRuntimeRequired
+  ExecutorFailed
 } derive(Eq, @debug.Debug)
 
 pub struct PluginLibrary {
   // private fields
 }
-pub fn PluginLibrary::activate(Self, PluginPolicy) -> Result[Unit, PluginError]
-pub fn PluginLibrary::close(Self) -> Unit
+pub fn PluginLibrary::activate(Self, PluginPolicy, wakeup_callback? : FuncRef[() -> Unit]) -> Result[Unit, PluginError]
+pub fn PluginLibrary::close(Self) -> Result[Unit, PluginError]
 pub fn PluginLibrary::invoke(Self, String, Bytes) -> Result[Bytes, PluginError]
 pub fn PluginLibrary::manifest(Self) -> PluginManifest
 
@@ -72,9 +75,11 @@ pub fn PluginPolicy::new() -> Self
 pub struct PluginRuntime {
   // private fields
 }
+pub fn PluginRuntime::bind_async(Self, @async.TaskGroup[Unit], FuncRef[() -> Unit], @orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy) -> Unit
 pub fn PluginRuntime::new() -> Self
+pub fn PluginRuntime::poll_events(Self) -> Result[Unit, PluginRuntimeError]
 pub fn PluginRuntime::register_ipc(Self, @orbit-ipc.CommandRegistry) -> Result[Unit, PluginRuntimeError]
-pub fn PluginRuntime::shutdown(Self) -> Unit
+pub fn PluginRuntime::shutdown(Self) -> Result[Unit, PluginRuntimeError]
 pub fn PluginRuntime::start(Self, Array[PluginDeclaration], development_directory? : String?) -> Result[Unit, PluginRuntimeError]
 
 pub(all) enum PluginRuntimeError {
@@ -102,4 +107,3 @@ pub(all) struct PluginSidecarManifest {
 // Type aliases
 
 // Traits
-

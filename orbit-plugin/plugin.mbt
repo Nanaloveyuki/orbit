@@ -38,6 +38,8 @@ pub(all) enum PluginError {
   CommandDenied(String)
   ActivationFailed
   InvocationFailed
+  AsyncRuntimeRequired
+  ExecutorFailed
 } derive(Eq, Debug)
 
 ///|
@@ -49,6 +51,15 @@ pub struct PluginLibrary {
   priv manifest : PluginManifest
   priv abi : @abi.Plugin
   priv mut instance : @abi.PluginInstance?
+  priv abi_version : @abi.AbiVersion
+  priv mut executor : @abi.PluginExecutor?
+  priv mut executor_ready : Bool
+  priv mut executor_stopped : Bool
+  priv mut executor_failed : Bool
+  priv mut host_request_active : Bool
+  priv executor_condition : @cond_var.Cond
+  priv mut next_invocation_id : UInt64
+  priv pending_invocations : Map[UInt64, PendingPluginInvocation]
 }
 
 ///|
@@ -80,13 +91,40 @@ pub fn PluginLibrary::manifest(self : PluginLibrary) -> PluginManifest {
 }
 
 ///|
-pub fn PluginLibrary::close(self : PluginLibrary) -> Unit {
+fn PluginLibrary::abi_version(self : PluginLibrary) -> @abi.AbiVersion {
+  self.abi_version
+}
+
+///|
+pub fn PluginLibrary::close(self : PluginLibrary) -> Result[Unit, PluginError] {
+  self.executor_ready = false
+  self.executor_stopped = true
+  self.host_request_active = false
+  self.executor_condition.broadcast()
+  for _, pending in self.pending_invocations {
+    pending.result = Some(Err(ExecutorFailed))
+    pending.condition.signal()
+  }
+  self.pending_invocations.clear()
+  match self.executor {
+    Some(executor) => {
+      executor.begin_shutdown()
+      match executor.join() {
+        Ok(_) => self.executor = None
+        Err(_) => return Err(ExecutorFailed)
+      }
+    }
+    None => ()
+  }
   match self.instance {
     Some(instance) => instance.destroy()
     None => ()
   }
   self.instance = None
-  ignore(self.library.close())
+  match self.library.close() {
+    Ok(_) => Ok(())
+    Err(_) => Err(LoadFailed)
+  }
 }
 
 ///|
@@ -159,7 +197,7 @@ fn unique_nonempty(values : Array[String]) -> Bool {
 ///|
 fn valid_sidecar_manifest(sidecar : PluginSidecarManifest) -> Bool {
   if sidecar.schema_version != 2 ||
-    sidecar.abi_version != 1 ||
+    (sidecar.abi_version != 1 && sidecar.abi_version != 2) ||
     sidecar.id.is_empty() ||
     sidecar.name.is_empty() ||
     sidecar.version.is_empty() ||
@@ -284,7 +322,22 @@ pub fn load(path : String) -> Result[PluginLibrary, PluginError] {
         }
       }
       match parse_manifest(abi.manifest_json()) {
-        Ok(value) => Ok({ library, abi, manifest: value, instance: None })
+        Ok(value) =>
+          Ok({
+            library,
+            abi,
+            manifest: value,
+            instance: None,
+            abi_version: abi.abi_version(),
+            executor: None,
+            executor_ready: false,
+            executor_stopped: false,
+            executor_failed: false,
+            host_request_active: false,
+            executor_condition: @cond_var.Cond(),
+            next_invocation_id: 1UL,
+            pending_invocations: Map([]),
+          })
         Err(error) => {
           ignore(library.close())
           Err(error)
@@ -293,7 +346,7 @@ pub fn load(path : String) -> Result[PluginLibrary, PluginError] {
     }
     _ => {
       ignore(library.close())
-      Err(MissingSymbol("required Orbit plugin ABI v1 symbol"))
+      Err(MissingSymbol("required Orbit plugin ABI symbol"))
     }
   }
 }
@@ -316,19 +369,35 @@ fn permissions_allowed(
 pub fn PluginLibrary::activate(
   self : PluginLibrary,
   policy : PluginPolicy,
+  wakeup_callback? : FuncRef[() -> Unit],
 ) -> Result[Unit, PluginError] {
-  if self.instance is Some(_) {
+  if self.instance is Some(_) || self.executor is Some(_) {
     return Ok(())
   }
   match permissions_allowed(self.manifest, policy) {
     Some(permission) => Err(PermissionDenied(permission))
     None =>
-      match self.abi.create() {
-        Ok(instance) => {
-          self.instance = Some(instance)
-          Ok(())
-        }
-        Err(_) => Err(ActivationFailed)
+      match self.abi_version {
+        @abi.AbiVersion::V1 =>
+          match self.abi.create() {
+            Ok(instance) => {
+              self.instance = Some(instance)
+              Ok(())
+            }
+            Err(_) => Err(ActivationFailed)
+          }
+        @abi.AbiVersion::V2 =>
+          match wakeup_callback {
+            None => Err(AsyncRuntimeRequired)
+            Some(wakeup_callback) =>
+              match self.abi.start_executor(wakeup_callback) {
+                Ok(executor) => {
+                  self.executor = Some(executor)
+                  Ok(())
+                }
+                Err(_) => Err(ExecutorFailed)
+              }
+          }
       }
   }
 }
@@ -340,6 +409,9 @@ pub fn PluginLibrary::invoke(
   command : String,
   request : Bytes,
 ) -> Result[Bytes, PluginError] {
+  if self.abi_version == @abi.AbiVersion::V2 {
+    return Err(AsyncRuntimeRequired)
+  }
   if !self.manifest.commands.contains(command) {
     return Err(CommandDenied(command))
   }
