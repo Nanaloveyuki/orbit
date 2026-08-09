@@ -148,8 +148,8 @@ fn AsyncIpcDispatcher::schedule(
     let result = run_before_deadline(request, context, () => {
       registry.dispatch_invocation_async(request, policy, context)
     }) catch {
-      error => {
-        if @async.is_cancellation_error(error) {
+      _ => {
+        if @async.is_being_cancelled() || context.cancellation().is_cancelled() {
           return
         }
         Some(
