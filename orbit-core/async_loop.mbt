@@ -30,7 +30,7 @@ priv struct AsyncDesktopLoop {
 }
 
 ///|
-using @external_loop { trait ExternalEventLoop }
+using @external_loop {trait ExternalEventLoop}
 
 ///|
 impl ExternalEventLoop for AsyncDesktopLoop with fn poll(self, timeout?) {

@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-ipc-async"
+
+import {
+  "Nanaloveyuki/orbit/orbit-ipc",
+}
+
+// Values
+pub async fn dispatch_source_with_deadline(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, @orbit-ipc.InvocationContext, StringView) -> String
+
+pub async fn dispatch_with_deadline(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, @orbit-ipc.InvocationContext, @orbit-ipc.InvocationRequest) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-ipc-http"
+
+import {
+  "Nanaloveyuki/orbit/orbit-ipc",
+  "moonbitlang/async/http",
+  "moonbitlang/async/io",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror HttpAdapterError {
+  InvalidAuthenticatedClient(String)
+  InvalidAdapterConfiguration(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub struct AuthenticatedHttpClient {
+  // private fields
+}
+pub fn AuthenticatedHttpClient::identifier(Self) -> String
+pub fn AuthenticatedHttpClient::new(String) -> Self raise HttpAdapterError
+
+pub struct HttpAdapter {
+  // private fields
+}
+pub fn HttpAdapter::endpoint_path(Self) -> String
+pub async fn HttpAdapter::handle(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Unit
+pub fn HttpAdapter::new(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, (HttpRequestMetadata) -> AuthenticatedHttpClient?, endpoint_path? : String, max_request_bytes? : Int, max_response_chars? : Int) -> Self raise HttpAdapterError
+pub async fn HttpAdapter::serve(Self, @http.Server, max_connections? : Int) -> Unit
+
+pub struct HttpRequestMetadata {
+  // private fields
+}
+pub fn HttpRequestMetadata::header(Self, String) -> String?
+pub fn HttpRequestMetadata::path(Self) -> String
+pub fn HttpRequestMetadata::remote_address(Self) -> String
+
+// Type aliases
+
+// Traits
