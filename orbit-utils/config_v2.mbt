@@ -23,11 +23,43 @@ pub(all) struct WindowConfig {
 pub(all) struct BundleConfig {
   icons : Array[String]
   windows : WindowsBundleConfig?
+  linux : LinuxBundleConfig?
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct WindowsBundleConfig {
   webview_install_mode : String
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub(all) struct LinuxDebConfig {
+  depends : Array[String]
+  section : String
+  priority : String
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub(all) struct LinuxRpmConfig {
+  requires : Array[String]
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub(all) struct LinuxArchConfig {
+  depends : Array[String]
+} derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub(all) struct LinuxBundleConfig {
+  package_name : String
+  summary : String
+  description : String
+  license : String
+  homepage : String?
+  maintainer : String?
+  category : String
+  deb : LinuxDebConfig?
+  rpm : LinuxRpmConfig?
+  arch : LinuxArchConfig?
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
@@ -166,6 +198,112 @@ fn valid_webview_install_mode(value : String) -> Bool {
   value == "embed_bootstrapper" ||
   value == "offline_installer" ||
   value == "skip"
+}
+
+///|
+fn validate_linux_dependencies(
+  dependencies : Array[String],
+  path : String,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  let seen : Map[String, Bool] = Map([])
+  for index, dependency in dependencies {
+    let dependency = dependency.trim().to_owned()
+    let dependency_path = "\{path}[\{index}]"
+    if dependency.is_empty() {
+      diagnostics.push(
+        diagnostic(
+          "required", dependency_path, "Linux package dependency must not be empty",
+        ),
+      )
+    } else if seen.contains(dependency) {
+      diagnostics.push(
+        diagnostic(
+          "duplicate_linux_dependency", dependency_path, "Linux package dependency must not be repeated",
+        ),
+      )
+    } else {
+      seen[dependency] = true
+    }
+  }
+}
+
+///|
+fn validate_linux_bundle(
+  linux : LinuxBundleConfig,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  let required = [
+    ("$.bundle.linux.package_name", linux.package_name),
+    ("$.bundle.linux.summary", linux.summary),
+    ("$.bundle.linux.description", linux.description),
+    ("$.bundle.linux.license", linux.license),
+    ("$.bundle.linux.category", linux.category),
+  ]
+  for entry in required {
+    let (path, value) = entry
+    if value.trim().is_empty() {
+      diagnostics.push(
+        diagnostic("required", path, "Linux package metadata must not be empty"),
+      )
+    }
+  }
+  if !valid_optional_metadata(linux.homepage) {
+    diagnostics.push(
+      diagnostic(
+        "invalid_metadata", "$.bundle.linux.homepage", "Linux package homepage must not be empty when configured",
+      ),
+    )
+  }
+  if !valid_optional_metadata(linux.maintainer) {
+    diagnostics.push(
+      diagnostic(
+        "invalid_metadata", "$.bundle.linux.maintainer", "Linux package maintainer must not be empty when configured",
+      ),
+    )
+  }
+  match linux.deb {
+    Some(deb) => {
+      validate_linux_dependencies(
+        deb.depends,
+        "$.bundle.linux.deb.depends",
+        diagnostics,
+      )
+      if deb.section.trim().is_empty() {
+        diagnostics.push(
+          diagnostic(
+            "required", "$.bundle.linux.deb.section", "Debian package section must not be empty",
+          ),
+        )
+      }
+      if deb.priority.trim().is_empty() {
+        diagnostics.push(
+          diagnostic(
+            "required", "$.bundle.linux.deb.priority", "Debian package priority must not be empty",
+          ),
+        )
+      }
+    }
+    None => ()
+  }
+  match linux.rpm {
+    Some(rpm) =>
+      validate_linux_dependencies(
+        rpm.requires,
+        "$.bundle.linux.rpm.requires",
+        diagnostics,
+      )
+    None => ()
+  }
+  match linux.arch {
+    Some(arch) =>
+      validate_linux_dependencies(
+        arch.depends,
+        "$.bundle.linux.arch.depends",
+        diagnostics,
+      )
+    None => ()
+  }
 }
 
 ///|
@@ -365,6 +503,10 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
           ),
         )
       }
+    None => ()
+  }
+  match config.bundle.linux {
+    Some(linux) => validate_linux_bundle(linux, diagnostics)
     None => ()
   }
   if config.web.embedded.csp.trim().is_empty() {
@@ -720,6 +862,26 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
   let bundle_windows = config.bundle.windows.map(windows => {
     webview_install_mode: windows.webview_install_mode.trim().to_owned(),
   })
+  let bundle_linux = config.bundle.linux.map(linux => LinuxBundleConfig::{
+    package_name: linux.package_name.trim().to_owned(),
+    summary: linux.summary.trim().to_owned(),
+    description: linux.description.trim().to_owned(),
+    license: linux.license.trim().to_owned(),
+    homepage: linux.homepage.map(value => value.trim().to_owned()),
+    maintainer: linux.maintainer.map(value => value.trim().to_owned()),
+    category: linux.category.trim().to_owned(),
+    deb: linux.deb.map(deb => LinuxDebConfig::{
+      depends: deb.depends.map(value => value.trim().to_owned()),
+      section: deb.section.trim().to_owned(),
+      priority: deb.priority.trim().to_owned(),
+    }),
+    rpm: linux.rpm.map(rpm => LinuxRpmConfig::{
+      requires: rpm.requires.map(value => value.trim().to_owned()),
+    }),
+    arch: linux.arch.map(arch => LinuxArchConfig::{
+      depends: arch.depends.map(value => value.trim().to_owned()),
+    }),
+  })
   let capabilities = config.capabilities.map(capability => CapabilityConfig::{
     identifier: capability.identifier.trim().to_owned(),
     effect: capability.effect.trim().to_owned(),
@@ -758,6 +920,7 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
         normalize_resource_path(icon).unwrap_or(icon)
       }),
       windows: bundle_windows,
+      linux: bundle_linux,
     },
     web: {
       embedded: { csp: config.web.embedded.csp.trim().to_owned() },
@@ -843,7 +1006,7 @@ pub fn migrate_config_v1(source : StringView) -> String raise ConfigError {
       publisher: None,
       windows,
     },
-    bundle: { icons: [], windows: None },
+    bundle: { icons: [], windows: None, linux: None },
     web: { embedded: { csp: config.security.csp }, remote: None },
     build: { vite: None },
     capabilities,

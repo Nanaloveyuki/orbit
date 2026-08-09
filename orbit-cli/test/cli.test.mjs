@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -26,6 +26,17 @@ import {
   viteWorkflowCommand,
   windowsToolCacheDirectory,
 } from "../src/cli.mjs";
+import {
+  archPkgbuild,
+  createLinuxInstallTree,
+  debControl,
+  expandLinuxPackageSigningCommand,
+  linuxPackageDescriptor,
+  linuxPackageMetadataPath,
+  normalizedLinuxPackage,
+  rpmSpec,
+  verifyLinuxPackageArtifact,
+} from "../src/linux-packages.mjs";
 
 function tarEntryNames(archive) {
   const contents = gunzipSync(readFileSync(archive));
@@ -55,7 +66,29 @@ function createLinuxPackage(directory) {
       identifier: "dev.orbit.example",
       name: "Orbit Example",
       version: "0.1.0",
+      product_name: "Orbit Example",
+      publisher: "Orbit Project",
     },
+    bundle: {
+      icons: [],
+      linux: {
+        package_name: "orbit-example",
+        summary: "Orbit desktop example",
+        description: "A packaged Orbit desktop application.",
+        license: "Apache-2.0",
+        homepage: "https://example.com/orbit",
+        maintainer: "Orbit Project <orbit@example.com>",
+        category: "Utility",
+        deb: {
+          depends: ["libgtk-3-0", "libwebkit2gtk-4.1-0"],
+          section: "utils",
+          priority: "optional",
+        },
+        rpm: { requires: ["gtk3", "webkit2gtk4.1"] },
+        arch: { depends: ["gtk3", "webkit2gtk-4.1"] },
+      },
+    },
+    build: { profile: "release" },
     executable: "bin/orbit-example",
     plugins: null,
     pluginDeclarations: [],
@@ -264,6 +297,28 @@ test("package metadata stays in orbit-build and the package descriptor records c
   assert.deepEqual(descriptor.plugins, null);
   assert.equal(descriptor.target.platform, process.platform);
   assert.equal(descriptor.target.arch, process.arch);
+});
+
+test("release builds use Moon's release profile without changing generator execution", () => {
+  const cwd = resolve("workspace");
+  const invocation = parseInvocation([
+    "package",
+    "--config",
+    "app/orbit.conf.json",
+    "--release",
+  ], cwd);
+  assert.equal(invocation.releaseBuild, true);
+  assert.deepEqual(moonCommands(invocation), [
+    [
+      "run",
+      "--target",
+      "native",
+      "orbit-build",
+      resolve(cwd, "app/orbit.conf.json"),
+      resolve(cwd, "app/generated_page.mbt"),
+    ],
+    ["run", "--release", "--target", "native", "--build-only", resolve(cwd, "app")],
+  ]);
 });
 
 test("package verification enforces compatibility before integrity", (context) => {
@@ -599,5 +654,106 @@ test("Linux archive metadata validates target and archive signing placeholders",
   await assert.rejects(
     () => buildLinuxArchive(invalidVersionInvocation),
     /application version must use ASCII letters/,
+  );
+});
+
+test("Linux native package commands require explicit format and signing policy", () => {
+  const cwd = resolve("workspace");
+  assert.throws(
+    () => parseInvocation(["linux-package", "--package-dir", "dist", "--allow-unsigned"], cwd),
+    /requires --format deb, rpm, or arch/,
+  );
+  assert.throws(
+    () => parseInvocation(["linux-package", "--package-dir", "dist", "--format", "deb"], cwd),
+    /requires --sign-command <command> or --allow-unsigned/,
+  );
+  const invocation = parseInvocation([
+    "linux-package",
+    "--package-dir",
+    "dist",
+    "--format",
+    "rpm",
+    "--package-release",
+    "3",
+    "--allow-unsigned",
+  ], cwd);
+  assert.equal(invocation.format, "rpm");
+  assert.equal(invocation.packageRelease, "3");
+  assert.equal(invocation.outDir, resolve(cwd, "artifacts"));
+  assert.throws(
+    () => parseInvocation(["verify-linux-package"], cwd),
+    /requires --artifact <path>/,
+  );
+});
+
+test("Linux native package renderers preserve explicit distribution metadata", (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-linux-native-render-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const packageDirectory = join(directory, "package");
+  const manifest = createLinuxPackage(packageDirectory);
+
+  const deb = normalizedLinuxPackage(manifest, "deb", "2");
+  assert.equal(deb.architecture, "amd64");
+  assert.match(debControl(deb, 2048), /Depends: libgtk-3-0, libwebkit2gtk-4\.1-0/);
+  assert.match(debControl(deb, 2048), /Installed-Size: 2/);
+
+  const root = join(directory, "root");
+  mkdirSync(root, { recursive: true });
+  createLinuxInstallTree(packageDirectory, root, manifest, deb);
+  assert.equal(existsSync(join(root, "usr", "bin", "orbit-example")), true);
+  assert.match(
+    readFileSync(join(root, "usr", "share", "applications", "dev.orbit.example.desktop"), "utf8"),
+    /Categories=Utility;/,
+  );
+
+  const rpm = normalizedLinuxPackage(manifest, "rpm", "2");
+  const spec = rpmSpec(rpm, root);
+  assert.match(spec, /BuildArch: x86_64/);
+  assert.match(spec, /Requires: webkit2gtk4\.1/);
+  assert.match(spec, /\/usr\/bin\/orbit-example/);
+
+  const arch = normalizedLinuxPackage(manifest, "arch", "2");
+  const pkgbuild = archPkgbuild(arch, root);
+  assert.match(pkgbuild, /arch=\('x86_64'\)/);
+  assert.match(pkgbuild, /depends=\('gtk3' 'webkit2gtk-4\.1'\)/);
+  assert.throws(
+    () => normalizedLinuxPackage({ ...manifest, bundle: { ...manifest.bundle, linux: null } }, "deb"),
+    /requires bundle\.linux metadata/,
+  );
+});
+
+test("Linux native artifact metadata binds the final bytes and signing hook", (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-linux-native-metadata-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const manifest = createLinuxPackage(join(directory, "package"));
+  const artifact = join(directory, "orbit-example_0.1.0-1_amd64.deb");
+  writeFileSync(artifact, "native package bytes");
+  const normalized = normalizedLinuxPackage(manifest, "deb");
+  const metadata = linuxPackageDescriptor(manifest, normalized, artifact, true);
+  writeFileSync(linuxPackageMetadataPath(artifact), `${JSON.stringify(metadata)}\n`);
+  assert.equal(
+    verifyLinuxPackageArtifact(artifact, linuxPackageMetadataPath(artifact), compatibilityProfile)
+      .signing_hook_executed,
+    true,
+  );
+  assert.match(
+    expandLinuxPackageSigningCommand(
+      "sign {artifact} {package_dir} {package_manifest}",
+      { artifact, packageDirectory: directory, packageManifest: join(directory, "orbit-package.json") },
+    ),
+    /sign/,
+  );
+  assert.throws(
+    () => expandLinuxPackageSigningCommand("sign {artifact}", {
+      artifact,
+      packageDirectory: directory,
+      packageManifest: "manifest",
+    }),
+    /must include \{package_dir\}/,
+  );
+  writeFileSync(artifact, "modified");
+  assert.throws(
+    () => verifyLinuxPackageArtifact(artifact, linuxPackageMetadataPath(artifact), compatibilityProfile),
+    /integrity verification failed/,
   );
 });

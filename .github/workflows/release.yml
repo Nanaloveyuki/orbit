@@ -1,0 +1,80 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install MoonBit
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Verify release version
+        run: node orbit-cli/scripts/verify-release-version.mjs . "$GITHUB_REF_NAME"
+      - name: Record MoonBit toolchain
+        run: moon version --all
+      - name: Verify source and packages
+        run: |
+          moon update
+          moon check --target native --deny-warn
+          moon test --target native --deny-warn
+          npm test --prefix orbit-cli
+          node orbit-cli/scripts/mooncake-dry-run.mjs
+      - name: Build npm artifact
+        working-directory: orbit-cli
+        run: |
+          mkdir "$GITHUB_WORKSPACE/release"
+          npm pack --pack-destination "$GITHUB_WORKSPACE/release"
+          cd "$GITHUB_WORKSPACE/release"
+          sha256sum *.tgz > SHA256SUMS
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft \
+            --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" release/*.tgz release/SHA256SUMS
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
+        with:
+          subject-path: |
+            release/*.tgz
+            release/SHA256SUMS
+      - name: Publish npm package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish release/*.tgz --access public --provenance
+      - name: Publish Mooncake module
+        env:
+          MOONCAKE_USERNAME: ${{ secrets.MOONCAKE_USERNAME }}
+          MOONCAKE_TOKEN: ${{ secrets.MOONCAKE_TOKEN }}
+        run: |
+          mkdir -p "$HOME/.moon"
+          node -e 'require("fs").writeFileSync(process.env.HOME + "/.moon/credentials.json", JSON.stringify({ username: process.env.MOONCAKE_USERNAME, token: process.env.MOONCAKE_TOKEN }))'
+          moon publish
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

@@ -169,6 +169,89 @@ test "Windows WebView installer mode is optional and rejects unsupported values"
 }
 
 ///|
+test "Linux bundle metadata is optional, strict and normalized" {
+  assert_true(parse_config(valid_config_source).bundle.linux is None)
+  let configured = valid_config_source.replace_all(
+    old="\"bundle\": { \"icons\": [] },",
+    new=(
+      #|"bundle": {
+      #|    "icons": [],
+      #|    "linux": {
+      #|      "package_name": " orbit-example ",
+      #|      "summary": " Orbit Example ",
+      #|      "description": " Example desktop application ",
+      #|      "license": " Apache-2.0 ",
+      #|      "homepage": " https://orbit.example ",
+      #|      "maintainer": " Orbit Team <orbit@example.com> ",
+      #|      "category": " Utility ",
+      #|      "deb": {"depends":[" libwebkit2gtk-4.1-0 "],"section":" utils ","priority":" optional "},
+      #|      "rpm": {"requires":[" webkit2gtk4.1 "]},
+      #|      "arch": {"depends":[" webkit2gtk-4.1 "]}
+      #|    }
+      #|  },
+    ),
+  )
+  let config = parse_config(configured)
+  match config.bundle.linux {
+    Some(linux) => {
+      inspect(linux.package_name, content="orbit-example")
+      inspect(linux.summary, content="Orbit Example")
+      assert_true(linux.homepage == Some("https://orbit.example"))
+      match linux.deb {
+        Some(deb) => {
+          inspect(deb.depends[0], content="libwebkit2gtk-4.1-0")
+          inspect(deb.section, content="utils")
+          inspect(deb.priority, content="optional")
+        }
+        None => fail("expected Debian bundle configuration")
+      }
+      match linux.rpm {
+        Some(rpm) => inspect(rpm.requires[0], content="webkit2gtk4.1")
+        None => fail("expected RPM bundle configuration")
+      }
+      match linux.arch {
+        Some(arch) => inspect(arch.depends[0], content="webkit2gtk-4.1")
+        None => fail("expected Arch bundle configuration")
+      }
+    }
+    None => fail("expected Linux bundle configuration")
+  }
+  let canonical = canonicalize_config(config)
+  assert_true(canonical.contains("\"package_name\":\"orbit-example\""))
+  let unknown = configured.replace_all(
+    old="\"requires\":[\" webkit2gtk4.1 \"]",
+    new="\"requires\":[\" webkit2gtk4.1 \"],\"group\":\"Applications/System\"",
+  )
+  inspect(failure_code(unknown), content="unknown_field")
+}
+
+///|
+test "Linux bundle metadata rejects empty and duplicate dependencies" {
+  let configured = valid_config_source.replace_all(
+    old="\"bundle\": { \"icons\": [] },",
+    new=(
+      #|"bundle": {
+      #|    "icons": [],
+      #|    "linux": {
+      #|      "package_name": "orbit-example",
+      #|      "summary": "Orbit Example",
+      #|      "description": "Example desktop application",
+      #|      "license": "Apache-2.0",
+      #|      "category": "Utility",
+      #|      "rpm": {"requires":["webkit2gtk4.1", " webkit2gtk4.1 "]}
+      #|    }
+      #|  },
+    ),
+  )
+  inspect(failure_code(configured), content="duplicate_linux_dependency")
+  let empty = configured.replace_all(
+    old="[\"webkit2gtk4.1\", \" webkit2gtk4.1 \"]",
+    new="[\"   \"]",
+  )
+  inspect(failure_code(empty), content="required")
+}
+
+///|
 test "window capabilities must reference configured windows" {
   let invalid = valid_config_source.replace_all(
     old="\"identifier\": \"main\" }],",

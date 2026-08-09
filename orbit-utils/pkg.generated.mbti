@@ -64,6 +64,7 @@ pub(all) struct BuildConfig {
 pub(all) struct BundleConfig {
   icons : Array[String]
   windows : WindowsBundleConfig?
+  linux : LinuxBundleConfig?
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct CapabilityConfig {
@@ -101,6 +102,33 @@ pub fn EmbeddedResource::path(Self) -> String
 
 pub(all) struct EmbeddedWebConfig {
   csp : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LinuxArchConfig {
+  depends : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LinuxBundleConfig {
+  package_name : String
+  summary : String
+  description : String
+  license : String
+  homepage : String?
+  maintainer : String?
+  category : String
+  deb : LinuxDebConfig?
+  rpm : LinuxRpmConfig?
+  arch : LinuxArchConfig?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LinuxDebConfig {
+  depends : Array[String]
+  section : String
+  priority : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct LinuxRpmConfig {
+  requires : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct OrbitConfig {
@@ -183,4 +211,3 @@ pub(all) struct WindowsBundleConfig {
 // Type aliases
 
 // Traits
-

@@ -591,7 +591,12 @@ fn package_metadata_json(
       "{\"id\":\{Json::string(plugin.id).stringify()},\"library\":\{Json::string(plugin.library).stringify()},\"manifest\":\{Json::string(plugin.manifest).stringify()}}"
     })
     .join(",")
-  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"compatibility\":\{package_compatibility_json()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"windows\":{\"webview_install_mode\":\{Json::string(webview_install_mode(config)).stringify()}},\"plugins\":[\{plugins}]}"
+  let icons = ToJson::to_json(config.bundle.icons).stringify()
+  let linux = match config.bundle.linux {
+    Some(linux) => ToJson::to_json(linux).stringify()
+    None => "null"
+  }
+  "{\"schema_version\":\{config.schema_version},\"configuration_fingerprint\":\{Json::string(fingerprint).stringify()},\"compatibility\":\{package_compatibility_json()},\"application\":{\"identifier\":\{Json::string(config.app.identifier).stringify()},\"name\":\{Json::string(config.app.name).stringify()},\"version\":\{Json::string(config.app.version).stringify()},\"product_name\":\{optional_json_string(config.app.product_name)},\"publisher\":\{optional_json_string(config.app.publisher)}},\"bundle\":{\"icons\":\{icons},\"linux\":\{linux}},\"windows\":{\"webview_install_mode\":\{Json::string(webview_install_mode(config)).stringify()}},\"plugins\":[\{plugins}]}"
 }
 
 ///|
@@ -961,4 +966,52 @@ test "package metadata declares the compiled compatibility profile" {
   assert_true(profile.contains("\"plugin_abi\":2"))
   assert_true(profile.contains("\"plugin_sidecar_schema\":2"))
   assert_true(profile.contains("\"configuration_schema\":2"))
+}
+
+///|
+test "package metadata exports Linux bundle configuration and icons" {
+  let config = @utils.parse_config(
+    (
+      #|{
+      #|  "schema_version": 2,
+      #|  "app": {
+      #|    "identifier": "dev.orbit.package",
+      #|    "name": "Orbit Package",
+      #|    "version": "0.1.0",
+      #|    "windows": [{"label":"main","title":"Main","width":800,"height":600,"entry":"assets/index.html","visible":true,"resizable":true}]
+      #|  },
+      #|  "bundle": {
+      #|    "icons": ["icons/app.png"],
+      #|    "linux": {
+      #|      "package_name": "orbit-package",
+      #|      "summary": "Orbit package",
+      #|      "description": "Linux package metadata",
+      #|      "license": "Apache-2.0",
+      #|      "homepage": "https://orbit.example",
+      #|      "maintainer": "Orbit Team <orbit@example.com>",
+      #|      "category": "Utility",
+      #|      "deb": {"depends":["libwebkit2gtk-4.1-0"],"section":"utils","priority":"optional"},
+      #|      "rpm": {"requires":["webkit2gtk4.1"]},
+      #|      "arch": {"depends":["webkit2gtk-4.1"]}
+      #|    }
+      #|  },
+      #|  "web": {"embedded":{"csp":"default-src 'self'"}},
+      #|  "build": {},
+      #|  "capabilities": [],
+      #|  "plugins": []
+      #|}
+    ),
+  )
+  let metadata = package_metadata_json(config, "fingerprint")
+  assert_true(metadata.contains("\"bundle\":{\"icons\":[\"icons/app.png\"]"))
+  assert_true(
+    metadata.contains("\"linux\":{\"package_name\":\"orbit-package\""),
+  )
+  assert_true(
+    metadata.contains(
+      "\"deb\":{\"depends\":[\"libwebkit2gtk-4.1-0\"],\"section\":\"utils\",\"priority\":\"optional\"}",
+    ),
+  )
+  assert_true(metadata.contains("\"rpm\":{\"requires\":[\"webkit2gtk4.1\"]}"))
+  assert_true(metadata.contains("\"arch\":{\"depends\":[\"webkit2gtk-4.1\"]}"))
 }
