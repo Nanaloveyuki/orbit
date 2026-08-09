@@ -68,7 +68,36 @@ fn context(
   principal : InvocationPrincipal,
   origin : String?,
 ) -> InvocationContext {
-  { transport, principal, origin, max_response_chars: 262_144 }
+  {
+    transport,
+    principal,
+    origin,
+    max_response_chars: 262_144,
+    cancellation: InvocationCancellation::new(),
+  }
+}
+
+///|
+/// A transport-owned cooperative cancellation signal for one invocation.
+pub struct InvocationCancellation {
+  priv cancelled : Ref[Bool]
+}
+
+///|
+fn InvocationCancellation::new() -> InvocationCancellation {
+  { cancelled: Ref(false) }
+}
+
+///|
+pub fn InvocationCancellation::cancel(self : InvocationCancellation) -> Unit {
+  self.cancelled.val = true
+}
+
+///|
+pub fn InvocationCancellation::is_cancelled(
+  self : InvocationCancellation,
+) -> Bool {
+  self.cancelled.val
 }
 
 ///|
@@ -82,6 +111,7 @@ pub struct InvocationContext {
   priv principal : InvocationPrincipal
   priv origin : String?
   priv max_response_chars : Int
+  priv cancellation : InvocationCancellation
 }
 
 ///|
@@ -172,6 +202,7 @@ pub fn InvocationContext::with_response_limit(
     principal: self.principal,
     origin: self.origin,
     max_response_chars,
+    cancellation: self.cancellation,
   }
 }
 
@@ -197,6 +228,13 @@ pub fn InvocationContext::origin(self : InvocationContext) -> String? {
 ///|
 pub fn InvocationContext::max_response_chars(self : InvocationContext) -> Int {
   self.max_response_chars
+}
+
+///|
+pub fn InvocationContext::cancellation(
+  self : InvocationContext,
+) -> InvocationCancellation {
+  self.cancellation
 }
 
 ///|

@@ -17,6 +17,8 @@ pub fn event_initialization_script(String) -> String
 
 pub fn initialization_script(String) -> String
 
+pub fn invocation_context(String, PagePrincipal, @orbit-runtime.RuntimePageMessage) -> @orbit-ipc.InvocationContext?
+
 // Errors
 
 // Types and methods
@@ -30,4 +32,3 @@ pub fn PagePrincipal::window() -> Self
 // Type aliases
 
 // Traits
-

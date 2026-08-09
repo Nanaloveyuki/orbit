@@ -7,7 +7,11 @@ import {
 }
 
 // Values
+pub fn decode_client_message(StringView) -> InvocationClientMessage raise IpcError
+
 pub fn decode_request(StringView) -> InvocationRequest raise IpcError
+
+pub fn encode_command_failure(InvocationId?, CommandFailure) -> String
 
 pub fn encode_response(InvocationResponse) -> String
 
@@ -71,19 +75,39 @@ pub struct CommandRegistry {
 }
 pub fn CommandRegistry::contains(Self, CommandName) -> Bool
 pub fn CommandRegistry::dispatch(Self, StringView) -> String
+pub async fn CommandRegistry::dispatch_async(Self, StringView) -> String
 pub fn CommandRegistry::dispatch_for_window(Self, StringView, CommandPolicy, String) -> String
+pub async fn CommandRegistry::dispatch_for_window_async(Self, StringView, CommandPolicy, String) -> String
+pub async fn CommandRegistry::dispatch_invocation_async(Self, InvocationRequest, CommandPolicy, InvocationContext) -> String
 pub fn CommandRegistry::dispatch_with_context(Self, StringView, CommandPolicy, InvocationContext) -> String
+pub async fn CommandRegistry::dispatch_with_context_async(Self, StringView, CommandPolicy, InvocationContext) -> String
 pub fn CommandRegistry::length(Self) -> Int
 pub fn CommandRegistry::new() -> Self
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async(Self, CommandName, async (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async_context(Self, CommandName, async (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_async_context_json(Self, CommandName, async (InvocationContext, Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_async_json(Self, CommandName, async (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_context(Self, CommandName, (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
 pub fn CommandRegistry::register_context_json(Self, CommandName, (InvocationContext, Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
 pub fn CommandRegistry::register_json(Self, CommandName, (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
+
+pub struct InvocationCancellation {
+  // private fields
+}
+pub fn InvocationCancellation::cancel(Self) -> Unit
+pub fn InvocationCancellation::is_cancelled(Self) -> Bool
+
+pub(all) enum InvocationClientMessage {
+  Invoke(InvocationRequest)
+  Cancel(InvocationId)
+}
 
 pub struct InvocationContext {
   // private fields
 }
 pub fn InvocationContext::background_task(String) -> Self raise IpcError
+pub fn InvocationContext::cancellation(Self) -> InvocationCancellation
 pub fn InvocationContext::http_client(String, origin? : String) -> Self raise IpcError
 pub fn InvocationContext::max_response_chars(Self) -> Int
 pub fn InvocationContext::origin(Self) -> String?
@@ -114,6 +138,7 @@ pub struct InvocationRequest {
 pub fn InvocationRequest::command(Self) -> CommandName
 pub fn InvocationRequest::id(Self) -> InvocationId
 pub fn InvocationRequest::payload(Self) -> Json
+pub fn InvocationRequest::timeout_ms(Self) -> Int
 
 pub(all) enum InvocationResponse {
   Success(InvocationId, Json)
@@ -154,4 +179,3 @@ pub fn PrincipalSelector::window(String) -> Self raise IpcError
 // Type aliases
 
 // Traits
-

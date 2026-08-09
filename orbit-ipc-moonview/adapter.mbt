@@ -35,7 +35,7 @@ fn bridge_script(enable_invocation : Bool) -> String {
     #|  const dispatchEvent = message => { if (message.version !== 1 || message.type !== "event" || !validEventName(message.event)) return false; const handlers = listeners.get(message.event); if (!handlers) return true; const event = Object.freeze({ name: message.event, payload: message.payload, source: message.source ?? null, target: message.target ?? null }); for (const handler of Array.from(handlers)) { try { handler(event); } catch (error) { setTimeout(() => { throw error; }, 0); } } return true; };
     #|  const complete = event => { let response; try { response = JSON.parse(String(event.data)); } catch (_) { if (legacyHandler) legacyHandler(event); return; } if (dispatchEvent(response)) return; const request = pending.get(response.id); if (request) { pending.delete(response.id); clearTimeout(request.timer); if (response.version !== 1 || typeof response.ok !== "boolean") request.reject(new IpcError("invalid_response", "invalid IPC response")); else if (response.ok) request.resolve(response.result); else { const error = response.error || {}; request.reject(new IpcError(error.code || "command_failed", error.message || "IPC command failed", error.data)); } return; } if (legacyHandler) legacyHandler(event); };
     #|  Object.defineProperty(api, "onmessage", { configurable: true, get: () => complete, set: handler => { legacyHandler = typeof handler === "function" ? handler : null; } });
-    #|  const invoke = (command, payload = null, options = {}) => { if (!invocationEnabled) return Promise.reject(new IpcError("ipc_unavailable", "Orbit IPC is not enabled for this page")); if (typeof command !== "string" || !/^[A-Za-z0-9_.:/-]{1,128}$/.test(command)) return Promise.reject(new IpcError("invalid_command", "invalid IPC command name")); const timeoutMs = options.timeout ?? defaultTimeoutMs; if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 300000) return Promise.reject(new IpcError("invalid_timeout", "timeout must be an integer between 1 and 300000")); const id = `orbit-${Date.now().toString(36)}-${(++nextId).toString(36)}`; let message; try { message = JSON.stringify({ version: 1, id, command, payload: payload === undefined ? null : payload }); } catch (_) { return Promise.reject(new IpcError("serialization_failed", "IPC payload is not JSON serializable")); } if (!message || new TextEncoder().encode(message).byteLength > maxMessageBytes) return Promise.reject(new IpcError("message_too_large", "IPC message exceeds the 256 KiB limit")); return new Promise((resolve, reject) => { const timer = setTimeout(() => { pending.delete(id); reject(new IpcError("timeout", `IPC command timed out after ${timeoutMs}ms`)); }, timeoutMs); pending.set(id, { resolve, reject, timer }); try { api.postMessage(message); } catch (_) { pending.delete(id); clearTimeout(timer); reject(new IpcError("transport_failed", "IPC transport is unavailable")); } }); };
+    #|  const invoke = (command, payload = null, options = {}) => { if (!invocationEnabled) return Promise.reject(new IpcError("ipc_unavailable", "Orbit IPC is not enabled for this page")); if (typeof command !== "string" || !/^[A-Za-z0-9_.:/-]{1,128}$/.test(command)) return Promise.reject(new IpcError("invalid_command", "invalid IPC command name")); const timeoutMs = options.timeout ?? defaultTimeoutMs; if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 300000) return Promise.reject(new IpcError("invalid_timeout", "timeout must be an integer between 1 and 300000")); const id = `orbit-${Date.now().toString(36)}-${(++nextId).toString(36)}`; let message; try { message = JSON.stringify({ version: 1, type: "invoke", id, command, payload: payload === undefined ? null : payload, timeout_ms: timeoutMs }); } catch (_) { return Promise.reject(new IpcError("serialization_failed", "IPC payload is not JSON serializable")); } if (!message || new TextEncoder().encode(message).byteLength > maxMessageBytes) return Promise.reject(new IpcError("message_too_large", "IPC message exceeds the 256 KiB limit")); return new Promise((resolve, reject) => { const timer = setTimeout(() => { pending.delete(id); try { api.postMessage(JSON.stringify({ version: 1, type: "cancel", id })); } catch (_) {} reject(new IpcError("timeout", `IPC command timed out after ${timeoutMs}ms`)); }, timeoutMs); pending.set(id, { resolve, reject, timer }); try { api.postMessage(message); } catch (_) { pending.delete(id); clearTimeout(timer); reject(new IpcError("transport_failed", "IPC transport is unavailable")); } }); };
     #|  const orbit = { listen, unlisten }; if (invocationEnabled) { orbit.invoke = invoke; orbit.IpcError = IpcError; }
     #|  Object.defineProperty(window, "__ORBIT__", { configurable: false, enumerable: false, writable: false, value: Object.freeze(orbit) });
     #|})();
@@ -79,16 +79,34 @@ pub fn dispatch(
   principal : PagePrincipal,
   page_message : @runtime.RuntimePageMessage,
 ) -> String? {
-  let context = try {
-    match principal {
-      Window => @ipc.InvocationContext::window(label)
-      RemotePage =>
-        @ipc.InvocationContext::remote_page(label, origin=page_message.origin())
-    }
-  } catch {
-    _ => return None
+  let context = match invocation_context(label, principal, page_message) {
+    Some(context) => context
+    None => return None
   }
   Some(registry.dispatch_with_context(page_message.body(), policy, context))
+}
+
+///|
+/// Constructs the authenticated invocation context for one MoonView message.
+pub fn invocation_context(
+  label : String,
+  principal : PagePrincipal,
+  page_message : @runtime.RuntimePageMessage,
+) -> @ipc.InvocationContext? {
+  try {
+    match principal {
+      Window => Some(@ipc.InvocationContext::window(label))
+      RemotePage =>
+        Some(
+          @ipc.InvocationContext::remote_page(
+            label,
+            origin=page_message.origin(),
+          ),
+        )
+    }
+  } catch {
+    _ => None
+  }
 }
 
 ///|
@@ -99,6 +117,9 @@ test "bridge is top-level only and bounded" {
   assert_true(script.contains("legacyHandler"))
   assert_true(script.contains("const listen"))
   assert_true(script.contains("type !== \"event\""))
+  assert_true(script.contains("type: \"invoke\""))
+  assert_true(script.contains("type: \"cancel\""))
+  assert_true(script.contains("timeout_ms: timeoutMs"))
   assert_true(script.has_suffix("window.app = true"))
 }
 

@@ -5,8 +5,20 @@ type ContextJsonHandler = (InvocationContext, Json) -> Result[
 ]
 
 ///|
+type AsyncContextJsonHandler = async (InvocationContext, Json) -> Result[
+  Json,
+  CommandFailure,
+]
+
+///|
+priv enum RegisteredHandler {
+  Sync(ContextJsonHandler)
+  Async(AsyncContextJsonHandler)
+}
+
+///|
 pub struct CommandRegistry {
-  priv handlers : Map[String, ContextJsonHandler]
+  priv handlers : Map[String, RegisteredHandler]
 }
 
 ///|
@@ -33,7 +45,31 @@ pub fn CommandRegistry::register_context_json(
   if self.handlers.contains(key) {
     raise DuplicateCommand(key)
   }
-  self.handlers[key] = handler
+  self.handlers[key] = Sync(handler)
+}
+
+///|
+pub fn CommandRegistry::register_async_json(
+  self : CommandRegistry,
+  name : CommandName,
+  handler : async (Json) -> Result[Json, CommandFailure],
+) -> Unit raise IpcError {
+  self.register_async_context_json(name, async fn(_, payload) {
+    handler(payload)
+  })
+}
+
+///|
+pub fn CommandRegistry::register_async_context_json(
+  self : CommandRegistry,
+  name : CommandName,
+  handler : AsyncContextJsonHandler,
+) -> Unit raise IpcError {
+  let key = name.value()
+  if self.handlers.contains(key) {
+    raise DuplicateCommand(key)
+  }
+  self.handlers[key] = Async(handler)
 }
 
 ///|
@@ -55,6 +91,51 @@ pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(
     }
   }
   self.register_context_json(name, erased)
+}
+
+///|
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async(
+  self : CommandRegistry,
+  name : CommandName,
+  handler : async (Request) -> Result[Response, CommandFailure],
+) -> Unit raise IpcError {
+  let erased : AsyncContextJsonHandler = async fn(_, payload) {
+    let request : Request = @json.from_json(payload) catch {
+      error =>
+        return Err(
+          CommandFailure::new(code="invalid_payload", message=error.to_string()),
+        )
+    }
+    match handler(request) {
+      Ok(response) => Ok(ToJson::to_json(response))
+      Err(failure) => Err(failure)
+    }
+  }
+  self.register_async_context_json(name, erased)
+}
+
+///|
+pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async_context(
+  self : CommandRegistry,
+  name : CommandName,
+  handler : async (InvocationContext, Request) -> Result[
+    Response,
+    CommandFailure,
+  ],
+) -> Unit raise IpcError {
+  let erased : AsyncContextJsonHandler = async fn(context, payload) {
+    let request : Request = @json.from_json(payload) catch {
+      error =>
+        return Err(
+          CommandFailure::new(code="invalid_payload", message=error.to_string()),
+        )
+    }
+    match handler(context, request) {
+      Ok(response) => Ok(ToJson::to_json(response))
+      Err(failure) => Err(failure)
+    }
+  }
+  self.register_async_context_json(name, erased)
 }
 
 ///|
@@ -135,6 +216,76 @@ pub fn CommandRegistry::dispatch_for_window(
 }
 
 ///|
+pub async fn CommandRegistry::dispatch_async(
+  self : CommandRegistry,
+  source : StringView,
+) -> String {
+  let request = decode_request(source) catch {
+    error =>
+      return encode_response(
+        Failure(extract_request_id(source), error.failure()),
+      )
+  }
+  self.dispatch_limited_async(
+    context(Background, BackgroundTask("local"), None),
+    request,
+  )
+}
+
+///|
+pub async fn CommandRegistry::dispatch_with_context_async(
+  self : CommandRegistry,
+  source : StringView,
+  policy : CommandPolicy,
+  context : InvocationContext,
+) -> String {
+  let request = decode_request(source) catch {
+    error =>
+      return encode_response(
+        Failure(extract_request_id(source), error.failure()),
+      )
+  }
+  self.dispatch_invocation_async(request, policy, context)
+}
+
+///|
+pub async fn CommandRegistry::dispatch_for_window_async(
+  self : CommandRegistry,
+  source : StringView,
+  policy : CommandPolicy,
+  window_label : String,
+) -> String {
+  self.dispatch_with_context_async(
+    source,
+    policy,
+    context(MoonView, Window(window_label), None),
+  )
+}
+
+///|
+pub async fn CommandRegistry::dispatch_invocation_async(
+  self : CommandRegistry,
+  request : InvocationRequest,
+  policy : CommandPolicy,
+  context : InvocationContext,
+) -> String {
+  let id = request.id()
+  let command = request.command()
+  if !policy.allows_context(context, command) {
+    return encode_response(
+      Failure(
+        Some(id),
+        CommandFailure::new(
+          code="permission_denied",
+          message="command is not permitted for \{context.principal().description()}",
+        ),
+      ),
+    )
+  }
+  self.dispatch_limited_async(context, request)
+}
+
+///|
 fn CommandRegistry::dispatch_authorized(
   self : CommandRegistry,
   source : StringView,
@@ -187,6 +338,28 @@ fn CommandRegistry::dispatch_limited(
 }
 
 ///|
+async fn CommandRegistry::dispatch_limited_async(
+  self : CommandRegistry,
+  context : InvocationContext,
+  request : InvocationRequest,
+) -> String {
+  let id = request.id()
+  let response = self.dispatch_request_async(context, request)
+  if response.length() > context.max_response_chars() {
+    return encode_response(
+      Failure(
+        Some(id),
+        CommandFailure::new(
+          code="response_too_large",
+          message="IPC response exceeds the configured limit",
+        ),
+      ),
+    )
+  }
+  response
+}
+
+///|
 fn CommandRegistry::dispatch_request(
   self : CommandRegistry,
   context : InvocationContext,
@@ -204,7 +377,48 @@ fn CommandRegistry::dispatch_request(
           ),
         ),
       )
-    Some(handler) =>
+    Some(Sync(handler)) =>
+      match handler(context, request.payload()) {
+        Ok(result) => encode_response(Success(id, result))
+        Err(failure) => encode_response(Failure(Some(id), failure))
+      }
+    Some(Async(_)) =>
+      encode_response(
+        Failure(
+          Some(id),
+          CommandFailure::new(
+            code="async_unavailable",
+            message="command requires asynchronous dispatch",
+          ),
+        ),
+      )
+  }
+}
+
+///|
+async fn CommandRegistry::dispatch_request_async(
+  self : CommandRegistry,
+  context : InvocationContext,
+  request : InvocationRequest,
+) -> String {
+  let id = request.id()
+  match self.handlers.get(request.command().value()) {
+    None =>
+      encode_response(
+        Failure(
+          Some(id),
+          CommandFailure::new(
+            code="unknown_command",
+            message="unknown command: \{request.command().value()}",
+          ),
+        ),
+      )
+    Some(Sync(handler)) =>
+      match handler(context, request.payload()) {
+        Ok(result) => encode_response(Success(id, result))
+        Err(failure) => encode_response(Failure(Some(id), failure))
+      }
+    Some(Async(handler)) =>
       match handler(context, request.payload()) {
         Ok(result) => encode_response(Success(id, result))
         Err(failure) => encode_response(Failure(Some(id), failure))
