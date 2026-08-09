@@ -164,6 +164,7 @@ struct DesktopApp {
   options : DesktopOptions
   windows : Array[MountedWindow]
   plugins : @plugin.PluginRuntime
+  async_exit : AsyncExit?
   mut pending_runtime_failure : String?
   mut shutting_down : Bool
 }
@@ -332,6 +333,14 @@ fn DesktopApp::mounted_window(
 ///|
 fn DesktopApp::has_live_windows(self : DesktopApp) -> Bool {
   self.windows.any(mounted => !mounted.window.is_destroyed())
+}
+
+///|
+fn DesktopApp::finish_async_exit(self : DesktopApp) -> Unit {
+  match self.async_exit {
+    Some(exit) => exit.finish()
+    None => ()
+  }
 }
 
 ///|
@@ -507,7 +516,11 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
   }
   if mounted.window.is_destroyed() {
     match event {
-      Destroyed => if !self.has_live_windows() { active.exit() }
+      Destroyed =>
+        if !self.has_live_windows() {
+          self.finish_async_exit()
+          active.exit()
+        }
       _ => ()
     }
     return
@@ -542,6 +555,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         _ => ()
       }
       if !self.has_live_windows() {
+        self.finish_async_exit()
         active.exit()
       }
     }
@@ -555,6 +569,7 @@ pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
     Some(reason) => {
       self.pending_runtime_failure = None
       self.teardown()
+      self.finish_async_exit()
       active.fail(reason)
     }
     None => ()
@@ -564,6 +579,7 @@ pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
 ///|
 pub impl @orby.App for DesktopApp with fn exiting(self, _active) {
   self.teardown()
+  self.finish_async_exit()
 }
 
 ///|
@@ -579,10 +595,49 @@ pub fn run(
     options,
     windows: [],
     plugins: @plugin.PluginRuntime::new(),
+    async_exit: None,
     pending_runtime_failure: None,
     shutting_down: false,
   }
   event_loop.run_app(app) catch {
     error => raise app_reason(error)
   }
+}
+
+///|
+/// Runs a desktop application with MoonBit async work on Orby's UI thread.
+///
+/// The existing `run` function remains the synchronous default. `run_async`
+/// installs Orby's manually pumped loop before async work starts, so the async
+/// poller stays on its own native thread while every MoonBit callback and UI
+/// operation remains on the UI thread. After `main` finishes its asynchronous
+/// initialization, Orbit keeps the runtime alive until the final window exits.
+/// Call it before any other async work or `@async.run_async_main` starts.
+pub fn run_async(
+  factory : &@runtime.RuntimeFactory,
+  options : DesktopOptions,
+  main : async () -> Unit,
+) -> Unit raise CoreError {
+  let event_loop = @orby.EventLoop::new() catch {
+    error => raise InitializationFailed(init_reason(error))
+  }
+  let async_exit = AsyncExit::new()
+  let app = {
+    factory,
+    options,
+    windows: [],
+    plugins: @plugin.PluginRuntime::new(),
+    async_exit: Some(async_exit),
+    pending_runtime_failure: None,
+    shutting_down: false,
+  }
+  let app_loop = event_loop.start_external_app(app) catch {
+    error => raise app_reason(error)
+  }
+  let external_loop = { app_loop, }
+  @async.set_external_event_loop(external_loop)
+  @async.run_async_main(() => {
+    main()
+    async_exit.wait()
+  })
 }

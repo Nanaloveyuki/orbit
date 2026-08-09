@@ -33,7 +33,11 @@ capabilities remain intentionally deferred.
   below `build.vite`.
 - `orbit-core` owns the Orby window and destroys the selected runtime before
   its parent window. `orbit-runtime` remains free of Orby and MoonView types;
-  factories receive an abstract `RuntimeHost`.
+  factories receive an abstract `RuntimeHost`. `run_async` is the optional
+  application entry point for MoonBit async code: it installs Orby's external
+  event-loop driver before async starts, keeps MoonBit and UI callbacks on the
+  UI thread, and returns after the final desktop window exits. It must not be
+  called from an already-running async runtime.
 - Native plugins use only `orbit-plugin-abi` v1. Each configuration entry
   declares an ID, bundled `plugins/` relative library and sidecar-manifest
   paths, and explicit permission grants. Sidecars use `schema_version: 2`,
