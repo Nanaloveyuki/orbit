@@ -10,6 +10,8 @@ composition, and initial developer tooling:
 - `orbit-utils`: schema-v2 configuration, explicit v1 migration, resources, platform and CSP utilities.
 - `orbit-event`: standalone application and runtime event contracts.
 - `orbit-ipc`: transport-neutral command registration, principal-scoped capability policies and structured invocation envelopes.
+- `orbit-ipc-async`: shared structured deadline and cancellation execution for async transports.
+- `orbit-ipc-http`: optional authenticated HTTP adapter over `moonbitlang/async/http`.
 - `orbit-runtime`: replaceable WebView runtime contracts.
 - `orbit-runtime-moonview`: native MoonView implementation of `orbit-runtime`.
 - `orbit-core`: Orby window lifecycle and runtime composition.
@@ -98,7 +100,7 @@ command registry. An IPC registry without a policy is rejected, and commands
 not granted to the current window return `permission_denied` without invoking
 their handler. Internally, each invocation carries a typed principal and
 transport context; `dispatch_for_window` remains the protocol-v1 compatibility
-wrapper while future HTTP, plugin and background adapters use
+wrapper while HTTP, plugin and background adapters use
 `dispatch_with_context`. New principal grants support exact origin and
 transport scopes, and a matching deny grant overrides every allow grant.
 
@@ -121,6 +123,25 @@ authenticated page principal and origin, duplicate pending IDs are rejected,
 and every invocation has one response-delivery gate so timeout, completion and
 cancellation races cannot post multiple responses. Legacy protocol-v1 invoke
 envelopes without `type` or `timeout_ms` remain valid with a 30-second default.
+
+`orbit-ipc-http` exposes the same protocol at the exact default endpoint
+`POST /orbit/v1/invoke`. It requires `application/json` and a host-supplied
+authentication callback when the adapter is constructed. The callback returns
+an opaque `AuthenticatedHttpClient`; request headers cannot select an Orbit
+principal by themselves. The resulting context uses the `http` transport, the
+authenticated client identifier and the request's exact `Origin` header, so
+ordinary allow/deny grants and origin scopes apply unchanged. Requests retain
+the same 256 KiB parser limit, response limit, host deadline, structured
+handler failure and cooperative cancellation token as MoonView invocations.
+
+The adapter does not open a listener. A host creates a
+`moonbitlang/async/http.Server`, chooses its bind address, trusted TLS
+termination or reverse-proxy boundary, connection limit and shutdown lifecycle,
+then passes that server to `HttpAdapter::serve`. Returning `None` from
+authentication rejects a request with HTTP 401 before its body is read. Orbit
+does not enable HTTP or grant any HTTP principal by default; plaintext bearer
+credentials must not be exposed beyond a loopback or otherwise trusted
+transport boundary.
 
 An embedded resource provider confines navigation to its own
 `<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource

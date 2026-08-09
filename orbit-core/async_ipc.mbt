@@ -42,22 +42,6 @@ fn invocation_failure(
 }
 
 ///|
-async fn run_before_deadline(
-  request : @ipc.InvocationRequest,
-  context : @ipc.InvocationContext,
-  operation : async () -> String,
-) -> String? {
-  @async.with_task_group() <| group => {
-    group.spawn_bg(no_wait=true) <| () => {
-      @async.sleep(request.timeout_ms())
-      context.cancellation().cancel()
-      group.return_immediately(None)
-    }
-    Some(operation())
-  }
-}
-
-///|
 fn AsyncIpcDispatcher::complete(
   self : AsyncIpcDispatcher,
   key : String,
@@ -145,32 +129,17 @@ fn AsyncIpcDispatcher::schedule(
   }
   self.pending[key] = pending
   let task = group.spawn(no_wait=true, allow_failure=true) <| async fn() {
-    let result = run_before_deadline(request, context, () => {
-      registry.dispatch_invocation_async(request, policy, context)
-    }) catch {
+    let response = @ipc_async.dispatch_with_deadline(
+      registry, policy, context, request,
+    ) catch {
       _ => {
         if @async.is_being_cancelled() || context.cancellation().is_cancelled() {
           return
         }
-        Some(
-          invocation_failure(
-            id, "handler_failed", "async command handler failed",
-          ),
-        )
+        invocation_failure(id, "handler_failed", "async command handler failed")
       }
     }
-    match result {
-      Some(response) => self.complete(key, pending, response, deliver)
-      None =>
-        self.complete(
-          key,
-          pending,
-          invocation_failure(
-            id, "timeout", "IPC command exceeded its host deadline",
-          ),
-          deliver,
-        )
-    }
+    self.complete(key, pending, response, deliver)
   }
   pending.task = Some(task)
   if pending.completed {
