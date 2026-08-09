@@ -165,6 +165,7 @@ struct DesktopApp {
   windows : Array[MountedWindow]
   plugins : @plugin.PluginRuntime
   async_exit : AsyncExit?
+  async_ipc : AsyncIpcDispatcher?
   mut pending_runtime_failure : String?
   mut shutting_down : Bool
 }
@@ -234,6 +235,10 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     return
   }
   self.shutting_down = true
+  match self.async_ipc {
+    Some(dispatcher) => dispatcher.cancel_all()
+    None => ()
+  }
   for mounted in self.windows {
     self.unsubscribe_page_events(mounted)
   }
@@ -250,6 +255,27 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     mounted.window.destroy()
   }
   self.windows.clear()
+}
+
+///|
+fn DesktopApp::deliver_ipc_response(
+  self : DesktopApp,
+  label : String,
+  runtime : &@runtime.WebViewRuntime,
+  response : String,
+) -> Unit {
+  self.emit_event(
+    "orbit://ipc/response",
+    Ipc(label),
+    Window(label),
+    Json::string(response),
+  )
+  runtime.post_message(response) catch {
+    error =>
+      if !self.shutting_down && self.pending_runtime_failure is None {
+        self.pending_runtime_failure = Some(runtime_reason(error))
+      }
+  }
 }
 
 ///|
@@ -273,22 +299,59 @@ fn DesktopApp::dispatch_ipc_message(
         Window => @ipc_moonview.PagePrincipal::window()
         RemotePage => @ipc_moonview.PagePrincipal::remote_page()
       }
-      let response = match
-        @ipc_moonview.dispatch(registry, policy, label, principal, page_message) {
-        Some(response) => response
+      let context = match
+        @ipc_moonview.invocation_context(label, principal, page_message) {
+        Some(context) => context
         None => return
       }
-      self.emit_event(
-        "orbit://ipc/response",
-        Ipc(label),
-        Window(label),
-        Json::string(response),
-      )
-      runtime.post_message(response) catch {
-        error =>
-          if !self.shutting_down && self.pending_runtime_failure is None {
-            self.pending_runtime_failure = Some(runtime_reason(error))
+      let invocation_scope = match ipc_principal {
+        Window => "window\u{0}\{label}"
+        RemotePage => {
+          let origin = context.origin().unwrap_or("")
+          "remote\u{0}\{label}\u{0}\{origin}"
+        }
+      }
+      match self.async_ipc {
+        None => {
+          let is_cancellation = try (
+            @ipc.decode_client_message(message)
+            is @ipc.InvocationClientMessage::Cancel(_)
+          ) catch {
+            _ => false
           }
+          if is_cancellation {
+            return
+          }
+          let response = registry.dispatch_with_context(
+            message, policy, context,
+          )
+          self.deliver_ipc_response(label, runtime, response)
+        }
+        Some(dispatcher) => {
+          let client_message = @ipc.decode_client_message(message) catch {
+            _ => {
+              self.deliver_ipc_response(
+                label,
+                runtime,
+                registry.dispatch_with_context(message, policy, context),
+              )
+              return
+            }
+          }
+          match client_message {
+            @ipc.InvocationClientMessage::Cancel(id) =>
+              dispatcher.cancel(invocation_scope, id)
+            @ipc.InvocationClientMessage::Invoke(request) =>
+              dispatcher.schedule(
+                invocation_scope,
+                registry,
+                policy,
+                context,
+                request,
+                response => self.deliver_ipc_response(label, runtime, response),
+              )
+          }
+        }
       }
     }
     _ => ()
@@ -337,6 +400,10 @@ fn DesktopApp::has_live_windows(self : DesktopApp) -> Bool {
 
 ///|
 fn DesktopApp::finish_async_exit(self : DesktopApp) -> Unit {
+  match self.async_ipc {
+    Some(dispatcher) => dispatcher.cancel_all()
+    None => ()
+  }
   match self.async_exit {
     Some(exit) => exit.finish()
     None => ()
@@ -596,6 +663,7 @@ pub fn run(
     windows: [],
     plugins: @plugin.PluginRuntime::new(),
     async_exit: None,
+    async_ipc: None,
     pending_runtime_failure: None,
     shutting_down: false,
   }
@@ -622,12 +690,14 @@ pub fn run_async(
     error => raise InitializationFailed(init_reason(error))
   }
   let async_exit = AsyncExit::new()
+  let async_ipc = AsyncIpcDispatcher::new()
   let app = {
     factory,
     options,
     windows: [],
     plugins: @plugin.PluginRuntime::new(),
     async_exit: Some(async_exit),
+    async_ipc: Some(async_ipc),
     pending_runtime_failure: None,
     shutting_down: false,
   }
@@ -637,7 +707,10 @@ pub fn run_async(
   let external_loop = { app_loop, }
   @async.set_external_event_loop(external_loop)
   @async.run_async_main(() => {
-    main()
-    async_exit.wait()
+    @async.with_task_group() <| group => {
+      async_ipc.bind(group)
+      main()
+      async_exit.wait()
+    }
   })
 }

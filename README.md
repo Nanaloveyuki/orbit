@@ -110,6 +110,18 @@ with an `OrbitIpcError` containing `code`, `message` and optional `data`.
 Requests are limited to 256 KiB and strictly parsed with duplicate-key
 rejection before they reach command handlers.
 
+`CommandRegistry` accepts both synchronous and asynchronous typed handlers.
+Async handlers require `orbit-core.run_async`; the synchronous `run` entry
+returns `async_unavailable` for them. Page timeouts are included in the host
+request and, under `run_async`, cancel the structured child task at the same
+bounded deadline. The page also sends an explicit cancellation envelope when
+its timer wins. `InvocationContext.cancellation()` lets CPU-bound handlers
+cooperate between async suspension points. Pending IDs are scoped to the
+authenticated page principal and origin, duplicate pending IDs are rejected,
+and every invocation has one response-delivery gate so timeout, completion and
+cancellation races cannot post multiple responses. Legacy protocol-v1 invoke
+envelopes without `type` or `timeout_ms` remain valid with a 30-second default.
+
 An embedded resource provider confines navigation to its own
 `<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource
 requests. External navigation is denied by default. Applications can replace

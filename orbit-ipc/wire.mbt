@@ -76,6 +76,7 @@ pub struct InvocationRequest {
   priv id : InvocationId
   priv command : CommandName
   priv payload : Json
+  priv timeout_ms : Int
 }
 
 ///|
@@ -91,6 +92,17 @@ pub fn InvocationRequest::command(self : InvocationRequest) -> CommandName {
 ///|
 pub fn InvocationRequest::payload(self : InvocationRequest) -> Json {
   self.payload
+}
+
+///|
+pub fn InvocationRequest::timeout_ms(self : InvocationRequest) -> Int {
+  self.timeout_ms
+}
+
+///|
+pub(all) enum InvocationClientMessage {
+  Invoke(InvocationRequest)
+  Cancel(InvocationId)
 }
 
 ///|
@@ -187,7 +199,9 @@ fn strict_json_message(error : @strict_json.JsonError) -> String {
 }
 
 ///|
-pub fn decode_request(source : StringView) -> InvocationRequest raise IpcError {
+pub fn decode_client_message(
+  source : StringView,
+) -> InvocationClientMessage raise IpcError {
   let source = source.to_owned()
   match @strict_json.parse_with_limits(source, ipc_json_limits()) {
     Ok(_) => ()
@@ -200,22 +214,53 @@ pub fn decode_request(source : StringView) -> InvocationRequest raise IpcError {
     Object(object) => object
     _ => raise malformed("request must be a JSON object")
   }
-  for name, _ in object {
-    match name {
-      "version" | "id" | "command" | "payload" => ()
-      _ => raise malformed("unknown field: \{name}")
-    }
-  }
   let version = decode_exact_int(required_field(object, "version"), "version")
   if version != 1 {
     raise UnsupportedVersion(version)
   }
   let id = InvocationId::new(decode_string(required_field(object, "id"), "id"))
+  let message_type = match object.get("type") {
+    Some(value) => decode_string(value, "type")
+    None => "invoke"
+  }
+  if message_type == "cancel" {
+    for name, _ in object {
+      match name {
+        "version" | "type" | "id" => ()
+        _ => raise malformed("unknown cancellation field: \{name}")
+      }
+    }
+    return Cancel(id)
+  }
+  if message_type != "invoke" {
+    raise malformed("unsupported message type: \{message_type}")
+  }
+  for name, _ in object {
+    match name {
+      "version" | "type" | "id" | "command" | "payload" | "timeout_ms" => ()
+      _ => raise malformed("unknown field: \{name}")
+    }
+  }
   let command = CommandName::new(
     decode_string(required_field(object, "command"), "command"),
   )
   let payload = required_field(object, "payload")
-  { id, command, payload }
+  let timeout_ms = match object.get("timeout_ms") {
+    Some(value) => decode_exact_int(value, "timeout_ms")
+    None => 30_000
+  }
+  if timeout_ms < 1 || timeout_ms > 300_000 {
+    raise malformed("field timeout_ms must be between 1 and 300000")
+  }
+  Invoke({ id, command, payload, timeout_ms })
+}
+
+///|
+pub fn decode_request(source : StringView) -> InvocationRequest raise IpcError {
+  match decode_client_message(source) {
+    Invoke(request) => request
+    Cancel(_) => raise malformed("expected an invocation request")
+  }
 }
 
 ///|
@@ -256,6 +301,15 @@ pub fn encode_response(response : InvocationResponse) -> String {
       "{\"version\":1,\"id\":\{id},\"ok\":false,\"error\":{\"code\":\{quoted(failure.code)},\"message\":\{quoted(failure.message)},\"data\":\{data}}}"
     }
   }
+}
+
+///|
+/// Encodes a structured failure for transport adapters and host schedulers.
+pub fn encode_command_failure(
+  id : InvocationId?,
+  failure : CommandFailure,
+) -> String {
+  encode_response(Failure(id, failure))
 }
 
 ///|

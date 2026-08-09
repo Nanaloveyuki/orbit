@@ -319,3 +319,99 @@ test "remote pages are distinct MoonView principals with origin scopes" {
   assert_true(window.contains("\"code\":\"permission_denied\""))
   assert_true(other_origin.contains("\"code\":\"permission_denied\""))
 }
+
+///|
+test "invocation requests carry bounded host deadlines" {
+  let legacy = decode_request(
+    "{\"version\":1,\"id\":\"legacy\",\"command\":\"echo\",\"payload\":null}",
+  )
+  assert_eq(legacy.timeout_ms(), 30_000)
+  let explicit = decode_request(
+    "{\"version\":1,\"type\":\"invoke\",\"id\":\"explicit\",\"command\":\"echo\",\"payload\":null,\"timeout_ms\":1250}",
+  )
+  assert_eq(explicit.timeout_ms(), 1_250)
+  let rejected = CommandRegistry::new().dispatch(
+    "{\"version\":1,\"type\":\"invoke\",\"id\":\"invalid-timeout\",\"command\":\"echo\",\"payload\":null,\"timeout_ms\":0}",
+  )
+  assert_true(rejected.contains("\"code\":\"invalid_request\""))
+  assert_true(rejected.contains("timeout_ms"))
+}
+
+///|
+test "cancellation messages contain only an invocation id" {
+  match
+    decode_client_message(
+      "{\"version\":1,\"type\":\"cancel\",\"id\":\"cancel-me\"}",
+    ) {
+    Cancel(id) => assert_eq(id.value(), "cancel-me")
+    Invoke(_) => abort("expected a cancellation message")
+  }
+  let rejected = try {
+    ignore(
+      decode_client_message(
+        "{\"version\":1,\"type\":\"cancel\",\"id\":\"cancel-me\",\"payload\":null}",
+      ),
+    )
+    false
+  } catch {
+    MalformedEnvelope(_) => true
+    _ => false
+  }
+  assert_true(rejected)
+}
+
+///|
+async test "async dispatch supports synchronous and asynchronous handlers" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("sync.echo"), payload => Ok(payload))
+  registry.register_async_json(CommandName::new("async.echo"), async fn(
+    payload,
+  ) {
+    @async.pause()
+    Ok(payload)
+  })
+  let sync_response = registry.dispatch_async(
+    "{\"version\":1,\"id\":\"sync\",\"command\":\"sync.echo\",\"payload\":7}",
+  )
+  let async_response = registry.dispatch_async(
+    "{\"version\":1,\"id\":\"async\",\"command\":\"async.echo\",\"payload\":8}",
+  )
+  assert_true(sync_response.contains("\"result\":7"))
+  assert_true(async_response.contains("\"result\":8"))
+  let unavailable = registry.dispatch(
+    "{\"version\":1,\"id\":\"blocked\",\"command\":\"async.echo\",\"payload\":null}",
+  )
+  assert_true(unavailable.contains("\"code\":\"async_unavailable\""))
+}
+
+///|
+async test "async handlers observe transport cancellation tokens" {
+  let registry = CommandRegistry::new()
+  registry.register_async_context_json(CommandName::new("cancel.check"), async fn(
+    context,
+    _,
+  ) {
+    @async.pause()
+    if context.cancellation().is_cancelled() {
+      Err(CommandFailure::new(code="cancelled", message="cancelled"))
+    } else {
+      Ok(Json::null())
+    }
+  })
+  let policy = CommandPolicy::new()
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="background-cancel",
+      effect=CapabilityEffect::allow(),
+      principals=[PrincipalSelector::background_task("worker")],
+      commands=[CommandName::new("cancel.check")],
+    ),
+  )
+  let context = InvocationContext::background_task("worker")
+  context.cancellation().cancel()
+  let response = registry.dispatch_with_context_async(
+    "{\"version\":1,\"id\":\"cancelled\",\"command\":\"cancel.check\",\"payload\":null}",
+    policy, context,
+  )
+  assert_true(response.contains("\"code\":\"cancelled\""))
+}
