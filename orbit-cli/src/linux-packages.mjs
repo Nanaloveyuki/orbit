@@ -119,10 +119,18 @@ function formatConfiguration(linux, format) {
     throw new Error(`Linux package format ${format} is not configured in bundle.linux`);
   }
   if (format === "deb") {
+    const section = safeLine(configuration.section, "deb.section");
+    const priority = safeLine(configuration.priority, "deb.priority");
+    if (!/^[a-z0-9][a-z0-9+.-]*$/.test(section)) {
+      throw new Error("Linux package deb.section contains unsupported characters");
+    }
+    if (!new Set(["required", "important", "standard", "optional", "extra"]).has(priority)) {
+      throw new Error("Linux package deb.priority is not a Debian priority");
+    }
     return {
       depends: dependencyList(configuration.depends, "deb.depends"),
-      section: safeLine(configuration.section, "deb.section"),
-      priority: safeLine(configuration.priority, "deb.priority"),
+      section,
+      priority,
     };
   }
   if (format === "rpm") {
@@ -207,6 +215,10 @@ function iconDestination(icon, identifier) {
   return null;
 }
 
+function desktopValue(value) {
+  return value.replaceAll("\\", "\\\\");
+}
+
 export function createLinuxInstallTree(packageDirectory, root, packageManifest, normalized) {
   if (packageManifest.runtime != null) {
     throw new Error("linux-package does not support a bundled WebView runtime");
@@ -239,8 +251,8 @@ export function createLinuxInstallTree(packageDirectory, root, packageManifest, 
   const desktop = [
     "[Desktop Entry]",
     "Type=Application",
-    `Name=${normalized.name}`,
-    `Comment=${normalized.summary}`,
+    `Name=${desktopValue(normalized.name)}`,
+    `Comment=${desktopValue(normalized.summary)}`,
     `Exec=${normalized.packageName}`,
     ...(hasIcon ? [`Icon=${normalized.identifier}`] : []),
     "Terminal=false",
@@ -266,6 +278,9 @@ function directorySize(path) {
 export function debControl(normalized, installedBytes) {
   if (!normalized.maintainer) {
     throw new Error("Debian packages require bundle.linux.maintainer");
+  }
+  if (!/^[^<>]+ <[^<>\s]+@[^<>\s]+>$/.test(normalized.maintainer)) {
+    throw new Error("Debian package maintainer must use Name <email> form");
   }
   const lines = [
     `Package: ${normalized.packageName}`,

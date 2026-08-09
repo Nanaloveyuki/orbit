@@ -822,15 +822,21 @@ function packageApplication(invocation, metadata) {
     cpSync(invocation.runtimeDir, resolve(invocation.outDir, "runtime"), { recursive: true });
   }
   const packagedIcons = [];
+  const packagedIconNames = new Set();
   for (const icon of metadata.bundle?.icons ?? []) {
     const source = applicationResourcePath(appRoot, icon);
     if (!existsSync(source) || !statSync(source).isFile()) {
       throw new Error(`declared bundle icon does not exist: ${icon}`);
     }
-    const destination = resolve(invocation.outDir, "icons", icon);
+    const filename = basename(icon);
+    if (packagedIconNames.has(filename)) {
+      throw new Error(`bundle icons must have unique filenames: ${filename}`);
+    }
+    packagedIconNames.add(filename);
+    const destination = resolve(invocation.outDir, "icons", filename);
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination);
-    packagedIcons.push(`icons/${icon}`);
+    packagedIcons.push(`icons/${filename}`);
   }
   const descriptor = {
     ...packageDescriptor(metadata, binary, discovered),

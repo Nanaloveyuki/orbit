@@ -1,0 +1,110 @@
+name: validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: npm test
+        working-directory: orbit-cli
+      - run: npm pack --dry-run
+        working-directory: orbit-cli
+
+  moon-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Install MoonBit
+        shell: pwsh
+        run: |
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content .moon-version -Raw).Trim()
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "$HOME\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - run: moon update
+      - run: moon check --target native --deny-warn
+      - run: moon test --target native --deny-warn
+      - shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File orbit-plugin-fixtures/run-integration.ps1
+
+  moon-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: moon update
+      - run: moon check --target native --deny-warn
+      - run: moon test --target native --deny-warn
+      - run: bash orbit-plugin-fixtures/run-integration.sh
+
+  linux-deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - run: sudo apt-get update && sudo apt-get install -y desktop-file-utils
+      - run: bash orbit-cli/test/run-linux-native-integration.sh deb
+
+  linux-rpm:
+    runs-on: ubuntu-24.04
+    container: fedora:44
+    steps:
+      - run: dnf install -y git nodejs rpm-build cpio desktop-file-utils
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: bash orbit-cli/test/run-linux-native-integration.sh rpm
+
+  linux-arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - run: pacman -Syu --noconfirm git nodejs desktop-file-utils
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Build as an unprivileged makepkg user
+        run: |
+          useradd --create-home --shell /bin/bash orbitbuilder
+          runuser -u orbitbuilder -- env HOME=/home/orbitbuilder \
+            bash -lc "cd '$GITHUB_WORKSPACE' && bash orbit-cli/test/run-linux-native-integration.sh arch"

@@ -212,7 +212,7 @@ node orbit-cli/bin/orbit.mjs icon --source assets/icon-1024.png --out-dir icons 
 node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
 node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
-node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --out-dir dist
+node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --release --out-dir dist
 node orbit-cli/bin/orbit verify-package --package-dir dist
 node orbit-cli/bin/orbit installer --package-dir dist --allow-unsigned
 node orbit-cli/bin/orbit installer --package-dir dist --webview2-bootstrapper path/to/MicrosoftEdgeWebview2Setup.exe --sign-command "sign-tool {installer} {package_dir} {package_manifest}"
@@ -220,6 +220,8 @@ node orbit-cli/bin/orbit verify-installer --installer dist/dev.orbit.example-0.1
 node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --allow-unsigned
 node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --sign-command "sign-linux {archive} {package_dir} {package_manifest}"
 node orbit-cli/bin/orbit verify-archive --archive artifacts/dev.orbit.example-0.1.0-linux-x64.tar.gz
+node orbit-cli/bin/orbit linux-package --package-dir dist --format deb --out-dir artifacts --allow-unsigned
+node orbit-cli/bin/orbit verify-linux-package --artifact artifacts/orbit-example_0.1.0-1_amd64.deb
 ```
 
 `orbit-cli` is the npm-published boundary: its package contains only the Node
@@ -235,6 +237,10 @@ generated Web assets remain embedded in the executable. The same manifest
 contains a deterministic SHA-256 inventory of every packaged payload file;
 `orbit verify-package` rejects missing, modified and undeclared files before
 an installer or updater consumes the directory.
+
+Use `orbit package --release` for any artifact intended for distribution. It
+selects Moon's release profile and records that profile in the directory
+manifest. Native Linux packages reject debug directory packages.
 
 `orbit installer` produces a Windows NSIS installer for the current user. On
 first use it downloads Tauri's pinned NSIS 3.11 archive, verifies its SHA-1
@@ -292,6 +298,52 @@ root. Linux remains dependent on the target system's GTK3 and WebKitGTK 4.1
 runtime; the portable archive neither bundles those libraries nor installs a
 desktop-entry file. Archive output defaults to `artifacts/` so it cannot alter
 the source directory package.
+
+`orbit linux-package` creates one distribution-native package from the same
+verified Linux directory package. It invokes the host's standard `dpkg-deb`,
+`rpmbuild`, or `makepkg` tool for `--format deb`, `rpm`, or `arch`; it does not
+silently route work through WSL or a container. Arch builds must run as an
+unprivileged user. The package installs the untouched directory package below
+`/usr/lib/<application-identifier>`, a launcher under `/usr/bin`, a desktop
+entry, and declared PNG/SVG icons under the hicolor hierarchy. A bundled Linux
+WebView runtime is rejected until MoonView has a relocatable runtime contract.
+
+Native packaging requires explicit `bundle.linux` metadata. Each format is
+enabled only when its object is present, and dependency names are deliberately
+format-specific:
+
+```json
+{
+  "bundle": {
+    "icons": ["icons/128x128.png", "icons/icon.svg"],
+    "linux": {
+      "package_name": "orbit-example",
+      "summary": "Orbit desktop example",
+      "description": "An Orbit desktop application.",
+      "license": "Apache-2.0",
+      "homepage": "https://example.com/orbit",
+      "maintainer": "Orbit Project <orbit@example.com>",
+      "category": "Utility",
+      "deb": {
+        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0"],
+        "section": "utils",
+        "priority": "optional"
+      },
+      "rpm": { "requires": ["gtk3", "webkit2gtk4.1"] },
+      "arch": { "depends": ["gtk3", "webkit2gtk-4.1"] }
+    }
+  }
+}
+```
+
+Production native packages require `--sign-command`; it receives quoted
+`{artifact}`, `{package_dir}`, and `{package_manifest}` paths. Unlike portable
+archive signing, a native-package hook may modify the artifact to attach an
+in-format signature. Orbit hashes the final bytes afterward and records whether
+the hook ran in `*.orbit-linux-package.json`; trust is verified separately by
+the selected signing system. `--allow-unsigned` is a local-development opt-out.
+Framework and application release procedures are documented in
+[`docs/releasing.md`](docs/releasing.md).
 
 The default `orbit-build` package is resolved from the Moon workspace. Until
 Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`
