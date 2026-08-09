@@ -29,15 +29,17 @@ pub(all) enum PluginRuntimeError {
 } derive(Eq, Debug)
 
 ///|
-/// Owns loaded plugin libraries for one desktop process. Calling `shutdown`
-/// always destroys plugin instances before their libraries are closed.
+/// Owns loaded plugin libraries for one desktop process. `shutdown` destroys
+/// plugin instances before closing their libraries. A library whose executor
+/// cannot be joined remains retained and the failure is returned.
 pub struct PluginRuntime {
   priv libraries : Array[PluginLibrary]
+  priv mut async_state : PluginAsyncState?
 }
 
 ///|
 pub fn PluginRuntime::new() -> PluginRuntime {
-  { libraries: [] }
+  { libraries: [], async_state: None }
 }
 
 ///|
@@ -73,12 +75,36 @@ fn policy_for(declaration : PluginDeclaration) -> PluginPolicy {
 }
 
 ///|
+fn PluginRuntime::cleanup_failure(
+  self : PluginRuntime,
+  fallback : PluginRuntimeError,
+) -> PluginRuntimeError {
+  match self.shutdown() {
+    Err(error) => error
+    Ok(_) => fallback
+  }
+}
+
+///|
+fn PluginRuntime::cleanup_library_failure(
+  self : PluginRuntime,
+  library : PluginLibrary,
+  fallback : PluginRuntimeError,
+) -> PluginRuntimeError {
+  self.libraries.push(library)
+  self.cleanup_failure(fallback)
+}
+
+///|
 pub fn PluginRuntime::start(
   self : PluginRuntime,
   declarations : Array[PluginDeclaration],
   development_directory? : String? = None,
 ) -> Result[Unit, PluginRuntimeError] {
-  self.shutdown()
+  match self.shutdown() {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
   match development_directory {
     Some(directory) if directory.trim().is_empty() =>
       return Err(InvalidDevelopmentDirectory)
@@ -90,9 +116,11 @@ pub fn PluginRuntime::start(
   }
   for declaration in declarations {
     if declaration.sidecar.schema_version != 2 ||
-      declaration.sidecar.abi_version != 1 {
-      self.shutdown()
-      return Err(IncompatibleSidecar(declaration.id))
+      (
+        declaration.sidecar.abi_version != 1 &&
+        declaration.sidecar.abi_version != 2
+      ) {
+      return Err(self.cleanup_failure(IncompatibleSidecar(declaration.id)))
     }
     let path = match development_directory {
       Some(directory) => path_join(directory, declaration.library)
@@ -100,47 +128,89 @@ pub fn PluginRuntime::start(
     }
     let library = match load(path) {
       Ok(library) => library
-      Err(error) => {
-        self.shutdown()
-        return Err(LoadFailure(declaration.id, error))
-      }
+      Err(error) =>
+        return Err(self.cleanup_failure(LoadFailure(declaration.id, error)))
     }
     let manifest = library.manifest()
+    let reported_abi = match library.abi_version() {
+      @abi.AbiVersion::V1 => 1
+      @abi.AbiVersion::V2 => 2
+    }
+    if declaration.sidecar.abi_version != reported_abi {
+      return Err(
+        self.cleanup_library_failure(
+          library,
+          IncompatibleSidecar(declaration.id),
+        ),
+      )
+    }
     if manifest.id != declaration.id {
-      library.close()
-      self.shutdown()
-      return Err(IdentityMismatch(declaration.id, manifest.id))
+      return Err(
+        self.cleanup_library_failure(
+          library,
+          IdentityMismatch(declaration.id, manifest.id),
+        ),
+      )
     }
     if !sidecar_matches_manifest(declaration.sidecar, manifest) {
-      library.close()
-      self.shutdown()
-      return Err(SidecarMismatch(declaration.id))
+      return Err(
+        self.cleanup_library_failure(library, SidecarMismatch(declaration.id)),
+      )
     }
     for permission in manifest.permissions {
       if !declaration.permissions.contains(permission) {
-        library.close()
-        self.shutdown()
-        return Err(MissingPermission(declaration.id, permission))
+        return Err(
+          self.cleanup_library_failure(
+            library,
+            MissingPermission(declaration.id, permission),
+          ),
+        )
       }
     }
-    match library.activate(policy_for(declaration)) {
+    let wakeup_callback = self.async_state.map(state => state.wakeup_callback)
+    match library.activate(policy_for(declaration), wakeup_callback?) {
       Ok(_) => self.libraries.push(library)
-      Err(error) => {
-        library.close()
-        self.shutdown()
-        return Err(LoadFailure(declaration.id, error))
-      }
+      Err(error) =>
+        return Err(
+          self.cleanup_library_failure(
+            library,
+            LoadFailure(declaration.id, error),
+          ),
+        )
     }
   }
   Ok(())
 }
 
 ///|
-pub fn PluginRuntime::shutdown(self : PluginRuntime) -> Unit {
+pub fn PluginRuntime::shutdown(
+  self : PluginRuntime,
+) -> Result[Unit, PluginRuntimeError] {
+  match self.async_state {
+    Some(state) => state.cancel_all_host_requests()
+    None => ()
+  }
+  let retained : Array[PluginLibrary] = []
+  let mut failure : PluginRuntimeError? = None
   for library in self.libraries {
-    library.close()
+    match library.close() {
+      Ok(_) => ()
+      Err(error) => {
+        retained.push(library)
+        if failure is None {
+          failure = Some(LoadFailure(library.manifest.id, error))
+        }
+      }
+    }
   }
   self.libraries.clear()
+  for library in retained {
+    self.libraries.push(library)
+  }
+  match failure {
+    Some(error) => Err(error)
+    None => Ok(())
+  }
 }
 
 ///|
@@ -223,9 +293,18 @@ pub fn PluginRuntime::register_ipc(
       let name = plugin_command_name(manifest.id, command) catch {
         _ => return Err(RegistrationFailure("invalid plugin command"))
       }
-      registry.register_json(name, payload => {
-        self.invoke_json(manifest.id, command, payload)
-      }) catch {
+      try {
+        match library.abi_version() {
+          V1 =>
+            registry.register_json(name, payload => {
+              self.invoke_json(manifest.id, command, payload)
+            })
+          V2 =>
+            registry.register_async_json(name, async fn(payload) {
+              self.invoke_json_async(manifest.id, command, payload)
+            })
+        }
+      } catch {
         _ =>
           return Err(
             RegistrationFailure(

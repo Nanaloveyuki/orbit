@@ -27,6 +27,7 @@ async fn AsyncExit::wait(self : AsyncExit) -> Unit {
 ///|
 priv struct AsyncDesktopLoop {
   app_loop : @orby.ExternalAppLoop[DesktopApp]
+  failure : Ref[@orby.AppError?]
 }
 
 ///|
@@ -34,7 +35,9 @@ using @external_loop {trait ExternalEventLoop}
 
 ///|
 impl ExternalEventLoop for AsyncDesktopLoop with fn poll(self, timeout?) {
-  self.app_loop.poll(timeout?)
+  self.app_loop.poll(timeout?) catch {
+    error => self.failure.val = Some(error)
+  }
 }
 
 ///|

@@ -343,6 +343,11 @@ test("package verification rejects incompatible plugin sidecars", (context) => {
   sidecar.abi_version = 2;
   writeFileSync(sidecarPath, `${JSON.stringify(sidecar)}\n`);
   writeManifest();
+  assert.equal(verifyPackage(packageDirectory).plugins, "plugins");
+
+  sidecar.abi_version = 3;
+  writeFileSync(sidecarPath, `${JSON.stringify(sidecar)}\n`);
+  writeManifest();
   assert.throws(() => verifyPackage(packageDirectory), /plugin sidecar is incompatible/);
 });
 

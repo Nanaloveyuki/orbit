@@ -16,9 +16,9 @@ const webviewInstallModes = new Set([
 
 export const compatibilityProfile = Object.freeze({
   orbit: "0.1.0-alpha.1",
-  orby: "0.1.0-beta.1",
-  moonview: "0.1.0-beta.3",
-  plugin_abi: 1,
+  orby: "0.1.0-beta.3",
+  moonview: "0.1.0-beta.4",
+  plugin_abi: 2,
   plugin_sidecar_schema: 2,
   configuration_schema: 2,
 });
@@ -696,7 +696,9 @@ export function verifyPackage(packageDirectory) {
       throw new Error(`package plugin sidecar is not valid JSON: ${declaration.id}`);
     }
     if (sidecar?.schema_version !== compatibilityProfile.plugin_sidecar_schema ||
-      sidecar?.abi_version !== compatibilityProfile.plugin_abi ||
+      !Number.isInteger(sidecar?.abi_version) ||
+      sidecar.abi_version < 1 ||
+      sidecar.abi_version > compatibilityProfile.plugin_abi ||
       sidecar?.id !== declaration.id ||
       !Array.isArray(sidecar?.platforms) || !sidecar.platforms.includes(platform)) {
       throw new Error(`package plugin sidecar is incompatible: ${declaration.id}`);

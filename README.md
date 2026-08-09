@@ -40,17 +40,27 @@ capabilities remain intentionally deferred.
   event-loop driver before async starts, keeps MoonBit and UI callbacks on the
   UI thread, and returns after the final desktop window exits. It must not be
   called from an already-running async runtime.
-- Native plugins use only `orbit-plugin-abi` v1. Each configuration entry
+- Native plugins support `orbit-plugin-abi` v1 and v2. ABI v1 remains a
+  synchronous compatibility path. ABI v2 runs `create`, `invoke` and `destroy`
+  on one dedicated native worker and therefore requires `orbit-core.run_async`.
+  Each configuration entry
   declares an ID, bundled `plugins/` relative library and sidecar-manifest
   paths, and explicit permission grants. Sidecars use `schema_version: 2`,
   declare ABI version, identity, supported platforms, requested permissions,
   command names, and request/response JSON Schema objects. `orbit-build`
   strictly validates and embeds the sidecar descriptor without loading native
   code. Before creating an instance, Orbit compares that descriptor with the
-  ABI v1 manifest reported by the loaded library. A sidecar request never
+  ABI manifest reported by the loaded library. A sidecar request never
   grants itself a permission: configuration grants must cover every requested
   permission. Orbit maps validated commands to `plugin:<plugin-id>/<command>`
-  and destroys every instance before closing its dynamic library.
+  and destroys every instance before closing its dynamic library. ABI v2 host
+  requests re-enter the same transport-neutral registry as a typed `plugin`
+  principal, so each host command needs an explicit `CommandGrant`. Host
+  requests cannot target another plugin command, and outer cancellation or
+  shutdown cancels the native wait and its structured async child task. Plugin
+  shutdown is observable: if worker termination cannot be confirmed, Orbit
+  keeps the executor and dynamic library loaded and reports a runtime failure
+  instead of unloading executable code that may still be active.
 - A development plugin root is an explicit runtime option (`--plugin-dir` in
   `orbit-cli`, exposed as `ORBIT_PLUGIN_DIRECTORY`) and is never written into
   `orbit.conf.json`, generated source, or the configuration fingerprint.
@@ -123,6 +133,17 @@ authenticated page principal and origin, duplicate pending IDs are rejected,
 and every invocation has one response-delivery gate so timeout, completion and
 cancellation races cannot post multiple responses. Legacy protocol-v1 invoke
 envelopes without `type` or `timeout_ms` remain valid with a 30-second default.
+
+An ABI v2 plugin calls `OrbitHostV2::request` synchronously from its active
+executor `invoke` stack. The command is a normal Orbit command name and the
+request bytes are one strict JSON payload. Orbit returns the complete protocol
+v1 response envelope, including the invocation ID and either `result` or
+`error`, in host-allocated memory. A zero host timeout inherits cancellation
+from the outer invocation; explicit host timeouts are capped at five minutes.
+Plugins must not retain the callback context or call it from plugin-created
+threads. Requests to `plugin:*` are rejected, and Orbit rejects any direct or
+indirect invocation of a plugin while that plugin's sole worker is waiting for
+a host response. This prevents alias handlers from creating worker deadlocks.
 
 `orbit-ipc-http` exposes the same protocol at the exact default endpoint
 `POST /orbit/v1/invoke`. It requires `application/json` and a host-supplied
@@ -207,7 +228,9 @@ native launch artifact under `_build/native/debug/build/`. `--binary` remains
 an explicit override. It copies the application `plugins/` directory and
 optional `--runtime-dir` into the output. `orbit-package.json` records the
 application identity, configuration fingerprint, host platform and
-architecture, Orbit, MoonView, and fixed plugin-ABI compatibility values. The
+architecture, Orbit, MoonView, and plugin-ABI compatibility ceilings. The
+`plugin_abi` value is the highest accepted ABI version; packages may contain
+sidecars with any supported positive ABI version up to that ceiling. The
 generated Web assets remain embedded in the executable. The same manifest
 contains a deterministic SHA-256 inventory of every packaged payload file;
 `orbit verify-package` rejects missing, modified and undeclared files before
@@ -317,16 +340,26 @@ moon info
 
 ## Plugin Fixture Integration
 
-The native plugin integration fixture compiles a small ABI v1 DLL and loads it
-through the published `dynlib` and `orbit-plugin-abi` packages. It verifies
+The native plugin integration fixture compiles ABI v1 and v2 DLLs and loads
+them through the published `dynlib` and `orbit-plugin-abi` packages. It verifies
 explicit permission denial, duplicate identifiers, ABI create failures, JSON
 command dispatch, malformed plugin responses, plugin command failures, and
-that instance destruction occurs before DLL unload.
+that instance destruction occurs before DLL unload. The ABI v2 fixture uses
+Orby's real external event loop and proves that plugin host requests receive
+the same allow/deny policy evaluation as other IPC principals. It also covers
+outer deadline cancellation, indirect reentry rejection, and the real
+`orbit-core.run_async` plugin startup order on Windows.
 
 ```powershell
 ./orbit-plugin-fixtures/run-integration.ps1
 ```
 
-The script uses `cl.exe` when the Visual Studio developer tools are active and
-otherwise falls back to `clang.exe`. The compiled DLL and teardown log are
-ignored build artifacts.
+On Linux, the ABI v2 host-request path is covered by:
+
+```sh
+./orbit-plugin-fixtures/run-integration.sh
+```
+
+The Windows script uses `cl.exe` when the Visual Studio developer tools are
+active and otherwise falls back to `clang.exe`; the Linux script uses `cc`.
+Compiled fixture libraries and the teardown log are ignored build artifacts.

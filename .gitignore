@@ -3,8 +3,9 @@ ref/
 .Agents/
 _build/
 tmp/
-orbit-plugin-fixtures/orbit-plugin-fixture.dll
-orbit-plugin-fixtures/orbit-plugin-fixture.lib
+orbit-plugin-fixtures/orbit-plugin-fixture*.dll
+orbit-plugin-fixtures/orbit-plugin-fixture*.lib
+orbit-plugin-fixtures/orbit-plugin-fixture*.so
 orbit-plugin-fixture-order.log
 .mooncakes/
 .repos/
