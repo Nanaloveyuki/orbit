@@ -21,6 +21,10 @@ attests the artifacts, publishes npm with provenance, publishes Mooncake, and
 only then makes the GitHub Release public. A failure leaves the GitHub Release
 as a draft for inspection.
 
+`.moon-version` selects an installer-supported MoonBit channel. CI records the
+resolved compiler and build-tool versions with `moon version --all` before
+validation so every release retains the exact toolchain identity in its logs.
+
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the
 declared dependencies there. Source validation still runs after `moon update`

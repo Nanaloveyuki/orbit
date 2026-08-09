@@ -47,6 +47,7 @@ jobs:
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "$HOME\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - run: moon version --all
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
@@ -68,6 +69,7 @@ jobs:
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: moon version --all
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
