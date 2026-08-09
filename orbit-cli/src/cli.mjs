@@ -5,8 +5,14 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { gzipSync } from "node:zlib";
+import {
+  buildLinuxPackage,
+  linuxPackageFormats,
+  linuxPackageMetadataPath,
+  verifyLinuxPackageArtifact,
+} from "./linux-packages.mjs";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "archive", "verify-archive", "migrate-config", "icon"]);
+const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "archive", "verify-archive", "linux-package", "verify-linux-package", "migrate-config", "icon"]);
 const webviewInstallModes = new Set([
   "download_bootstrapper",
   "embed_bootstrapper",
@@ -45,7 +51,7 @@ function packagePlatformName(platform) {
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|dev|diagnose|package|verify-package|installer|verify-installer|archive|verify-archive|migrate-config|icon> [options]",
+    "Usage: orbit <generate|bindings|build|run|dev|diagnose|package|verify-package|installer|verify-installer|archive|verify-archive|linux-package|verify-linux-package|migrate-config|icon> [options]",
     "",
     "Options:",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
@@ -59,6 +65,7 @@ export function usage() {
     "  --binary <path>       Explicit executable copied by package (default: discover Moon native output)",
     "  --out-dir <path>      Package output directory (default: dist)",
     "  --runtime-dir <path>  Optional WebView runtime files copied by package",
+    "  --release             Build the application with Moon's release profile",
     "  --package-dir <path>  Package directory verified by verify-package",
     "  --webview2-bootstrapper <path>  Local Evergreen WebView2 bootstrapper for installer",
     "  --makensis <command>  NSIS compiler (default: makensis)",
@@ -68,6 +75,13 @@ export function usage() {
     "  --installer-metadata <path>  Installer metadata path (default: adjacent file)",
     "  --archive <path>      Archive verified by verify-archive",
     "  --archive-metadata <path>  Archive metadata path (default: adjacent file)",
+    "  --format <format>     Linux native package format: deb, rpm, or arch",
+    "  --package-release <n> Linux native package revision (default: 1)",
+    "  --artifact <path>     Linux native package verified by verify-linux-package",
+    "  --artifact-metadata <path>  Linux package metadata path (default: adjacent file)",
+    "  --dpkg-deb <command>  Debian package builder (default: dpkg-deb)",
+    "  --rpmbuild <command>  RPM package builder (default: rpmbuild)",
+    "  --makepkg <command>   Arch package builder (default: makepkg)",
     "  --source <path>       Required 1024x1024 PNG source for icon generation",
     "  --compression <level> PNG compression level for icon generation (0-9, default: 6)",
     "  --dev-timeout <ms>    Vite readiness timeout (default: 30000)",
@@ -121,6 +135,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "binary",
       "out-dir",
       "runtime-dir",
+      "release",
       "package-dir",
       "webview2-bootstrapper",
       "makensis",
@@ -130,6 +145,13 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "installer-metadata",
       "archive",
       "archive-metadata",
+      "format",
+      "package-release",
+      "artifact",
+      "artifact-metadata",
+      "dpkg-deb",
+      "rpmbuild",
+      "makepkg",
       "source",
       "compression",
       "dev-timeout",
@@ -137,7 +159,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     ].includes(key)) {
       throw new Error(`unknown option: ${argument}`);
     }
-    if (["json", "allow-unsigned"].includes(key)) {
+    if (["json", "allow-unsigned", "release"].includes(key)) {
       values[key] = true;
     } else {
       values[key] = optionValue(argv, index, argument);
@@ -185,6 +207,24 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "verify-archive" && !values.archive) {
     throw new Error("verify-archive requires --archive <path>");
   }
+  if (command === "linux-package") {
+    if (!values["package-dir"]) {
+      throw new Error("linux-package requires --package-dir <path>");
+    }
+    if (!linuxPackageFormats.has(values.format)) {
+      throw new Error("linux-package requires --format deb, rpm, or arch");
+    }
+    if (!values["sign-command"] && !values["allow-unsigned"]) {
+      throw new Error("linux-package requires --sign-command <command> or --allow-unsigned");
+    }
+  }
+  if (command === "verify-linux-package" && !values.artifact) {
+    throw new Error("verify-linux-package requires --artifact <path>");
+  }
+  const packageRelease = values["package-release"] ?? "1";
+  if (!/^[1-9][0-9]*$/.test(packageRelease)) {
+    throw new Error("--package-release must be a positive integer");
+  }
   const compression = Number(values.compression ?? "6");
   if (!Number.isInteger(compression) || compression < 0 || compression > 9) {
     throw new Error("--compression must be an integer between 0 and 9");
@@ -203,10 +243,11 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     moon: resolveExecutable(workspace, values.moon, "moon"),
     pluginDir: values["plugin-dir"] ? resolve(workspace, values["plugin-dir"]) : undefined,
     binary: values.binary ? resolve(workspace, values.binary) : undefined,
-    outDir: resolve(workspace, values["out-dir"] ?? (command === "icon" ? "icons" : command === "archive" ? "artifacts" : "dist")),
+    outDir: resolve(workspace, values["out-dir"] ?? (command === "icon" ? "icons" : ["archive", "linux-package"].includes(command) ? "artifacts" : "dist")),
     source: values.source ? resolve(workspace, values.source) : undefined,
     compression,
     runtimeDir: values["runtime-dir"] ? resolve(workspace, values["runtime-dir"]) : undefined,
+    releaseBuild: values.release ?? false,
     packageDir: values["package-dir"] ? resolve(workspace, values["package-dir"]) : undefined,
     webview2Bootstrapper: values["webview2-bootstrapper"]
       ? resolve(workspace, values["webview2-bootstrapper"])
@@ -223,6 +264,15 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     archiveMetadata: values["archive-metadata"]
       ? resolve(workspace, values["archive-metadata"])
       : undefined,
+    format: values.format,
+    packageRelease,
+    artifact: values.artifact ? resolve(workspace, values.artifact) : undefined,
+    artifactMetadata: values["artifact-metadata"]
+      ? resolve(workspace, values["artifact-metadata"])
+      : undefined,
+    dpkgDeb: resolveExecutable(workspace, values["dpkg-deb"], "dpkg-deb"),
+    rpmbuild: resolveExecutable(workspace, values.rpmbuild, "rpmbuild"),
+    makepkg: resolveExecutable(workspace, values.makepkg, "makepkg"),
     devTimeout,
     json: values.json ?? false,
   };
@@ -284,6 +334,7 @@ export function packageMetadataCommand(invocation) {
 }
 
 export function moonCommands(invocation, viteWorkflow = null) {
+  const release = invocation.releaseBuild ? ["--release"] : [];
   const generate = [
     "run",
     "--target",
@@ -343,13 +394,13 @@ export function moonCommands(invocation, viteWorkflow = null) {
   if (invocation.command === "build" || invocation.command === "package") {
     return [
       generate,
-      ["run", "--target", "native", "--build-only", invocation.packagePath],
+      ["run", ...release, "--target", "native", "--build-only", invocation.packagePath],
     ];
   }
   if (invocation.command === "diagnose") {
     return [["check", "--target", "native", invocation.packagePath]];
   }
-  return [generate, ["run", "--target", "native", invocation.packagePath]];
+  return [generate, ["run", ...release, "--target", "native", invocation.packagePath]];
 }
 
 function loadViteWorkflow(invocation) {
@@ -502,7 +553,7 @@ function packageBuildDirectory(invocation) {
     invocation.workspace,
     "_build",
     "native",
-    "debug",
+    invocation.releaseBuild ? "release" : "debug",
     "build",
     packageRelative || basename(invocation.workspace),
   );
@@ -547,7 +598,9 @@ export function packageDescriptor(metadata, binary, discovered) {
       fingerprint: metadata.configuration_fingerprint,
     },
     application: metadata.application,
+    bundle: metadata.bundle ?? { icons: [], linux: null },
     windows: metadata.windows,
+    build: { profile: metadata.build_profile ?? "debug" },
     executable: `bin/${basename(binary)}`,
     executableDiscovered: discovered,
     plugins: metadata.plugins.length === 0 ? null : "plugins",
@@ -633,7 +686,8 @@ export function verifyPackage(packageDirectory) {
     typeof manifest.configuration.fingerprint !== "string" ||
     manifest.configuration.fingerprint.length === 0 ||
     typeof manifest.executable !== "string" ||
-    !manifest.executable.startsWith("bin/")
+    !manifest.executable.startsWith("bin/") ||
+    (manifest.build !== undefined && !new Set(["debug", "release"]).has(manifest.build?.profile))
   ) {
     throw new Error("package manifest is incomplete or incompatible");
   }
@@ -666,6 +720,21 @@ export function verifyPackage(packageDirectory) {
   const actual = packageIntegrity(packageDirectory);
   if (JSON.stringify(actual.files) !== JSON.stringify(expected)) {
     throw new Error("package integrity verification failed");
+  }
+  const bundle = manifest.bundle ?? { icons: [], linux: null };
+  if (!Array.isArray(bundle.icons) || (bundle.linux !== null && typeof bundle.linux !== "object")) {
+    throw new Error("package bundle metadata is incomplete or incompatible");
+  }
+  const iconPaths = new Set();
+  for (const icon of bundle.icons) {
+    if (typeof icon !== "string" || !icon.startsWith("icons/") || iconPaths.has(icon)) {
+      throw new Error("package bundle icon declaration is invalid");
+    }
+    iconPaths.add(icon);
+    const iconPath = packageFilePath(packageDirectory, icon);
+    if (!existsSync(iconPath) || !statSync(iconPath).isFile() || !seen.has(icon)) {
+      throw new Error(`package bundle icon is missing: ${icon}`);
+    }
   }
   const declarations = manifest.pluginDeclarations;
   if (!Array.isArray(declarations) ||
@@ -752,8 +821,24 @@ function packageApplication(invocation, metadata) {
     }
     cpSync(invocation.runtimeDir, resolve(invocation.outDir, "runtime"), { recursive: true });
   }
+  const packagedIcons = [];
+  for (const icon of metadata.bundle?.icons ?? []) {
+    const source = applicationResourcePath(appRoot, icon);
+    if (!existsSync(source) || !statSync(source).isFile()) {
+      throw new Error(`declared bundle icon does not exist: ${icon}`);
+    }
+    const destination = resolve(invocation.outDir, "icons", icon);
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(source, destination);
+    packagedIcons.push(`icons/${icon}`);
+  }
   const descriptor = {
     ...packageDescriptor(metadata, binary, discovered),
+    bundle: {
+      icons: packagedIcons,
+      linux: metadata.bundle?.linux ?? null,
+    },
+    build: { profile: invocation.releaseBuild ? "release" : "debug" },
     plugins: existsSync(plugins) ? "plugins" : null,
     runtime: invocation.runtimeDir ? "runtime" : null,
   };
@@ -1496,6 +1581,27 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     return;
   }
 
+  if (invocation.command === "verify-linux-package") {
+    try {
+      const metadata = verifyLinuxPackageArtifact(
+        invocation.artifact,
+        invocation.artifactMetadata ?? linuxPackageMetadataPath(invocation.artifact),
+        compatibilityProfile,
+      );
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, application: metadata.application.identifier, backend: metadata.backend })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "linux_package_verification_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
   if (invocation.command === "installer") {
     try {
       const result = await buildWindowsInstaller(invocation);
@@ -1522,6 +1628,30 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     } catch (error) {
       if (invocation.json) {
         environment.stdout.write(`${JSON.stringify({ code: "archive_failed", message: error.message })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
+  if (invocation.command === "linux-package") {
+    try {
+      const manifest = verifyPackage(invocation.packageDir);
+      if (manifest.build?.profile !== "release") {
+        throw new Error("linux-package requires a directory package built with orbit package --release");
+      }
+      const result = buildLinuxPackage({
+        ...invocation,
+        release: invocation.packageRelease,
+      }, manifest);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, artifact: result.artifact })}\n`);
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({ code: "linux_package_failed", message: error.message })}\n`);
       } else {
         environment.stdout.write(`orbit: ${error.message}\n`);
       }

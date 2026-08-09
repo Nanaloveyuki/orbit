@@ -56,6 +56,26 @@ fn validate_string_field(
 }
 
 ///|
+fn validate_optional_string_field(
+  object : Map[String, Json],
+  name : String,
+  path : String,
+  diagnostics : Array[ConfigDiagnostic],
+) -> Unit {
+  match object.get(name) {
+    Some(String(_)) | Some(Null) | None => ()
+    Some(_) =>
+      diagnostics.push(
+        diagnostic(
+          "invalid_type",
+          path + "." + name,
+          "field must be a string or null",
+        ),
+      )
+  }
+}
+
+///|
 fn validate_bool_field(
   object : Map[String, Json],
   name : String,
@@ -479,7 +499,7 @@ fn validate_v2_bundle_shape(
         object,
         "$.bundle",
         ["icons"],
-        ["windows"],
+        ["windows", "linux"],
         diagnostics,
       )
       match object.get("icons") {
@@ -506,6 +526,90 @@ fn validate_v2_bundle_shape(
             ),
           )
         None => ()
+      }
+      match object.get("linux") {
+        Some(Object(linux)) => {
+          validate_object_keys_with_optional(
+            linux,
+            "$.bundle.linux",
+            ["package_name", "summary", "description", "license", "category"],
+            ["homepage", "maintainer", "deb", "rpm", "arch"],
+            diagnostics,
+          )
+          validate_string_field(
+            linux, "package_name", "$.bundle.linux", diagnostics,
+          )
+          validate_string_field(linux, "summary", "$.bundle.linux", diagnostics)
+          validate_string_field(
+            linux, "description", "$.bundle.linux", diagnostics,
+          )
+          validate_string_field(linux, "license", "$.bundle.linux", diagnostics)
+          validate_optional_string_field(
+            linux, "homepage", "$.bundle.linux", diagnostics,
+          )
+          validate_optional_string_field(
+            linux, "maintainer", "$.bundle.linux", diagnostics,
+          )
+          validate_string_field(
+            linux, "category", "$.bundle.linux", diagnostics,
+          )
+          for format in ["deb", "rpm", "arch"] {
+            let path = "$.bundle.linux." + format
+            let dependency_field = if format == "rpm" {
+              "requires"
+            } else {
+              "depends"
+            }
+            match linux.get(format) {
+              Some(Object(format_config)) => {
+                if format == "deb" {
+                  validate_object_keys(
+                    format_config,
+                    path,
+                    [dependency_field, "section", "priority"],
+                    diagnostics,
+                  )
+                  validate_string_field(
+                    format_config, "section", path, diagnostics,
+                  )
+                  validate_string_field(
+                    format_config, "priority", path, diagnostics,
+                  )
+                } else {
+                  validate_object_keys(
+                    format_config,
+                    path,
+                    [dependency_field],
+                    diagnostics,
+                  )
+                }
+                match format_config.get(dependency_field) {
+                  Some(value) =>
+                    validate_string_array(
+                      value,
+                      path + "." + dependency_field,
+                      diagnostics,
+                    )
+                  None => ()
+                }
+              }
+              Some(Null) | None => ()
+              Some(_) =>
+                diagnostics.push(
+                  diagnostic(
+                    "invalid_type", path, "field must be an object or null",
+                  ),
+                )
+            }
+          }
+        }
+        Some(Null) | None => ()
+        Some(_) =>
+          diagnostics.push(
+            diagnostic(
+              "invalid_type", "$.bundle.linux", "field must be an object or null",
+            ),
+          )
       }
     }
     _ =>
