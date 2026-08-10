@@ -14,6 +14,9 @@ const npmManifest = JSON.parse(readFileSync(resolve(repository, "orbit-cli", "pa
 if (!moonVersion || typeof npmManifest.version !== "string") {
   throw new Error("could not read Orbit release versions");
 }
+if (npmManifest.repository?.url !== "https://github.com/Nanaloveyuki/orbit.git") {
+  throw new Error("npm repository URL must identify https://github.com/Nanaloveyuki/orbit.git");
+}
 if (moonVersion !== npmManifest.version) {
   throw new Error(`MoonBit version ${moonVersion} does not match npm version ${npmManifest.version}`);
 }
