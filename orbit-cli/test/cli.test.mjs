@@ -26,6 +26,7 @@ import {
   viteWorkflowCommand,
   windowsToolCacheDirectory,
 } from "../src/cli.mjs";
+import { createApplication } from "../src/init.mjs";
 import {
   archPkgbuild,
   createLinuxInstallTree,
@@ -97,6 +98,138 @@ function createLinuxPackage(directory) {
   writeFileSync(join(directory, "orbit-package.json"), `${JSON.stringify(manifest)}\n`);
   return manifest;
 }
+
+test("init parses one target and application identity options", () => {
+  const cwd = resolve("workspace");
+  const invocation = parseInvocation([
+    "init",
+    "desktop-app",
+    "--name",
+    "Desktop App",
+    "--identifier",
+    "com.example.desktop",
+    "--module",
+    "example/desktop-app",
+  ], cwd);
+  assert.equal(invocation.initDirectory, resolve(cwd, "desktop-app"));
+  assert.equal(invocation.initName, "Desktop App");
+  assert.equal(invocation.initIdentifier, "com.example.desktop");
+  assert.equal(invocation.initModule, "example/desktop-app");
+  assert.throws(
+    () => parseInvocation(["init"], cwd),
+    /init requires exactly one target directory/,
+  );
+  assert.throws(
+    () => parseInvocation(["build", "--name", "Unused"], cwd),
+    /--name is only valid with init/,
+  );
+  assert.throws(
+    () => createApplication({
+      directory: resolve(cwd, "invalid-module"),
+      moduleName: "../invalid",
+      orbitVersion: "0.1.0-alpha.2",
+      cliVersion: "0.1.0-alpha.2",
+    }),
+    /--module must use the MoonBit owner\/name form/,
+  );
+});
+
+test("init creates a complete application without overwriting a target", (context) => {
+  const parent = mkdtempSync(join(tmpdir(), "orbit-init-"));
+  context.after(() => rmSync(parent, { recursive: true, force: true }));
+  const target = join(parent, "desktop-app");
+  const application = createApplication({
+    directory: target,
+    name: "Desktop App",
+    identifier: "com.example.desktop",
+    moduleName: "example/desktop-app",
+    orbitVersion: "0.1.0-alpha.2",
+    cliVersion: "0.1.0-alpha.2",
+  });
+
+  assert.equal(application.slug, "desktop-app");
+  assert.equal(application.files.length, 10);
+  for (const relativePath of application.files) {
+    assert.equal(existsSync(join(target, relativePath)), true, relativePath);
+  }
+  assert.match(
+    readFileSync(join(target, "moon.mod"), "utf8"),
+    /Nanaloveyuki\/orbit@0\.1\.0-alpha\.2/,
+  );
+  assert.match(
+    readFileSync(join(target, "package.json"), "utf8"),
+    /"orbit:run": "orbit run"/,
+  );
+  assert.match(readFileSync(join(target, ".gitignore"), "utf8"), /^\.repos\/$/m);
+  const config = JSON.parse(readFileSync(join(target, "orbit.conf.json"), "utf8"));
+  assert.equal(config.schema_version, 2);
+  assert.equal(config.app.identifier, "com.example.desktop");
+  assert.deepEqual(config.capabilities[0].commands, ["desktop-app.ping"]);
+
+  writeFileSync(join(target, "main.mbt"), "user content\n");
+  assert.throws(
+    () => createApplication({
+      directory: target,
+      orbitVersion: "0.1.0-alpha.2",
+      cliVersion: "0.1.0-alpha.2",
+    }),
+    /init target already exists/,
+  );
+  assert.equal(readFileSync(join(target, "main.mbt"), "utf8"), "user content\n");
+});
+
+test("CLI discovers the published orbit-build package in Mooncakes", (context) => {
+  const workspace = mkdtempSync(join(tmpdir(), "orbit-consumer-"));
+  context.after(() => rmSync(workspace, { recursive: true, force: true }));
+  const publishedBuild = join(
+    workspace,
+    ".mooncakes",
+    "Nanaloveyuki",
+    "orbit",
+    "orbit-build",
+  );
+  mkdirSync(publishedBuild, { recursive: true });
+  const invocation = parseInvocation(["generate"], workspace);
+  assert.equal(invocation.orbitBuild, publishedBuild);
+  assert.equal(moonCommands(invocation)[0][3], publishedBuild);
+});
+
+test("CLI selects a project-local fetch path before dependencies are built", (context) => {
+  const workspace = mkdtempSync(join(tmpdir(), "orbit-bootstrap-"));
+  context.after(() => rmSync(workspace, { recursive: true, force: true }));
+  writeFileSync(join(workspace, "moon.mod"), [
+    'name = "example/bootstrap"',
+    "",
+    "import {",
+    '  "Nanaloveyuki/orbit@0.1.0-alpha.2",',
+    "}",
+    "",
+  ].join("\n"));
+  const invocation = parseInvocation(["generate"], workspace);
+  const fetchedBuild = join(
+    workspace,
+    ".repos",
+    "Nanaloveyuki",
+    "orbit",
+    "0.1.0-alpha.2",
+    "orbit-build",
+  );
+  assert.equal(invocation.orbitVersion, "0.1.0-alpha.2");
+  assert.equal(invocation.orbitBuild, fetchedBuild);
+  assert.equal(invocation.orbitBuildProvided, false);
+
+  writeFileSync(join(workspace, "moon.mod"), [
+    'name = "example/bootstrap"',
+    "",
+    "import {",
+    '  "Nanaloveyuki/orbit@../../outside",',
+    "}",
+    "",
+  ].join("\n"));
+  const invalid = parseInvocation(["generate"], workspace);
+  assert.equal(invalid.orbitVersion, undefined);
+  assert.equal(invalid.orbitBuild, "orbit-build");
+});
 
 test("generate defaults output and package to the configuration directory", () => {
   const cwd = resolve("workspace");

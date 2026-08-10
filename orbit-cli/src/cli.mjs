@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { gzipSync } from "node:zlib";
+import { createApplication } from "./init.mjs";
 import {
   buildLinuxPackage,
   linuxPackageFormats,
@@ -12,7 +13,17 @@ import {
   verifyLinuxPackageArtifact,
 } from "./linux-packages.mjs";
 
-const commands = new Set(["generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "archive", "verify-archive", "linux-package", "verify-linux-package", "migrate-config", "icon"]);
+const commands = new Set(["init", "generate", "bindings", "build", "run", "dev", "diagnose", "package", "verify-package", "installer", "verify-installer", "archive", "verify-archive", "linux-package", "verify-linux-package", "migrate-config", "icon"]);
+const orbitBuildCommands = new Set([
+  "generate",
+  "bindings",
+  "build",
+  "run",
+  "dev",
+  "package",
+  "migrate-config",
+  "icon",
+]);
 const webviewInstallModes = new Set([
   "download_bootstrapper",
   "embed_bootstrapper",
@@ -21,7 +32,7 @@ const webviewInstallModes = new Set([
 ]);
 
 export const compatibilityProfile = Object.freeze({
-  orbit: "0.1.0-alpha.1",
+  orbit: "0.1.0-alpha.2",
   orby: "0.1.0-beta.3",
   moonview: "0.1.0-beta.6",
   plugin_abi: 2,
@@ -51,13 +62,17 @@ function packagePlatformName(platform) {
 
 export function usage() {
   return [
-    "Usage: orbit <generate|bindings|build|run|dev|diagnose|package|verify-package|installer|verify-installer|archive|verify-archive|linux-package|verify-linux-package|migrate-config|icon> [options]",
+    "Usage: orbit <init|generate|bindings|build|run|dev|diagnose|package|verify-package|installer|verify-installer|archive|verify-archive|linux-package|verify-linux-package|migrate-config|icon> [options]",
+    "       orbit init <directory> [--name <display-name>] [--identifier <id>] [--module <owner/name>]",
     "",
     "Options:",
+    "  --name <name>         Application display name used by init",
+    "  --identifier <id>     Dotted application identifier used by init",
+    "  --module <owner/name> MoonBit module name used by init",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
     "  --output <path>       Generated source, bindings, or required v2 migration destination",
     "  --package <path>      Moon package to build or run (default: config directory)",
-    "  --orbit-build <path>  Moon package for the generator (default: orbit-build)",
+    "  --orbit-build <path>  Moon package for the generator (default: auto-discover/fetch)",
     "  --moon <command>      Moon executable (default: moon)",
     "  --workspace <path>    Working directory for Moon (default: current directory)",
     "  --plugin-dir <path>   Development-only plugin root passed as ORBIT_PLUGIN_DIRECTORY",
@@ -104,6 +119,38 @@ function resolveExecutable(cwd, value, fallback) {
     : executable;
 }
 
+function configuredOrbitVersion(workspace) {
+  const manifest = resolve(workspace, "moon.mod");
+  if (!existsSync(manifest)) {
+    return undefined;
+  }
+  const source = readFileSync(manifest, "utf8");
+  const version = /^\s*"Nanaloveyuki\/orbit@([^"\s]+)"\s*,?\s*$/m.exec(source)?.[1];
+  return version && /^[0-9A-Za-z][0-9A-Za-z.+-]{0,127}$/.test(version)
+    ? version
+    : undefined;
+}
+
+function defaultOrbitBuild(workspace, version) {
+  if (existsSync(resolve(workspace, "orbit-build"))) {
+    return "orbit-build";
+  }
+  const installed = resolve(
+    workspace,
+    ".mooncakes/Nanaloveyuki/orbit/orbit-build",
+  );
+  if (existsSync(installed)) {
+    return installed;
+  }
+  if (version) {
+    return resolve(
+      workspace,
+      `.repos/Nanaloveyuki/orbit/${version}/orbit-build`,
+    );
+  }
+  return "orbit-build";
+}
+
 export function parseInvocation(argv, cwd = process.cwd()) {
   if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
     return { help: true };
@@ -115,17 +162,22 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   }
 
   const values = {};
+  const positionals = [];
   for (let index = 1; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help" || argument === "-h") {
       return { help: true };
     }
     if (!argument.startsWith("--")) {
-      throw new Error(`unexpected argument: ${argument}`);
+      positionals.push(argument);
+      continue;
     }
     const key = argument.slice(2);
     if (![
       "config",
+      "name",
+      "identifier",
+      "module",
       "output",
       "package",
       "orbit-build",
@@ -167,7 +219,23 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     }
   }
 
+  if (command === "init") {
+    if (positionals.length !== 1) {
+      throw new Error("init requires exactly one target directory");
+    }
+  } else if (positionals.length !== 0) {
+    throw new Error(`unexpected argument: ${positionals[0]}`);
+  }
+  if (command !== "init") {
+    for (const key of ["name", "identifier", "module"]) {
+      if (values[key] !== undefined) {
+        throw new Error(`--${key} is only valid with init`);
+      }
+    }
+  }
+
   const workspace = resolve(cwd, values.workspace ?? ".");
+  const orbitVersion = configuredOrbitVersion(workspace);
   const config = resolve(workspace, values.config ?? "orbit.conf.json");
   if (command === "migrate-config" && !values.output) {
     throw new Error("migrate-config requires --output <path>");
@@ -236,10 +304,16 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   return {
     command,
     workspace,
+    initDirectory: command === "init" ? resolve(workspace, positionals[0]) : undefined,
+    initName: values.name,
+    initIdentifier: values.identifier,
+    initModule: values.module,
     config,
     output,
     packagePath: resolve(workspace, values.package ?? dirname(config)),
-    orbitBuild: values["orbit-build"] ?? "orbit-build",
+    orbitBuild: values["orbit-build"] ?? defaultOrbitBuild(workspace, orbitVersion),
+    orbitBuildProvided: values["orbit-build"] !== undefined,
+    orbitVersion,
     moon: resolveExecutable(workspace, values.moon, "moon"),
     pluginDir: values["plugin-dir"] ? resolve(workspace, values["plugin-dir"]) : undefined,
     binary: values.binary ? resolve(workspace, values.binary) : undefined,
@@ -307,6 +381,32 @@ function runMoon(invocation, args) {
   if (result.status !== 0) {
     process.exitCode = result.status ?? 1;
     return false;
+  }
+  return true;
+}
+
+function prepareOrbitBuild(invocation) {
+  if (!orbitBuildCommands.has(invocation.command) ||
+      invocation.orbitBuildProvided ||
+      invocation.orbitBuild === "orbit-build" ||
+      existsSync(invocation.orbitBuild)) {
+    return true;
+  }
+  if (!invocation.orbitVersion) {
+    throw new Error(
+      "orbit-build was not found; add Nanaloveyuki/orbit or pass --orbit-build",
+    );
+  }
+  if (!runMoon(invocation, [
+    "fetch",
+    `Nanaloveyuki/orbit@${invocation.orbitVersion}`,
+  ])) {
+    return false;
+  }
+  if (!existsSync(invocation.orbitBuild)) {
+    throw new Error(
+      `moon fetch did not provide orbit-build for Orbit ${invocation.orbitVersion}`,
+    );
   }
   return true;
 }
@@ -1536,6 +1636,48 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     return;
   }
 
+  if (invocation.command === "init") {
+    try {
+      const application = createApplication({
+        directory: invocation.initDirectory,
+        name: invocation.initName,
+        identifier: invocation.initIdentifier,
+        moduleName: invocation.initModule,
+        orbitVersion: compatibilityProfile.orbit,
+        cliVersion: compatibilityProfile.orbit,
+      });
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({
+          code: "ok",
+          command: invocation.command,
+          ...application,
+        })}\n`);
+      } else {
+        environment.stdout.write([
+          `Created ${application.name} in ${application.directory}`,
+          "",
+          "Next steps:",
+          `  cd ${application.directory}`,
+          "  moon update",
+          "  npm install",
+          "  npm run orbit:run",
+          "",
+        ].join("\n"));
+      }
+    } catch (error) {
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify({
+          code: "init_failed",
+          message: error.message,
+        })}\n`);
+      } else {
+        environment.stdout.write(`orbit: ${error.message}\n`);
+      }
+      process.exitCode = 2;
+    }
+    return;
+  }
+
   if (invocation.command === "verify-package") {
     try {
       const manifest = verifyPackage(invocation.packageDir);
@@ -1668,6 +1810,9 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
 
   let developmentServer;
   try {
+    if (!prepareOrbitBuild(invocation)) {
+      return;
+    }
     const packageMetadata = invocation.command === "package"
       ? loadPackageMetadata(invocation)
       : null;

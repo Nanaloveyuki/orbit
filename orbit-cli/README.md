@@ -10,27 +10,36 @@ Commands that compile an application also require the native platform SDKs used
 by that application.
 
 ```sh
-npm install --save-dev @nanaloveyuki/orbit-cli@alpha
-npx orbit --help
+npx @nanaloveyuki/orbit-cli@alpha init desktop-app \
+  --name "Desktop App" \
+  --identifier com.example.desktop \
+  --module example/desktop-app
+cd desktop-app
+moon update
+npm install
+npm run orbit:run
 ```
 
-After adding `Nanaloveyuki/orbit` to a MoonBit module, point the CLI at the
-published generator package:
+`init` refuses to overwrite an existing target. It creates a native MoonBit
+application, schema-version 2 configuration, capability-protected IPC example,
+frontend assets, and npm scripts.
+
+For an existing Orbit application:
 
 ```sh
-npx orbit dev \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
-  --config orbit.conf.json
+npx orbit dev --config orbit.conf.json
 npx orbit package \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
   --config orbit.conf.json \
   --release \
   --out-dir dist
 npx orbit verify-package --package-dir dist
 ```
 
-The Orbit repository itself has a local `orbit-build` package, so its example
-commands do not need the explicit `--orbit-build` option.
+The CLI uses a workspace-local `orbit-build` package when present, then a
+generator materialized by Mooncakes. On a clean first build it reads the pinned
+Orbit version from `moon.mod` and runs `moon fetch` into the project-local
+`.repos` cache. `--orbit-build` remains an explicit override for custom
+repository layouts.
 
 Production installer, archive, and native-package commands require an external
 `--sign-command`. `--allow-unsigned` is only an explicit local-development
