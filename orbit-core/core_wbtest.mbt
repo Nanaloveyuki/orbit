@@ -11,7 +11,16 @@ impl @runtime.WebViewRuntime for RecordingRuntime with fn capabilities(_self) {
     message_transport: true,
     bounds_updates: true,
     devtools: false,
+    file_dialogs: false,
   }
+}
+
+///|
+impl @runtime.WebViewRuntime for RecordingRuntime with fn show_file_dialog(
+  _self,
+  _options,
+) {
+  raise Unsupported("file dialogs are unavailable in RecordingRuntime")
 }
 
 ///|
@@ -91,6 +100,15 @@ test "page events reach only local window subscriptions" {
   }
   assert_eq((router as &@event.EventSink).emit(event), Ok(()))
   assert_eq(messages.val.length(), 1)
+}
+
+///|
+test "file dialog command names are reserved by the UI runtime" {
+  assert_true(is_dialog_command(@ipc.CommandName::new("orbit.dialog.open")))
+  assert_true(
+    is_dialog_command(@ipc.CommandName::new("orbit.dialog.pick_directory")),
+  )
+  assert_false(is_dialog_command(@ipc.CommandName::new("example.ping")))
 }
 
 ///|

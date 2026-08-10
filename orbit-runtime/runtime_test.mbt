@@ -49,7 +49,13 @@ impl WebViewRuntime for FakeRuntime with fn capabilities(_self) {
     message_transport: true,
     bounds_updates: true,
     devtools: false,
+    file_dialogs: false,
   }
+}
+
+///|
+impl WebViewRuntime for FakeRuntime with fn show_file_dialog(_self, _options) {
+  raise Unsupported("file dialogs are unavailable in FakeRuntime")
 }
 
 ///|
@@ -134,6 +140,24 @@ test "runtime factories return replaceable trait objects" {
   }
   assert_true(rejected)
   debug_inspect(messages, content="[\"ready\"]")
+}
+
+///|
+test "unsupported runtimes reject file dialogs explicitly" {
+  let runtime = FakeRuntime::{ destroyed: false, handler: None }
+  let rejected = try {
+    ignore(
+      WebViewRuntime::show_file_dialog(
+        runtime,
+        RuntimeFileDialogOptions::new(kind=RuntimeFileDialogKind::OpenFile),
+      ),
+    )
+    false
+  } catch {
+    Unsupported(_) => true
+    _ => false
+  }
+  assert_true(rejected)
 }
 
 ///|

@@ -100,6 +100,30 @@ Orbit 工具只接受严格 JSON 和 `schema_version: 2`。未知字段、重复
 }
 ```
 
+## 原生文件对话框
+
+`orbit.dialog.open`、`orbit.dialog.open_multiple`、`orbit.dialog.save` 和
+`orbit.dialog.pick_directory` 是 Orbit 在配置 IPC registry 时自动注册的内建命令。它们
+默认没有权限，且仅接受 `window` principal；不要向 `remote_page`、`http_client`、
+`plugin` 或 `background_task` 授予这些命令。
+
+```json
+{
+  "identifier": "main-file-dialogs",
+  "effect": "allow",
+  "principals": [{ "kind": "window", "identifier": "main" }],
+  "scopes": [],
+  "commands": ["orbit.dialog.open", "orbit.dialog.open_multiple"]
+}
+```
+
+payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
+`initial_directory`。每个 filter 使用 `{ "name": "Text", "extensions": ["txt"] }`。
+成功取消返回 `{ "cancelled": true, "files": [] }`；选择结果返回
+`{ "cancelled": false, "files": [{ "id", "name", "kind" }] }`。`id` 是绑定到选择
+窗口的随机 capability handle，页面永远不会收到原生路径。当前 Windows 支持 picker；
+其他 runtime 返回 `dialog_unsupported`。
+
 ## 远端 HTTPS 页面
 
 `web.remote` 是显式生产模式，不是开发服务器快捷方式：

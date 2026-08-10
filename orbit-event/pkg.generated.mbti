@@ -62,4 +62,3 @@ pub(all) enum EventTarget {
 pub(open) trait EventSink {
   fn emit(Self, EventEnvelope) -> Result[Unit, EventDeliveryFailure]
 }
-

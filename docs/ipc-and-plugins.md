@@ -22,6 +22,11 @@ window.__ORBIT__.invoke(command, payload?, { timeout? })
 页面 timeout 会取消结构化子任务，CPU 密集型处理器可以通过
 `InvocationContext.cancellation()` 协作检查取消。
 
+原生文件对话框是例外：`orbit.dialog.*` 在页面消息到达时同步由窗口 UI 线程执行，避免
+将系统 modal UI 发送到 async worker。页面可取消前的超时不会关闭已显示的系统对话框；
+用户取消会产生正常的 `{ "cancelled": true }` 结果。完整 capability 配置和 payload
+格式见[配置文件](configuration.md#原生文件对话框)。
+
 ## HTTP 适配器
 
 `orbit-ipc-http` 在默认精确路径 `POST /orbit/v1/invoke` 提供同一协议。它要求

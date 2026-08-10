@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-file"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror FileCapabilityError {
+  RandomUnavailable
+  UnknownHandle(String)
+  WrongPrincipal(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub struct FileCapability {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn FileCapability::id(Self) -> String
+pub fn FileCapability::kind(Self) -> FileCapabilityKind
+pub fn FileCapability::name(Self) -> String
+
+pub(all) enum FileCapabilityKind {
+  Read
+  Write
+  Directory
+} derive(Eq, @debug.Debug)
+
+type FileCapabilityRecord
+
+pub struct FileCapabilityRegistry {
+  // private fields
+}
+pub fn FileCapabilityRegistry::clear(Self) -> Unit
+pub fn FileCapabilityRegistry::length(Self) -> Int
+pub fn FileCapabilityRegistry::mint(Self, String, String, FileCapabilityKind) -> Result[FileCapability, FileCapabilityError]
+pub fn FileCapabilityRegistry::new() -> Self
+pub fn FileCapabilityRegistry::resolve(Self, String, String, FileCapabilityKind) -> Result[String, FileCapabilityError]
+pub fn FileCapabilityRegistry::revoke_window(Self, String) -> Unit
+
+// Type aliases
+
+// Traits
