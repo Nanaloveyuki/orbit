@@ -1,6 +1,5 @@
 # ref
 ref/
-.Agents/
 _build/
 tmp/
 orbit-plugin-fixtures/orbit-plugin-fixture*.dll
