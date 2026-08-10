@@ -1,417 +1,178 @@
 # Orbit
 
-Orbit is a MoonBit desktop application framework built around a replaceable
-WebView runtime, embedded or explicitly allowlisted HTTPS Web assets, and a
-constrained command/event IPC boundary.
+[![validation](https://github.com/Nanaloveyuki/orbit/actions/workflows/validation.yml/badge.svg)](https://github.com/Nanaloveyuki/orbit/actions/workflows/validation.yml)
+[![npm](https://img.shields.io/npm/v/%40nanaloveyuki%2Forbit-cli?tag=alpha&label=orbit-cli)](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli)
 
-This repository contains the Stage 1 foundation packages, native desktop
-composition, and initial developer tooling:
+Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管理窗口和事件循环，
+以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
+IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
 
-- `orbit-utils`: schema-v2 configuration, explicit v1 migration, resources, platform and CSP utilities.
-- `orbit-event`: standalone application and runtime event contracts.
-- `orbit-ipc`: transport-neutral command registration, principal-scoped capability policies and structured invocation envelopes.
-- `orbit-ipc-async`: shared structured deadline and cancellation execution for async transports.
-- `orbit-ipc-http`: optional authenticated HTTP adapter over `moonbitlang/async/http`.
-- `orbit-runtime`: replaceable WebView runtime contracts.
-- `orbit-runtime-moonview`: native MoonView implementation of `orbit-runtime`.
-- `orbit-core`: Orby window lifecycle and runtime composition.
-- `orbit-build`: strict configuration and embedded-resource generator.
-- `orbit-cli`: Node.js development wrapper for generator, build and run flows.
+当前版本为 `0.1.0-alpha.1`。Windows 和 Linux 已进入持续集成验证；API 与配置仍可能在
+正式版前调整。
 
-Plugin loading and single-window production packaging are available. Multi-window
-resource roots, plugin isolation/signing, external navigation and broader native
-capabilities remain intentionally deferred.
+## 已实现
 
-## Current Boundaries
+- 多窗口桌面生命周期，以及每个窗口独立的嵌入资源根。
+- 构建时嵌入 Web 资源，运行时不依赖源码目录中的前端文件。
+- 同步与异步 MoonBit 命令、超时、取消、结构化错误和 256 KiB 消息限制。
+- 以窗口、远端页面、HTTP 客户端、插件和后台任务为主体的 allow/deny 能力策略。
+- 可选的、默认关闭的认证 HTTP IPC 适配器。
+- HTTPS 远端页面、精确 origin 白名单和嵌入式失败回退页。
+- 原生插件 ABI v1/v2、sidecar schema、权限声明和可观察的安全关闭。
+- Vite 开发/生产流程，以及 JavaScript IPC bindings 生成。
+- 图标生成、可校验目录包、Windows NSIS 安装包、Linux `tar.gz`、deb、rpm 和 Arch 包。
 
-- `orbit-build` strictly parses and validates schema-version 2
-  `orbit.conf.json`, emits a canonical configuration fingerprint, injects CSP
-  from `web.embedded` into the HTML entry or remote fallback, and embeds the
-  required resource directory. Each configured window owns its own embedded
-  resource root, so identical relative asset names in separate window bundles
-  do not collide.
-  Application metadata and windows live below `app`; package assets and Windows
-  installer settings live below `bundle`; explicit optional Vite commands live
-  below `build.vite`.
-- `orbit-core` owns the Orby window and destroys the selected runtime before
-  its parent window. `orbit-runtime` remains free of Orby and MoonView types;
-  factories receive an abstract `RuntimeHost`. `run_async` is the optional
-  application entry point for MoonBit async code: it installs Orby's external
-  event-loop driver before async starts, keeps MoonBit and UI callbacks on the
-  UI thread, and returns after the final desktop window exits. It must not be
-  called from an already-running async runtime.
-- Native plugins support `orbit-plugin-abi` v1 and v2. ABI v1 remains a
-  synchronous compatibility path. ABI v2 runs `create`, `invoke` and `destroy`
-  on one dedicated native worker and therefore requires `orbit-core.run_async`.
-  Each configuration entry
-  declares an ID, bundled `plugins/` relative library and sidecar-manifest
-  paths, and explicit permission grants. Sidecars use `schema_version: 2`,
-  declare ABI version, identity, supported platforms, requested permissions,
-  command names, and request/response JSON Schema objects. `orbit-build`
-  strictly validates and embeds the sidecar descriptor without loading native
-  code. Before creating an instance, Orbit compares that descriptor with the
-  ABI manifest reported by the loaded library. A sidecar request never
-  grants itself a permission: configuration grants must cover every requested
-  permission. Orbit maps validated commands to `plugin:<plugin-id>/<command>`
-  and destroys every instance before closing its dynamic library. ABI v2 host
-  requests re-enter the same transport-neutral registry as a typed `plugin`
-  principal, so each host command needs an explicit `CommandGrant`. Host
-  requests cannot target another plugin command, and outer cancellation or
-  shutdown cancels the native wait and its structured async child task. Plugin
-  shutdown is observable: if worker termination cannot be confirmed, Orbit
-  keeps the executor and dynamic library loaded and reports a runtime failure
-  instead of unloading executable code that may still be active.
-- A development plugin root is an explicit runtime option (`--plugin-dir` in
-  `orbit-cli`, exposed as `ORBIT_PLUGIN_DIRECTORY`) and is never written into
-  `orbit.conf.json`, generated source, or the configuration fingerprint.
-- MoonView, Orby, AJNI, sync, and Parsec are exact Mooncake dependencies. No
-  source package uses a local path or unpinned Git dependency.
-- CSP injection targets framework-controlled application shells containing a
-  normal `<head>` element. It is not a general HTML parser. The evaluated
-  `moonbit-community/html@0.1.2` parser does not expose the external DOM
-  mutation needed for meta insertion and would add unrelated dependencies.
-- `Nanaloveyuki/parsec/json` supplies strict JSON parsing with duplicate-key
-  rejection before the configuration reaches the ordinary JSON decoder.
+## 五分钟运行
 
-## Native Prerequisites
+先安装 [MoonBit 工具链](https://www.moonbitlang.com/download/) 和本机原生编译工具链，
+然后执行：
 
-MoonView uses the host platform's WebView SDK. On Windows, set
-`MOONVIEW_WEBVIEW2_SDK_DIR` to a WebView2 SDK root, or set both
-`MOONVIEW_WEBVIEW2_INCLUDE` and `MOONVIEW_WEBVIEW2_LOADER_LIB`. Linux requires
-the WebKitGTK 4.1 development package. These are build-host prerequisites, not
-runtime package paths recorded by Orbit.
+```sh
+git clone https://github.com/Nanaloveyuki/orbit.git
+cd orbit
+moon update
+moon run orbit-example
+```
 
-## Example
+运行后会打开一个由 Orby 创建、MoonView 渲染的原生窗口。页面按钮调用
+`example.ping`，MoonBit 后端返回 JSON，完整路径可在
+[`orbit-example`](orbit-example/) 中查看。
 
-Generate the example's embedded resources after changing a file below
-`orbit-example/assets`, then open them through Orbit's `orbit://` protocol in an
-Orby-owned MoonView window:
+修改 `orbit-example/assets` 后，先重新生成嵌入资源：
 
 ```sh
 moon run --target native orbit-build orbit-example/orbit.conf.json orbit-example/generated_page.mbt
 moon run orbit-example
 ```
 
-Run the commands from the repository root. `orbit-example` consumes generated
-source and does not read HTML, CSS, JavaScript, images, or fonts at runtime.
-The generator recursively embeds regular files below the configured entry
-file's directory, rejects symbolic links, and produces a deterministic
-`orbit://app/<path>` resource table. Asset MIME detection currently covers common web formats;
-unrecognized files use `application/octet-stream`. It strictly rejects
-duplicate JSON keys, validates the complete Orbit schema, embeds its canonical
-configuration and fingerprint, and injects the configured CSP into the HTML
-entry document. The current desktop generator requires exactly one configured
-window and applies its title, dimensions, visibility and resizable setting.
-The example button dispatches `example.ping` through
-`orbit-ipc` and displays the returned JSON response. Its `capabilities`
-configuration grants that command only to the `main` window. The generator
-emits `configured_ipc_policy`; pass it to `DesktopOptions` alongside the
-command registry. An IPC registry without a policy is rejected, and commands
-not granted to the current window return `permission_denied` without invoking
-their handler. Internally, each invocation carries a typed principal and
-transport context; `dispatch_for_window` remains the protocol-v1 compatibility
-wrapper while HTTP, plugin and background adapters use
-`dispatch_with_context`. New principal grants support exact origin and
-transport scopes, and a matching deny grant overrides every allow grant.
+### 平台前置
 
-When IPC is configured, Orbit installs `window.__ORBIT__.invoke(command,
-payload?, { timeout? })` before page scripts run. It returns a Promise, matches
-responses by invocation ID, preserves a page's legacy `window.moonview.onmessage`
-handler, and rejects non-serializable, oversized, timed-out or failed commands
-with an `OrbitIpcError` containing `code`, `message` and optional `data`.
-Requests are limited to 256 KiB and strictly parsed with duplicate-key
-rejection before they reach command handlers.
+| 平台 | 开发依赖 | 当前状态 |
+| --- | --- | --- |
+| Windows x64 | MSVC/Windows SDK；首次 native build 会自动下载并校验 WebView2 SDK | 主要开发平台，CI 与安装包流程已验证 |
+| Linux x64 | C 编译器、GTK3、WebKitGTK 4.1 开发包 | Ubuntu/Fedora/Arch 构建与打包流程已验证 |
+| macOS | - | Orbit 顶层窗口宿主尚未实现 |
+| Android/OpenHarmony | - | 相关底层库有独立探索，当前不是 Orbit 应用目标平台 |
 
-`CommandRegistry` accepts both synchronous and asynchronous typed handlers.
-Async handlers require `orbit-core.run_async`; the synchronous `run` entry
-returns `async_unavailable` for them. Page timeouts are included in the host
-request and, under `run_async`, cancel the structured child task at the same
-bounded deadline. The page also sends an explicit cancellation envelope when
-its timer wins. `InvocationContext.cancellation()` lets CPU-bound handlers
-cooperate between async suspension points. Pending IDs are scoped to the
-authenticated page principal and origin, duplicate pending IDs are rejected,
-and every invocation has one response-delivery gate so timeout, completion and
-cancellation races cannot post multiple responses. Legacy protocol-v1 invoke
-envelopes without `type` or `timeout_ms` remain valid with a 30-second default.
+Windows 的 WebView2 SDK 默认缓存到
+`%LOCALAPPDATA%\moonview\webview2\1.0.4078.44`；通常不需要手工配置 SDK。
+目标机器使用系统 Evergreen WebView2 Runtime，安装包可按配置下载或携带安装程序。
 
-An ABI v2 plugin calls `OrbitHostV2::request` synchronously from its active
-executor `invoke` stack. The command is a normal Orbit command name and the
-request bytes are one strict JSON payload. Orbit returns the complete protocol
-v1 response envelope, including the invocation ID and either `result` or
-`error`, in host-allocated memory. A zero host timeout inherits cancellation
-from the outer invocation; explicit host timeouts are capped at five minutes.
-Plugins must not retain the callback context or call it from plugin-created
-threads. Requests to `plugin:*` are rejected, and Orbit rejects any direct or
-indirect invocation of a plugin while that plugin's sole worker is waiting for
-a host response. This prevents alias handlers from creating worker deadlocks.
+Ubuntu/Debian 开发机可安装：
 
-`orbit-ipc-http` exposes the same protocol at the exact default endpoint
-`POST /orbit/v1/invoke`. It requires `application/json` and a host-supplied
-authentication callback when the adapter is constructed. The callback returns
-an opaque `AuthenticatedHttpClient`; request headers cannot select an Orbit
-principal by themselves. The resulting context uses the `http` transport, the
-authenticated client identifier and the request's exact `Origin` header, so
-ordinary allow/deny grants and origin scopes apply unchanged. Requests retain
-the same 256 KiB parser limit, response limit, host deadline, structured
-handler failure and cooperative cancellation token as MoonView invocations.
+```sh
+sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
+```
 
-The adapter does not open a listener. A host creates a
-`moonbitlang/async/http.Server`, chooses its bind address, trusted TLS
-termination or reverse-proxy boundary, connection limit and shutdown lifecycle,
-then passes that server to `HttpAdapter::serve`. Returning `None` from
-authentication rejects a request with HTTP 401 before its body is read. Orbit
-does not enable HTTP or grant any HTTP principal by default; plaintext bearer
-credentials must not be exposed beyond a loopback or otherwise trusted
-transport boundary.
+## 在应用中使用
 
-An embedded resource provider confines navigation to its own
-`<scheme>://app/` origin. MoonView accepts only same-origin GET or HEAD resource
-requests. External navigation is denied by default. Applications can replace
-`RuntimeOptions`' external navigation handler to display a permission prompt
-and approve an individual URL; the handler is never used for embedded-origin
-navigation.
+Orbit 的 MoonBit 模块和 Node.js CLI 已分别发布到 Mooncakes 与 npm：
 
-`web.remote` is an explicit production HTTPS mode. It retains
-`web.embedded.csp` and an embedded `fallback_entry`, then declares the initial
-`http_url` and exact HTTPS `allowed_origins`:
+```sh
+moon add Nanaloveyuki/orbit@0.1.0-alpha.1
+npm install --save-dev @nanaloveyuki/orbit-cli@alpha
+```
+
+当前还没有 `orbit init` 脚手架。创建应用时建议复制
+[`orbit-example`](orbit-example/) 的最小结构，再替换应用标识、前端资源和命令。
+在外部 MoonBit 模块中，生成器位于安装后的 Mooncakes 目录，因此 CLI 需要显式指定：
+
+```sh
+npx orbit generate --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+npx orbit run --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+```
+
+MoonBit 后端注册命令，配置文件决定哪个页面可以调用它：
+
+```moonbit
+let registry = @ipc.CommandRegistry::new()
+registry.register_json(@ipc.CommandName::new("example.ping"), _payload => {
+  Ok({ "message": "IPC round trip completed." })
+})
+```
+
+```javascript
+const response = await window.__ORBIT__.invoke("example.ping", { value: 1 }, {
+  timeout: 5000,
+});
+```
+
+生成的 `orbit-bindings.mjs` 也可以为当前页面实际获授权的命令提供固定入口。完整安装、
+`moon.pkg`、应用入口和生成步骤见[入门指南](docs/getting-started.md)。
+
+## React、Vue 与 Vite
+
+Orbit 不绑定前端框架。只要前端能够输出静态目录，就可以嵌入可执行文件；开发模式由
+CLI 启动明确配置的 Vite 命令并等待 `dev_url`：
 
 ```json
 {
-  "web": {
-    "embedded": { "csp": "default-src 'self'" },
-    "remote": {
-      "http_url": "https://app.example/start",
-      "allowed_origins": ["https://app.example"],
-      "fallback_entry": "assets/fallback.html"
+  "build": {
+    "vite": {
+      "dev_command": "npm run dev",
+      "dev_url": "http://127.0.0.1:5173",
+      "build_command": "npm run build",
+      "dist_dir": "dist"
     }
   }
 }
 ```
 
-The initial URL origin must appear in `allowed_origins`; HTTP URLs, wildcard
-origins, duplicate origins and Vite workflows are rejected. Allowed remote
-navigations stay in the WebView. Failed or rejected remote navigations load
-the embedded fallback; URLs outside the allowlist still require the host's
-external-navigation callback. Remote pages use the separate `remote_page`
-principal and receive no desktop IPC by default. A remote command grant must
-name that principal, scope `moonview`, and include an exact allowlisted HTTPS
-origin scope. The injected bridge is top-level-only, so an iframe cannot use
-the host IPC channel.
+```sh
+npx orbit dev --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+npx orbit build --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+```
 
-## CLI
+CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 `orbit.conf.json`。
 
-`orbit-cli` is a zero-dependency Node.js development wrapper around the
-MoonBit generator and application package. It does not parse configuration or
-embed assets itself.
+## CLI 与发布产物
+
+[`@nanaloveyuki/orbit-cli`](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli)
+是零运行时依赖的 Node.js 20+ 工具，覆盖以下常用流程：
+
+以下短命令适用于 Orbit 仓库本身；外部项目执行需要生成器的命令时，请按上文增加
+`--orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build`。
 
 ```sh
-node orbit-cli/bin/orbit.mjs generate --config orbit-example/orbit.conf.json
-node orbit-cli/bin/orbit.mjs bindings --config orbit-example/orbit.conf.json
-node orbit-cli/bin/orbit.mjs migrate-config --config old-orbit.conf.json --output orbit.conf.json
-node orbit-cli/bin/orbit.mjs icon --source assets/icon-1024.png --out-dir icons --compression 6
-node orbit-cli/bin/orbit.mjs build --config orbit-example/orbit.conf.json
-node orbit-cli/bin/orbit.mjs dev --config orbit-example/orbit.conf.json
-node orbit-cli/bin/orbit diagnose --config orbit-example/orbit.conf.json --json
-node orbit-cli/bin/orbit package --config orbit-example/orbit.conf.json --release --out-dir dist
-node orbit-cli/bin/orbit verify-package --package-dir dist
-node orbit-cli/bin/orbit installer --package-dir dist --allow-unsigned
-node orbit-cli/bin/orbit installer --package-dir dist --webview2-bootstrapper path/to/MicrosoftEdgeWebview2Setup.exe --sign-command "sign-tool {installer} {package_dir} {package_manifest}"
-node orbit-cli/bin/orbit verify-installer --installer dist/dev.orbit.example-0.1.0-setup.exe
-node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --allow-unsigned
-node orbit-cli/bin/orbit archive --package-dir dist --out-dir artifacts --sign-command "sign-linux {archive} {package_dir} {package_manifest}"
-node orbit-cli/bin/orbit verify-archive --archive artifacts/dev.orbit.example-0.1.0-linux-x64.tar.gz
-node orbit-cli/bin/orbit linux-package --package-dir dist --format deb --out-dir artifacts --allow-unsigned
-node orbit-cli/bin/orbit verify-linux-package --artifact artifacts/orbit-example_0.1.0-1_amd64.deb
+npx orbit diagnose --json
+npx orbit bindings
+npx orbit icon --source assets/icon-1024.png --out-dir icons
+npx orbit package --release --out-dir dist
+npx orbit verify-package --package-dir dist
 ```
 
-`orbit-cli` is the npm-published boundary: its package contains only the Node
-wrapper. `package` generates and builds first, then discovers the unique Moon
-native launch artifact under `_build/native/debug/build/`. `--binary` remains
-an explicit override. It copies the application `plugins/` directory and
-optional `--runtime-dir` into the output. `orbit-package.json` records the
-application identity, configuration fingerprint, host platform and
-architecture, Orbit, MoonView, and plugin-ABI compatibility ceilings. The
-`plugin_abi` value is the highest accepted ABI version; packages may contain
-sidecars with any supported positive ABI version up to that ceiling. The
-generated Web assets remain embedded in the executable. The same manifest
-contains a deterministic SHA-256 inventory of every packaged payload file;
-`orbit verify-package` rejects missing, modified and undeclared files before
-an installer or updater consumes the directory.
+Windows 可以从已校验的目录包生成 NSIS 安装程序；Linux 可以生成可移植 archive 或
+调用发行版原生工具生成 deb、rpm、Arch 包。生产产物要求外部签名命令，本地测试必须
+显式使用 `--allow-unsigned`。详见[打包指南](docs/packaging.md)。
 
-Use `orbit package --release` for any artifact intended for distribution. It
-selects Moon's release profile and records that profile in the directory
-manifest. Native Linux packages reject debug directory packages.
+## 生态组成
 
-`orbit installer` produces a Windows NSIS installer for the current user. On
-first use it downloads Tauri's pinned NSIS 3.11 archive, verifies its SHA-1
-and SHA-256,
-and caches it under `~/.orbit/tools/windows/`; it also downloads and caches the
-Microsoft Evergreen WebView2 bootstrapper. `--makensis` and
-`--webview2-bootstrapper` remain explicit offline overrides. Production
-invocations must supply a `--sign-command`; it receives quoted `{installer}`,
-`{package_dir}` and `{package_manifest}` paths. `--allow-unsigned` is an
-explicit local-development opt-out. The installer rejects `--runtime-dir`
-payloads because MoonView uses the system Evergreen runtime rather than a
-fixed copied runtime.
+| 项目 | 职责 |
+| --- | --- |
+| [Orbit on Mooncakes](https://mooncakes.io/docs/Nanaloveyuki/orbit) | 框架、构建器、运行时适配和 IPC 包 |
+| [Orbit CLI on npm](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli) | 生成、开发、构建、图标和分发命令 |
+| [Orby](https://github.com/Nanaloveyuki/orby) | 原生窗口与宿主事件循环 |
+| [MoonView](https://github.com/Nanaloveyuki/moonview) | 系统 WebView 嵌入层 |
+| [orbit-plugin-abi](https://github.com/Nanaloveyuki/orbit-plugin-abi) | 稳定的 C 插件 ABI 与异步 executor |
+| [Ajni](https://github.com/Nanaloveyuki/ajni) | 通用 JNI 与 Android JNI 基础设施 |
+| [sync](https://github.com/Nanaloveyuki/sync) | 原生线程同步原语 |
+| [dynlib](https://github.com/Nanaloveyuki/dynlib) | 动态库加载 |
+| [image](https://github.com/Nanaloveyuki/image) | 图标解码、缩放和多格式输出 |
+| [Parsec](https://github.com/Nanaloveyuki/parsec) | 严格 JSON 解析等解析基础设施 |
+| [moonbitlang/async](https://github.com/moonbitlang/async) | 官方结构化异步运行时 |
 
-`bundle.windows.webview_install_mode` controls how the installer handles that
-Evergreen runtime. It is optional and defaults to `embed_bootstrapper` for
-backward-compatible packages:
+Orbit 参考了 Tauri 的分层经验，但不是 Tauri API 的 MoonBit 移植。窗口、WebView、IPC、
+插件与打包边界均按 MoonBit 当前语言能力和原生生态重新设计。
 
-```json
-{
-  "bundle": {
-    "icons": [],
-    "windows": { "webview_install_mode": "embed_bootstrapper" }
-  }
-}
-```
+## 文档
 
-- `embed_bootstrapper`: downloads the small Microsoft bootstrapper while
-  building the installer, then embeds it. The target machine still needs
-  network access when the bootstrapper runs.
-- `download_bootstrapper`: keeps the installer small and downloads the
-  bootstrapper during installation through NSIS over HTTPS.
-- `offline_installer`: downloads and embeds Microsoft's x64 offline Evergreen
-  installer while building the installer. This is substantially larger, but
-  installation itself does not need network access.
-- `skip`: packages no WebView2 installer action; use only where Evergreen
-  WebView2 is managed by the deployment environment.
+- [入门与应用结构](docs/getting-started.md)
+- [配置文件](docs/configuration.md)
+- [IPC、HTTP 与插件](docs/ipc-and-plugins.md)
+- [打包与验证](docs/packaging.md)
+- [参与开发](CONTRIBUTING.md)
+- [维护者发布流程](docs/releasing.md)
 
-`fixed_runtime` is intentionally unsupported: MoonView currently locates the
-system Evergreen runtime through its WebView2 loader and has no fixed-runtime
-path API. `--webview2-bootstrapper` remains an explicit local payload override
-for `embed_bootstrapper` and `offline_installer`.
+## 许可证
 
-`orbit archive` creates a deterministic Linux `tar.gz` from a verified Linux
-directory package. It requires an external detached `--sign-command` for
-production; the command receives quoted `{archive}`, `{package_dir}` and
-`{package_manifest}` paths. `--allow-unsigned` is the explicit local-development
-opt-out. The adjacent `*.orbit-archive.json` records the final archive hash,
-package compatibility profile and signing status; `orbit verify-archive`
-checks that metadata and hash before extraction.
-
-The archive root contains `orbit-package/`, which is the unchanged directory
-package and can be verified after extraction with `orbit verify-package`, plus
-an executable `run` launcher. Extract it and invoke `./run` from the archive
-root. Linux remains dependent on the target system's GTK3 and WebKitGTK 4.1
-runtime; the portable archive neither bundles those libraries nor installs a
-desktop-entry file. Archive output defaults to `artifacts/` so it cannot alter
-the source directory package.
-
-`orbit linux-package` creates one distribution-native package from the same
-verified Linux directory package. It invokes the host's standard `dpkg-deb`,
-`rpmbuild`, or `makepkg` tool for `--format deb`, `rpm`, or `arch`; it does not
-silently route work through WSL or a container. Arch builds must run as an
-unprivileged user. The package installs the untouched directory package below
-`/usr/lib/<application-identifier>`, a launcher under `/usr/bin`, a desktop
-entry, and declared PNG/SVG icons under the hicolor hierarchy. A bundled Linux
-WebView runtime is rejected until MoonView has a relocatable runtime contract.
-
-Native packaging requires explicit `bundle.linux` metadata. Each format is
-enabled only when its object is present, and dependency names are deliberately
-format-specific:
-
-```json
-{
-  "bundle": {
-    "icons": ["icons/128x128.png", "icons/icon.svg"],
-    "linux": {
-      "package_name": "orbit-example",
-      "summary": "Orbit desktop example",
-      "description": "An Orbit desktop application.",
-      "license": "Apache-2.0",
-      "homepage": "https://example.com/orbit",
-      "maintainer": "Orbit Project <orbit@example.com>",
-      "category": "Utility",
-      "deb": {
-        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0"],
-        "section": "utils",
-        "priority": "optional"
-      },
-      "rpm": { "requires": ["gtk3", "webkit2gtk4.1"] },
-      "arch": { "depends": ["gtk3", "webkit2gtk-4.1"] }
-    }
-  }
-}
-```
-
-Production native packages require `--sign-command`; it receives quoted
-`{artifact}`, `{package_dir}`, and `{package_manifest}` paths. Unlike portable
-archive signing, a native-package hook may modify the artifact to attach an
-in-format signature. Orbit hashes the final bytes afterward and records whether
-the hook ran in `*.orbit-linux-package.json`; trust is verified separately by
-the selected signing system. `--allow-unsigned` is a local-development opt-out.
-Framework and application release procedures are documented in
-[`docs/releasing.md`](docs/releasing.md).
-
-The default `orbit-build` package is resolved from the Moon workspace. Until
-Orbit publishes that executable as a Mooncake dependency, use `--orbit-build`
-when the generator lives outside the current workspace.
-
-Normal Orbit tooling accepts only `schema_version: 2`. To move an existing v1
-file forward, `migrate-config` requires an explicit `--output` path, rejects an
-existing output and never overwrites its input. The migration maps v1 window
-capabilities to explicit `allow` grants with `window` principals. It cannot
-infer optional publisher metadata, icon declarations or Vite commands; those
-remain absent until the application author supplies them.
-
-When `build.vite` is declared, its commands are executed literally from the
-configuration directory. `orbit dev` starts `dev_command`, waits for
-`dev_url`, generates a page that loads that exact URL, and stops the Vite
-process tree when the desktop application exits. `orbit build`, `orbit run`
-and `orbit package` run `build_command` first, then embed resources from
-`dist_dir`. The CLI does not infer package managers, framework names, scripts
-or output paths. `dev_url` must be an HTTP(S) URL without a trailing slash;
-only that URL and descendants are approved for development navigation.
-
-`orbit icon` consumes one required 1024x1024 PNG and writes deterministic
-`16x16.png` through `1024x1024.png`, `icon.ico`, `icon.icns`, and `icon.svg`.
-The SVG is a PNG data-URI wrapper, not an attempted vector conversion. The
-command accepts `--compression 0..9`; source decoding is bounded and output
-generation uses premultiplied-alpha Lanczos3 resizing through
-`Nanaloveyuki/image`.
-
-`orbit bindings` emits a deterministic `orbit-bindings.mjs` module beside the
-configuration. It exports the exact page-callable command map from `allow`
-capabilities targeting a local window or explicitly scoped remote page,
-including explicitly granted plugin command namespaces. Commands limited to
-HTTP, plugins or background tasks are not emitted, and a matching page-level
-deny removes a command from the map.
-The generated module is a client convenience only; the IPC policy remains the
-authority at runtime.
-
-## Development
-
-```sh
-moon check --target all --deny-warn --warn-list +73
-moon test --target all --deny-warn
-moon fmt --check
-moon info
-```
-
-## Plugin Fixture Integration
-
-The native plugin integration fixture compiles ABI v1 and v2 DLLs and loads
-them through the published `dynlib` and `orbit-plugin-abi` packages. It verifies
-explicit permission denial, duplicate identifiers, ABI create failures, JSON
-command dispatch, malformed plugin responses, plugin command failures, and
-that instance destruction occurs before DLL unload. The ABI v2 fixture uses
-Orby's real external event loop and proves that plugin host requests receive
-the same allow/deny policy evaluation as other IPC principals. It also covers
-outer deadline cancellation, indirect reentry rejection, and the real
-`orbit-core.run_async` plugin startup order on Windows.
-
-```powershell
-./orbit-plugin-fixtures/run-integration.ps1
-```
-
-On Linux, the ABI v2 host-request path is covered by:
-
-```sh
-./orbit-plugin-fixtures/run-integration.sh
-```
-
-The Windows script uses `cl.exe` when the Visual Studio developer tools are
-active and otherwise falls back to `clang.exe`; the Linux script uses `cc`.
-Compiled fixture libraries and the teardown log are ignored build artifacts.
+Orbit 使用 [Apache License 2.0](LICENSE)。
