@@ -28,10 +28,10 @@ validation so every release retains the exact toolchain identity in its logs.
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the
 declared dependencies there. Source validation still runs after `moon update`
-and before either registry is modified. The pinned Moon CLI currently returns
-exit code 1 after a successful dry-run response; the tested wrapper accepts that
-exit only when the output contains both the `202 Accepted` status and the
-explicit no-changes success message.
+and before either registry is modified. Moon CLI can return a non-zero,
+platform-dependent exit code after a successful dry-run response; the tested
+wrapper accepts such an exit only when the output contains both the `202 Accepted`
+status and the explicit no-changes success message.
 
 ## Linux Application Packages
 
