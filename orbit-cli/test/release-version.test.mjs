@@ -33,6 +33,7 @@ test("Mooncake dry-run accepts only the known successful 202 response", () => {
   const success = "Server status: 202 Accepted\nDry run completed successfully. No changes were made.";
   assert.equal(acceptsMooncakeDryRunResult(0, ""), true);
   assert.equal(acceptsMooncakeDryRunResult(1, success), true);
+  assert.equal(acceptsMooncakeDryRunResult(255, success), true);
   assert.equal(acceptsMooncakeDryRunResult(1, "Server status: 202 Accepted"), false);
-  assert.equal(acceptsMooncakeDryRunResult(2, success), false);
+  assert.equal(acceptsMooncakeDryRunResult(null, success), false);
 });

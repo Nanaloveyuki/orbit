@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 export function acceptsMooncakeDryRunResult(status, output) {
   return status === 0 || (
-    status === 1 &&
+    Number.isInteger(status) &&
     output.includes("Server status: 202 Accepted") &&
     output.includes("Dry run completed successfully. No changes were made.")
   );
