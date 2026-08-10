@@ -144,6 +144,9 @@ if (!selected.cancelled) console.log(selected.files);
 传给读取命令。读取命令只接受 `{ "id": "..." }`，单次至多 64 KiB；binary
 结果使用 base64，text 结果会验证 UTF-8。路径、目录句柄和保存句柄都不能用于读取。
 
+`orbit.fs.write_text` 只接受保存 picker 返回的 `Write` handle 和 UTF-8 `text`；它在
+同目录中完成写入和替换，成功只返回字节数。读取句柄、目录句柄和任意原生路径不能写入。
+
 后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
 文件系统 API。
 

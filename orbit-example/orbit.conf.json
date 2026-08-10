@@ -36,7 +36,9 @@
       "commands": [
         "example.ping",
         "orbit.dialog.open",
-        "orbit.fs.read_text"
+        "orbit.dialog.save",
+        "orbit.fs.read_text",
+        "orbit.fs.write_text"
       ]
     }
   ],
