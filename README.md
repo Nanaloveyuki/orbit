@@ -121,6 +121,17 @@ Windows 本地窗口可以在 capability 明确授予后调用内建的
 `orbit.dialog.pick_directory`。结果只包含不透明 handle、显示名称和项目类型，绝不包含
 本机路径；HTTP、插件和远端页面不能使用这些命令。
 
+文件 picker 与 `orbit.fs.*` 不是核心默认 API。应用必须在创建 desktop options 后显式
+启用其可选桥接层；未启用时，即使 IPC policy 授予了对应命令，也不会注册任何文件命令：
+
+```moonbit
+let options = @core.DesktopOptions::new(
+  windows~,
+  ipc_registry=Some(registry),
+  ipc_policy=Some(policy),
+).with_builtin_file_capabilities()
+```
+
 同样可显式授予 `orbit.window.print`。它只接受 `{}`，只为调用它的本地窗口打开当前
 WebView 文档的原生打印对话框，并返回 `{ "opened": true }`；远端、HTTP、插件和后台
 principal 都不能调用它。
@@ -163,8 +174,8 @@ capability（文件和目录合计），达到上限时条目仍可显示但不�
 目录 capability 支持受限枚举、安全子目录导航和目录派生普通文件的只读访问；写入、创建
 和删除仍不提供。
 
-后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
-文件系统 API。
+可选 bridge 的所有文件操作都只接受这些 handle；当前版本不会向页面提供任意路径文件系统
+API。
 
 ## React、Vue 与 Vite
 

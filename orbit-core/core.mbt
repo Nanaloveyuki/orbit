@@ -55,6 +55,7 @@ pub struct DesktopOptions {
   plugin_declarations : Array[@plugin.PluginDeclaration]
   plugin_development_directory : String?
   event_router : @event.EventRouter?
+  builtin_file_capabilities : Bool
 }
 
 ///|
@@ -83,6 +84,7 @@ pub fn DesktopOptions::new(
   plugin_declarations? : Array[@plugin.PluginDeclaration] = [],
   plugin_development_directory? : String? = None,
   event_router? : @event.EventRouter? = None,
+  builtin_file_capabilities? : Bool = false,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -120,7 +122,25 @@ pub fn DesktopOptions::new(
     plugin_declarations,
     plugin_development_directory,
     event_router,
+    builtin_file_capabilities,
   }
+}
+
+///|
+/// Enables Orbit's optional picker and handle-bound file capability bridge.
+/// Applications that own their filesystem integration should leave it disabled.
+pub fn DesktopOptions::with_builtin_file_capabilities(
+  self : DesktopOptions,
+  enabled? : Bool = true,
+) -> DesktopOptions {
+  { ..self, builtin_file_capabilities: enabled }
+}
+
+///|
+pub fn DesktopOptions::builtin_file_capabilities_enabled(
+  self : DesktopOptions,
+) -> Bool {
+  self.builtin_file_capabilities
 }
 
 ///|
@@ -607,19 +627,21 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     self.windows.push(mounted)
   }
-  match self.register_file_dialog_commands() {
-    Err(reason) => {
-      self.teardown()
-      raise StartupFailed(reason)
+  if self.options.builtin_file_capabilities {
+    match self.register_file_dialog_commands() {
+      Err(reason) => {
+        self.teardown()
+        raise StartupFailed(reason)
+      }
+      Ok(_) => ()
     }
-    Ok(_) => ()
-  }
-  match self.register_file_access_commands() {
-    Err(reason) => {
-      self.teardown()
-      raise StartupFailed(reason)
+    match self.register_file_access_commands() {
+      Err(reason) => {
+        self.teardown()
+        raise StartupFailed(reason)
+      }
+      Ok(_) => ()
     }
-    Ok(_) => ()
   }
   match self.register_window_commands() {
     Err(reason) => {
