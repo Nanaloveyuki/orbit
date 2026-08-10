@@ -235,39 +235,64 @@ async fn read_directory_capability(
   context : @ipc.InvocationContext,
   request : FileDirectoryReadRequest,
 ) -> Result[FileDirectoryReadResponse, @ipc.CommandFailure] {
-  link_async_fs()
-  let path = match resolve_file_path(files, context, request.id, Directory) {
-    Ok(path) => path
-    Err(failure) => return Err(failure)
-  }
   if context.cancellation().is_cancelled() {
     return Err(file_read_failure("cancelled", "directory read was cancelled"))
   }
-  let directory = @fs.opendir(path) catch {
+  @async.sleep(0) catch {
+    _ =>
+      return Err(file_read_failure("cancelled", "directory read was cancelled"))
+  }
+  if request.id.is_empty() {
+    return Err(
+      file_read_failure("invalid_handle", "file handle must not be empty"),
+    )
+  }
+  let label = match context.principal() {
+    Window(label) => label
     _ =>
       return Err(
-        file_read_failure("directory_read_failed", "could not open directory"),
+        file_read_failure(
+          "file_unavailable", "file access requires a local window",
+        ),
       )
   }
-  defer directory.close()
-  let entries : Array[FileDirectoryEntryResponse] = []
-  while directory.next(include_hidden=false) is Some(entry) {
-    if context.cancellation().is_cancelled() {
-      return Err(file_read_failure("cancelled", "directory read was cancelled"))
-    }
-    if entries.length() >= max_directory_entries {
+  let listed = match
+    files.list_directory(label, request.id, max_directory_entries) {
+    Ok(entries) => entries
+    Err(WrongPrincipal(_)) =>
+      return Err(
+        file_read_failure(
+          "file_handle_denied", "file handle belongs to another window",
+        ),
+      )
+    Err(WrongKind(_)) =>
+      return Err(
+        file_read_failure(
+          "file_handle_invalid", "file handle does not allow this operation",
+        ),
+      )
+    Err(DirectoryTooLarge) =>
       return Err(
         file_read_failure(
           "directory_too_large", "directory exceeds the 128 entry limit",
         ),
       )
-    }
+    Err(DirectoryReadFailed) =>
+      return Err(
+        file_read_failure("directory_read_failed", "could not read directory"),
+      )
+    Err(_) =>
+      return Err(
+        file_read_failure("file_handle_invalid", "file handle is unavailable"),
+      )
+  }
+  let entries : Array[FileDirectoryEntryResponse] = []
+  for entry in listed {
     entries.push({
       name: entry.name,
-      kind: if entry.is_dir {
-        "directory"
-      } else {
-        "file"
+      kind: match entry.kind {
+        @file.DirectoryEntryKind::Directory => "directory"
+        @file.DirectoryEntryKind::File => "file"
       },
     })
   }

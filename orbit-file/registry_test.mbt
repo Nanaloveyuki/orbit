@@ -18,6 +18,10 @@ test "file capabilities remain bound to the selecting window" {
     Err(WrongKind(_)) => ()
     _ => fail("expected operation-kind denial")
   }
+  match registry.mint("main", "C:\\secret\\folder", Directory) {
+    Err(DirectoryUnavailable) => ()
+    _ => fail("directory capabilities require a native directory handle")
+  }
   registry.revoke_window("main")
   match registry.resolve("main", capability.id(), Read) {
     Err(UnknownHandle(_)) => ()

@@ -125,7 +125,11 @@ fn DesktopApp::show_file_dialog(
         let files : Array[FileDialogFileResponse] = []
         let file_kind = dialog_file_kind(kind)
         for path in paths {
-          let capability = match self.files.mint(label, path, file_kind) {
+          let capability_result = match file_kind {
+            Directory => self.files.mint_directory(label, path)
+            Read | Write => self.files.mint(label, path, file_kind)
+          }
+          let capability = match capability_result {
             Ok(capability) => capability
             Err(_) =>
               return Err(

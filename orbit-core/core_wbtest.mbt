@@ -302,13 +302,14 @@ async test "file writes reject oversized input and native failures" {
 
 ///|
 async test "directory reads require a matching local directory handle" {
-  let root = "_build/orbit-core-directory-read"
+  let root = "_build/orbit-core-directory-native-handle-v2"
   @fs.mkdir(root, recursive=true)
   @fs.write_file("\{root}/note.txt", "note", create_mode=CreateOrTruncate)
   @fs.mkdir("\{root}/nested", recursive=true)
+  @fs.mkdir("\{root}/nested/grandchild", recursive=true)
   let files = @file.FileCapabilityRegistry::new()
   let capability = files
-    .mint("main", root, Directory)
+    .mint_directory("main", root)
     .unwrap_or_else(() => abort("could not mint test directory handle"))
   let context = @ipc.InvocationContext::window("main")
   let response = match
@@ -322,6 +323,20 @@ async test "directory reads require a matching local directory handle" {
       entry.name == "note.txt" && entry.kind == "file"
     }),
   )
+  let nested = files
+    .mint_child_directory("main", capability.id(), "nested")
+    .unwrap_or_else(() => abort("could not mint child directory handle"))
+  let nested_response = match
+    read_directory_capability(files, context, { id: nested.id() }) {
+    Ok(response) => response
+    Err(_) => abort("expected child directory read")
+  }
+  assert_eq(nested_response.entries.length(), 1)
+  assert_eq(nested_response.entries[0].name, "grandchild")
+  match files.mint_child_directory("main", capability.id(), "..") {
+    Err(@file.FileCapabilityError::DirectoryUnavailable) => ()
+    _ => abort("expected parent traversal to be rejected")
+  }
   assert_true(
     response.entries.any(entry => {
       entry.name == "nested" && entry.kind == "directory"
@@ -346,16 +361,57 @@ async test "directory reads require a matching local directory handle" {
     Err(failure) => assert_eq(failure.code, "file_handle_invalid")
     Ok(_) => abort("expected revoked-handle denial")
   }
+  files.clear()
   @fs.rmdir(root, recursive=true)
+}
+
+///|
+async test "directory handles do not follow links or Windows reparse points" {
+  let root = "_build/orbit-core-directory-no-follow-root-v2"
+  let target = "_build/orbit-core-directory-no-follow-target-v2"
+  let escape = "\{root}/escape"
+  @fs.mkdir(root, recursive=true)
+  @fs.mkdir(target, recursive=true)
+  @fs.write_file(
+    "\{target}/outside.txt",
+    "outside",
+    create_mode=CreateOrTruncate,
+  )
+  let target_path = @fs.realpath(target)
+  @fs.symlink(target=target_path, escape)
+  let files = @file.FileCapabilityRegistry::new()
+  let capability = files
+    .mint_directory("main", root)
+    .unwrap_or_else(() => abort("could not mint root directory handle"))
+  let response = match
+    read_directory_capability(files, @ipc.InvocationContext::window("main"), {
+      id: capability.id(),
+    }) {
+    Ok(response) => response
+    Err(_) => abort("expected no-follow directory list")
+  }
+  assert_false(response.entries.any(entry => entry.name == "escape"))
+  match files.mint_child_directory("main", capability.id(), "escape") {
+    Err(@file.FileCapabilityError::DirectoryUnavailable) => ()
+    _ => abort("expected link child to be rejected")
+  }
+  match files.mint_directory("main", escape) {
+    Err(@file.FileCapabilityError::DirectoryUnavailable) => ()
+    _ => abort("expected link root to be rejected")
+  }
+  files.clear()
+  @fs.remove(escape)
+  @fs.rmdir(root, recursive=true)
+  @fs.rmdir(target, recursive=true)
 }
 
 ///|
 async test "directory reads reject cancellation overflow and native failures" {
   let files = @file.FileCapabilityRegistry::new()
-  let root = "_build/orbit-core-directory-cancelled"
+  let root = "_build/orbit-core-directory-native-cancelled"
   @fs.mkdir(root, recursive=true)
   let cancelled = files
-    .mint("main", root, Directory)
+    .mint_directory("main", root)
     .unwrap_or_else(() => abort("could not mint cancelled directory handle"))
   let context = @ipc.InvocationContext::window("main")
   context.cancellation().cancel()
@@ -363,8 +419,9 @@ async test "directory reads reject cancellation overflow and native failures" {
     Err(failure) => assert_eq(failure.code, "cancelled")
     Ok(_) => abort("expected cancelled directory read")
   }
+  files.revoke_window("main")
   @fs.rmdir(root, recursive=true)
-  let oversized_root = "_build/orbit-core-directory-oversized"
+  let oversized_root = "_build/orbit-core-directory-native-oversized-v2"
   @fs.mkdir(oversized_root, recursive=true)
   for index in 0..<=max_directory_entries {
     @fs.write_file(
@@ -374,7 +431,7 @@ async test "directory reads reject cancellation overflow and native failures" {
     )
   }
   let oversized = files
-    .mint("main", oversized_root, Directory)
+    .mint_directory("main", oversized_root)
     .unwrap_or_else(() => abort("could not mint oversized directory handle"))
   match
     read_directory_capability(files, @ipc.InvocationContext::window("main"), {
@@ -383,16 +440,12 @@ async test "directory reads reject cancellation overflow and native failures" {
     Err(failure) => assert_eq(failure.code, "directory_too_large")
     Ok(_) => abort("expected directory entry limit")
   }
+  files.clear()
   @fs.rmdir(oversized_root, recursive=true)
-  let missing = files
-    .mint("main", "_build/orbit-core-missing-directory", Directory)
-    .unwrap_or_else(() => abort("could not mint missing directory handle"))
   match
-    read_directory_capability(files, @ipc.InvocationContext::window("main"), {
-      id: missing.id(),
-    }) {
-    Err(failure) => assert_eq(failure.code, "directory_read_failed")
-    Ok(_) => abort("expected native directory failure")
+    files.mint_directory("main", "_build/orbit-core-missing-native-directory") {
+    Err(@file.FileCapabilityError::DirectoryUnavailable) => ()
+    _ => abort("expected missing directory to fail during handle creation")
   }
 }
 
