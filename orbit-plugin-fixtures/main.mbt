@@ -278,6 +278,13 @@ impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn show_file_dialog(
 }
 
 ///|
+impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn open_print_dialog(
+  _self,
+) {
+  raise Unsupported("print dialogs are unavailable in CoreFixtureRuntime")
+}
+
+///|
 impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn navigate(
   _self,
   _url,

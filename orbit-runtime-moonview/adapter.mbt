@@ -470,6 +470,17 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn show_file_dia
 }
 
 ///|
+pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn open_print_dialog(
+  self,
+) {
+  self.require_live()
+  match self.view.open_print_dialog() {
+    Ok(_) => ()
+    Err(error) => raise runtime_error("open print dialog", error)
+  }
+}
+
+///|
 fn MoonViewRuntime::require_live(
   self : MoonViewRuntime,
 ) -> Unit raise @orbit_runtime.RuntimeError {

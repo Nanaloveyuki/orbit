@@ -125,6 +125,23 @@ payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
 窗口的随机 capability handle，页面永远不会收到原生路径。当前 Windows 支持 picker；
 其他 runtime 返回 `dialog_unsupported`。
 
+## 窗口打印
+
+`orbit.window.print` 只接受空对象 `{}`，并且只允许已获授权的本地 `window` principal
+为自己的当前 WebView 文档打开原生打印对话框。成功响应为 `{ "opened": true }`；未支持
+的 runtime 返回 `print_unsupported`，窗口不存在、远端页面、HTTP、插件和后台调用返回
+`print_unavailable`。它是同步窗口命令，即使应用使用 `run_async` 也不会移到异步 worker。
+
+```json
+{
+  "identifier": "main-window-print",
+  "effect": "allow",
+  "principals": [{ "kind": "window", "identifier": "main" }],
+  "scopes": [],
+  "commands": ["orbit.window.print"]
+}
+```
+
 ## 句柄文件访问
 
 `orbit.fs.read_binary`、`orbit.fs.read_text`、`orbit.fs.write_text` 和
