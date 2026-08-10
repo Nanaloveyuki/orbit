@@ -127,7 +127,8 @@ payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
 
 ## 句柄文件访问
 
-`orbit.fs.read_binary`、`orbit.fs.read_text` 和 `orbit.fs.write_text` 仅在 `@core.run_async` 启动的
+`orbit.fs.read_binary`、`orbit.fs.read_text`、`orbit.fs.write_text` 和
+`orbit.fs.read_directory` 仅在 `@core.run_async` 启动的
 应用中可用。它们是异步命令，仍须显式向本地 `window` principal 授权；同步
 `run` 应用会得到标准 `async_unavailable` 响应。
 
@@ -143,7 +144,7 @@ payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
   "effect": "allow",
   "principals": [{ "kind": "window", "identifier": "main" }],
   "scopes": [],
-  "commands": ["orbit.fs.read_text", "orbit.fs.read_binary", "orbit.fs.write_text"]
+  "commands": ["orbit.fs.read_text", "orbit.fs.read_binary", "orbit.fs.write_text", "orbit.fs.read_directory"]
 }
 ```
 
@@ -151,6 +152,12 @@ payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
 文本上限同为 64 KiB；Orbit 在目标同目录创建已完整同步的临时文件，再通过替换重命名完成
 保存。成功响应为 `{ "size": <bytes> }`，失败路径不会出现在响应中。读取和目录句柄不能
 用于写入。
+
+`orbit.fs.read_directory` 只接受目录 picker 返回的 `Directory` handle 和
+`{ "id": "..." }`。它构造最多 128 个非隐藏直接子项的
+`{ "name", "kind" }` 数组，不接受相对或本机路径，也不为子项返回 handle。
+目录相对路径的读写、创建和删除需要跨平台的 no-follow 原生句柄能力，未纳入当前
+命令面。
 
 ## 远端 HTTPS 页面
 

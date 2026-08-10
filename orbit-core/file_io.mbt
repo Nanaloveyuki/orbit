@@ -2,6 +2,9 @@
 let max_file_read_bytes : Int = 64 * 1024
 
 ///|
+let max_directory_entries : Int = 128
+
+///|
 extern "C" fn link_async_fs() = "orbit_core_link_async_fs"
 
 ///|
@@ -30,6 +33,22 @@ priv struct FileWriteRequest {
 ///|
 priv struct FileWriteResponse {
   size : Int
+} derive(ToJson)
+
+///|
+priv struct FileDirectoryReadRequest {
+  id : String
+} derive(FromJson)
+
+///|
+priv struct FileDirectoryEntryResponse {
+  name : String
+  kind : String
+} derive(ToJson)
+
+///|
+priv struct FileDirectoryReadResponse {
+  entries : Array[FileDirectoryEntryResponse]
 } derive(ToJson)
 
 ///|
@@ -211,6 +230,54 @@ async fn write_text_capability(
 }
 
 ///|
+async fn read_directory_capability(
+  files : @file.FileCapabilityRegistry,
+  context : @ipc.InvocationContext,
+  request : FileDirectoryReadRequest,
+) -> Result[FileDirectoryReadResponse, @ipc.CommandFailure] {
+  link_async_fs()
+  let path = match resolve_file_path(files, context, request.id, Directory) {
+    Ok(path) => path
+    Err(failure) => return Err(failure)
+  }
+  if context.cancellation().is_cancelled() {
+    return Err(file_read_failure("cancelled", "directory read was cancelled"))
+  }
+  let directory = @fs.opendir(path) catch {
+    _ =>
+      return Err(
+        file_read_failure("directory_read_failed", "could not open directory"),
+      )
+  }
+  defer directory.close()
+  let entries : Array[FileDirectoryEntryResponse] = []
+  while directory.next(include_hidden=false) is Some(entry) {
+    if context.cancellation().is_cancelled() {
+      return Err(file_read_failure("cancelled", "directory read was cancelled"))
+    }
+    if entries.length() >= max_directory_entries {
+      return Err(
+        file_read_failure(
+          "directory_too_large", "directory exceeds the 128 entry limit",
+        ),
+      )
+    }
+    entries.push({
+      name: entry.name,
+      kind: if entry.is_dir {
+        "directory"
+      } else {
+        "file"
+      },
+    })
+  }
+  if context.cancellation().is_cancelled() {
+    return Err(file_read_failure("cancelled", "directory read was cancelled"))
+  }
+  Ok({ entries, })
+}
+
+///|
 fn DesktopApp::register_file_access_commands(
   self : DesktopApp,
 ) -> Result[Unit, String] {
@@ -240,6 +307,14 @@ fn DesktopApp::register_file_access_commands(
         write_text_capability(self.files, context, request)
       }) catch {
         _ => return Err("file write command is already registered")
+      }
+      let directory = @ipc.CommandName::new("orbit.fs.read_directory") catch {
+        _ => return Err("invalid built-in directory read command")
+      }
+      registry.register_async_context(directory, async fn(context, request) {
+        read_directory_capability(self.files, context, request)
+      }) catch {
+        _ => return Err("directory read command is already registered")
       }
       Ok(())
     }

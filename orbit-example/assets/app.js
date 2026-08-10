@@ -50,3 +50,25 @@ document.querySelector("#save-file").addEventListener("click", async () => {
     selection.textContent = `IPC error: ${error.code}`;
   }
 });
+
+document.querySelector("#pick-directory").addEventListener("click", async () => {
+  const selection = document.querySelector("#selection");
+  selection.textContent = "";
+  try {
+    const response = await window.__ORBIT__.invoke("orbit.dialog.pick_directory", {
+      title: "Choose a folder to inspect"
+    });
+    if (response.cancelled) {
+      selection.textContent = "Folder selection cancelled.";
+    } else {
+      const directory = response.files[0];
+      const listing = await window.__ORBIT__.invoke("orbit.fs.read_directory", {
+        id: directory.id
+      });
+      const names = listing.entries.map(entry => entry.name).join(", ");
+      selection.textContent = `${directory.name}: ${names || "empty folder"}`;
+    }
+  } catch (error) {
+    selection.textContent = `IPC error: ${error.code}`;
+  }
+});

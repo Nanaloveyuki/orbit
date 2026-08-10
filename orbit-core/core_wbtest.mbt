@@ -119,7 +119,7 @@ async test "file reads require a matching local read handle" {
   let capability = files
     .mint("main", path, Read)
     .unwrap_or_else(() => abort("could not mint test file handle"))
-  let request = { id: capability.id() }
+  let request : FileReadRequest = { id: capability.id() }
   let context = @ipc.InvocationContext::window("main")
   match read_binary_capability(files, context, request) {
     Ok(response) => {
@@ -187,7 +187,7 @@ async test "file reads reject oversized content and non-window callers" {
   let capability = files
     .mint("main", path, Read)
     .unwrap_or_else(() => abort("could not mint test file handle"))
-  let request = { id: capability.id() }
+  let request : FileReadRequest = { id: capability.id() }
   match
     read_binary_capability(
       files,
@@ -297,6 +297,102 @@ async test "file writes reject oversized input and native failures" {
     }) {
     Err(failure) => assert_eq(failure.code, "file_too_large")
     Ok(_) => abort("expected write-size limit")
+  }
+}
+
+///|
+async test "directory reads require a matching local directory handle" {
+  let root = "_build/orbit-core-directory-read"
+  @fs.mkdir(root, recursive=true)
+  @fs.write_file("\{root}/note.txt", "note", create_mode=CreateOrTruncate)
+  @fs.mkdir("\{root}/nested", recursive=true)
+  let files = @file.FileCapabilityRegistry::new()
+  let capability = files
+    .mint("main", root, Directory)
+    .unwrap_or_else(() => abort("could not mint test directory handle"))
+  let context = @ipc.InvocationContext::window("main")
+  let response = match
+    read_directory_capability(files, context, { id: capability.id() }) {
+    Ok(response) => response
+    Err(_) => abort("expected handle-bound directory read")
+  }
+  assert_eq(response.entries.length(), 2)
+  assert_true(
+    response.entries.any(entry => {
+      entry.name == "note.txt" && entry.kind == "file"
+    }),
+  )
+  assert_true(
+    response.entries.any(entry => {
+      entry.name == "nested" && entry.kind == "directory"
+    }),
+  )
+  match
+    read_directory_capability(files, @ipc.InvocationContext::window("other"), {
+      id: capability.id(),
+    }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_denied")
+    Ok(_) => abort("expected cross-window denial")
+  }
+  let file = files
+    .mint("main", "\{root}/note.txt", Read)
+    .unwrap_or_else(() => abort("could not mint test file handle"))
+  match read_directory_capability(files, context, { id: file.id() }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected file-handle denial")
+  }
+  files.revoke_window("main")
+  match read_directory_capability(files, context, { id: capability.id() }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected revoked-handle denial")
+  }
+  @fs.rmdir(root, recursive=true)
+}
+
+///|
+async test "directory reads reject cancellation overflow and native failures" {
+  let files = @file.FileCapabilityRegistry::new()
+  let root = "_build/orbit-core-directory-cancelled"
+  @fs.mkdir(root, recursive=true)
+  let cancelled = files
+    .mint("main", root, Directory)
+    .unwrap_or_else(() => abort("could not mint cancelled directory handle"))
+  let context = @ipc.InvocationContext::window("main")
+  context.cancellation().cancel()
+  match read_directory_capability(files, context, { id: cancelled.id() }) {
+    Err(failure) => assert_eq(failure.code, "cancelled")
+    Ok(_) => abort("expected cancelled directory read")
+  }
+  @fs.rmdir(root, recursive=true)
+  let oversized_root = "_build/orbit-core-directory-oversized"
+  @fs.mkdir(oversized_root, recursive=true)
+  for index in 0..<=max_directory_entries {
+    @fs.write_file(
+      "\{oversized_root}/entry-\{index}.txt",
+      "x",
+      create_mode=CreateOrTruncate,
+    )
+  }
+  let oversized = files
+    .mint("main", oversized_root, Directory)
+    .unwrap_or_else(() => abort("could not mint oversized directory handle"))
+  match
+    read_directory_capability(files, @ipc.InvocationContext::window("main"), {
+      id: oversized.id(),
+    }) {
+    Err(failure) => assert_eq(failure.code, "directory_too_large")
+    Ok(_) => abort("expected directory entry limit")
+  }
+  @fs.rmdir(oversized_root, recursive=true)
+  let missing = files
+    .mint("main", "_build/orbit-core-missing-directory", Directory)
+    .unwrap_or_else(() => abort("could not mint missing directory handle"))
+  match
+    read_directory_capability(files, @ipc.InvocationContext::window("main"), {
+      id: missing.id(),
+    }) {
+    Err(failure) => assert_eq(failure.code, "directory_read_failed")
+    Ok(_) => abort("expected native directory failure")
   }
 }
 

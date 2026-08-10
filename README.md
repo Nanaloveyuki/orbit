@@ -147,6 +147,10 @@ if (!selected.cancelled) console.log(selected.files);
 `orbit.fs.write_text` 只接受保存 picker 返回的 `Write` handle 和 UTF-8 `text`；它在
 同目录中完成写入和替换，成功只返回字节数。读取句柄、目录句柄和任意原生路径不能写入。
 
+目录 picker 返回的 `Directory` handle 可传给 `orbit.fs.read_directory`。它只枚举最多
+128 个非隐藏的直接子项名称和类型，不接受路径参数，也不为子项发放 handle。
+基于目录的相对路径读写需要原生 no-follow 句柄实现，当前版本不提供。
+
 后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
 文件系统 API。
 
