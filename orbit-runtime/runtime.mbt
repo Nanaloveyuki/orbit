@@ -34,6 +34,36 @@ pub(all) struct RuntimeCapabilities {
   message_transport : Bool
   bounds_updates : Bool
   devtools : Bool
+  file_dialogs : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) enum RuntimeFileDialogKind {
+  OpenFile
+  OpenFiles
+  SaveFile
+  PickDirectory
+} derive(Eq, Debug)
+
+///|
+pub(all) struct RuntimeFileDialogFilter {
+  name : String
+  extensions : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct RuntimeFileDialogOptions {
+  kind : RuntimeFileDialogKind
+  title : String?
+  filters : Array[RuntimeFileDialogFilter]
+  default_name : String?
+  initial_directory : String?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum RuntimeFileDialogResult {
+  Cancelled
+  Selected(Array[String])
 } derive(Eq, Debug)
 
 ///|
@@ -93,6 +123,25 @@ pub fn RuntimePageMessage::body(self : RuntimePageMessage) -> String {
 ///|
 pub fn RuntimePageMessage::origin(self : RuntimePageMessage) -> String? {
   self.origin
+}
+
+///|
+pub fn RuntimeFileDialogFilter::new(
+  name~ : String,
+  extensions~ : Array[String],
+) -> RuntimeFileDialogFilter {
+  { name, extensions }
+}
+
+///|
+pub fn RuntimeFileDialogOptions::new(
+  kind~ : RuntimeFileDialogKind,
+  title? : String? = None,
+  filters? : Array[RuntimeFileDialogFilter] = [],
+  default_name? : String? = None,
+  initial_directory? : String? = None,
+) -> RuntimeFileDialogOptions {
+  { kind, title, filters, default_name, initial_directory }
 }
 
 ///|
@@ -358,6 +407,7 @@ pub fn RuntimeOptions::remote_navigation(
 ///|
 pub(open) trait WebViewRuntime {
   fn capabilities(Self) -> RuntimeCapabilities
+  fn show_file_dialog(Self, RuntimeFileDialogOptions) -> RuntimeFileDialogResult raise RuntimeError
   fn navigate(Self, String) -> Unit raise RuntimeError
   fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
   fn post_message(Self, String) -> Unit raise RuntimeError

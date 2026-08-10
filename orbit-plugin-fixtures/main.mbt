@@ -265,7 +265,16 @@ impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn capabilities(_self) 
     message_transport: true,
     bounds_updates: true,
     devtools: false,
+    file_dialogs: false,
   }
+}
+
+///|
+impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn show_file_dialog(
+  _self,
+  _options,
+) {
+  raise Unsupported("file dialogs are unavailable in CoreFixtureRuntime")
 }
 
 ///|

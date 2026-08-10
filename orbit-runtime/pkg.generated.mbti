@@ -43,6 +43,34 @@ pub(all) struct RuntimeCapabilities {
   message_transport : Bool
   bounds_updates : Bool
   devtools : Bool
+  file_dialogs : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RuntimeFileDialogFilter {
+  name : String
+  extensions : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogFilter::new(name~ : String, extensions~ : Array[String]) -> Self
+
+pub(all) enum RuntimeFileDialogKind {
+  OpenFile
+  OpenFiles
+  SaveFile
+  PickDirectory
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RuntimeFileDialogOptions {
+  kind : RuntimeFileDialogKind
+  title : String?
+  filters : Array[RuntimeFileDialogFilter]
+  default_name : String?
+  initial_directory : String?
+} derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogOptions::new(kind~ : RuntimeFileDialogKind, title? : String?, filters? : Array[RuntimeFileDialogFilter], default_name? : String?, initial_directory? : String?) -> Self
+
+pub(all) enum RuntimeFileDialogResult {
+  Cancelled
+  Selected(Array[String])
 } derive(Eq, @debug.Debug)
 
 pub struct RuntimeHost {
@@ -123,6 +151,7 @@ pub(open) trait RuntimeFactory {
 
 pub(open) trait WebViewRuntime {
   fn capabilities(Self) -> RuntimeCapabilities
+  fn show_file_dialog(Self, RuntimeFileDialogOptions) -> RuntimeFileDialogResult raise RuntimeError
   fn navigate(Self, String) -> Unit raise RuntimeError
   fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
   fn post_message(Self, String) -> Unit raise RuntimeError
@@ -130,4 +159,3 @@ pub(open) trait WebViewRuntime {
   fn set_bounds(Self, RuntimeBounds) -> Unit raise RuntimeError
   fn destroy(Self) -> Unit raise RuntimeError
 }
-

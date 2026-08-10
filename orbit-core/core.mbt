@@ -201,6 +201,7 @@ struct DesktopApp {
   options : DesktopOptions
   windows : Array[MountedWindow]
   plugins : @plugin.PluginRuntime
+  files : @file.FileCapabilityRegistry
   async_exit : AsyncExit?
   async_ipc : AsyncIpcDispatcher?
   mut pending_runtime_failure : String?
@@ -210,6 +211,7 @@ struct DesktopApp {
 
 ///|
 priv struct MountedWindow {
+  label : String
   window : @orby.Window
   runtime : &@runtime.WebViewRuntime
   page_event_subscription : @event.EventSubscription?
@@ -278,6 +280,7 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     None => ()
   }
   for mounted in self.windows {
+    self.files.revoke_window(mounted.label)
     self.unsubscribe_page_events(mounted)
   }
   match self.plugins.shutdown() {
@@ -296,6 +299,7 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     mounted.window.destroy()
   }
   self.windows.clear()
+  self.files.clear()
 }
 
 ///|
@@ -383,14 +387,24 @@ fn DesktopApp::dispatch_ipc_message(
             @ipc.InvocationClientMessage::Cancel(id) =>
               dispatcher.cancel(invocation_scope, id)
             @ipc.InvocationClientMessage::Invoke(request) =>
-              dispatcher.schedule(
-                invocation_scope,
-                registry,
-                policy,
-                context,
-                request,
-                response => self.deliver_ipc_response(label, runtime, response),
-              )
+              if is_dialog_command(request.command()) {
+                self.deliver_ipc_response(
+                  label,
+                  runtime,
+                  registry.dispatch_with_context(message, policy, context),
+                )
+              } else {
+                dispatcher.schedule(
+                  invocation_scope,
+                  registry,
+                  policy,
+                  context,
+                  request,
+                  response => {
+                    self.deliver_ipc_response(label, runtime, response)
+                  },
+                )
+              }
           }
         }
       }
@@ -543,7 +557,12 @@ fn DesktopApp::mount_window(
     options.ipc_principal,
     runtime,
   )
-  { window, runtime, page_event_subscription }
+  {
+    label: options.runtime_options.label(),
+    window,
+    runtime,
+    page_event_subscription,
+  }
 }
 
 ///|
@@ -587,6 +606,13 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     self.windows.push(mounted)
   }
+  match self.register_file_dialog_commands() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(reason)
+    }
+    Ok(_) => ()
+  }
   if self.async_exit is None {
     match start_configured_plugins(self.plugins, self.options) {
       Err(reason) => {
@@ -627,6 +653,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         }
       }
     CloseRequested => {
+      self.files.revoke_window(mounted.label)
       self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
@@ -637,6 +664,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
       mounted.window.destroy()
     }
     Destroyed => {
+      self.files.revoke_window(mounted.label)
       self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
@@ -696,6 +724,7 @@ pub fn run(
     options,
     windows: [],
     plugins: @plugin.PluginRuntime::new(),
+    files: @file.FileCapabilityRegistry::new(),
     async_exit: None,
     async_ipc: None,
     pending_runtime_failure: None,
@@ -736,6 +765,7 @@ pub fn run_async(
     options,
     windows: [],
     plugins,
+    files: @file.FileCapabilityRegistry::new(),
     async_exit: Some(async_exit),
     async_ipc: Some(async_ipc),
     pending_runtime_failure: None,

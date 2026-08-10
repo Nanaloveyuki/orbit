@@ -56,4 +56,3 @@ pub fn DesktopWindowOptions::new(String, @orbit-runtime.RuntimeOptions, resizabl
 // Type aliases
 
 // Traits
-

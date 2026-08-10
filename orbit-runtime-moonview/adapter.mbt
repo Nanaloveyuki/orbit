@@ -17,6 +17,36 @@ fn runtime_error(
 }
 
 ///|
+fn moonview_file_dialog_kind(
+  kind : @orbit_runtime.RuntimeFileDialogKind,
+) -> @moonview.FileDialogKind {
+  match kind {
+    OpenFile => OpenFile
+    OpenFiles => OpenFiles
+    SaveFile => SaveFile
+    PickDirectory => PickDirectory
+  }
+}
+
+///|
+fn moonview_file_dialog_options(
+  options : @orbit_runtime.RuntimeFileDialogOptions,
+) -> @moonview.FileDialogOptions {
+  @moonview.FileDialogOptions::new(
+    kind=moonview_file_dialog_kind(options.kind),
+    title=options.title,
+    filters=options.filters.map(filter => {
+      @moonview.FileDialogFilter::new(
+        name=filter.name,
+        extensions=filter.extensions,
+      )
+    }),
+    default_name=options.default_name,
+    initial_directory=options.initial_directory,
+  )
+}
+
+///|
 fn report_lifecycle(
   lifecycle_handler : Ref[(@orbit_runtime.RuntimeLifecycleEvent) -> Unit],
   event : @orbit_runtime.RuntimeLifecycleEvent,
@@ -420,6 +450,22 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn capabilities(
     message_transport: true,
     bounds_updates: true,
     devtools: true,
+    file_dialogs: true,
+  }
+}
+
+///|
+pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn show_file_dialog(
+  self,
+  options,
+) {
+  self.require_live()
+  match self.view.show_file_dialog(moonview_file_dialog_options(options)) {
+    Ok(@moonview.FileDialogResult::Cancelled) =>
+      @orbit_runtime.RuntimeFileDialogResult::Cancelled
+    Ok(@moonview.FileDialogResult::Selected(paths)) =>
+      @orbit_runtime.RuntimeFileDialogResult::Selected(paths)
+    Err(error) => raise runtime_error("show file dialog", error)
   }
 }
 

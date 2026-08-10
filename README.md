@@ -114,6 +114,34 @@ const response = await window.__ORBIT__.invoke("example.ping", { value: 1 }, {
 生成的 `orbit-bindings.mjs` 也可以为当前页面实际获授权的命令提供固定入口。完整安装、
 `moon.pkg`、应用入口和生成步骤见[入门指南](docs/getting-started.md)。
 
+### 原生文件选择
+
+Windows 本地窗口可以在 capability 明确授予后调用内建的
+`orbit.dialog.open`、`orbit.dialog.open_multiple`、`orbit.dialog.save` 和
+`orbit.dialog.pick_directory`。结果只包含不透明 handle、显示名称和项目类型，绝不包含
+本机路径；HTTP、插件和远端页面不能使用这些命令。
+
+```json
+{
+  "identifier": "main-file-dialogs",
+  "effect": "allow",
+  "principals": [{ "kind": "window", "identifier": "main" }],
+  "scopes": [],
+  "commands": ["orbit.dialog.open", "orbit.dialog.save"]
+}
+```
+
+```javascript
+const selected = await window.__ORBIT__.invoke("orbit.dialog.open", {
+  title: "Open document",
+  filters: [{ name: "Text", extensions: ["txt", "md"] }]
+});
+if (!selected.cancelled) console.log(selected.files);
+```
+
+文件内容读取与写入将在后续 capability 阶段只接受这些 handle；当前版本不会向页面
+提供任意路径文件系统 API。
+
 ## React、Vue 与 Vite
 
 Orbit 不绑定前端框架。只要前端能够输出静态目录，就可以嵌入可执行文件；开发模式由
