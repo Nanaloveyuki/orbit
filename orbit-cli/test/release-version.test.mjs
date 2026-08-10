@@ -8,7 +8,8 @@ import { acceptsMooncakeDryRunResult } from "../scripts/mooncake-dry-run.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const script = resolve(repository, "orbit-cli", "scripts", "verify-release-version.mjs");
-const version = JSON.parse(readFileSync(resolve(repository, "orbit-cli", "package.json"), "utf8")).version;
+const npmManifest = JSON.parse(readFileSync(resolve(repository, "orbit-cli", "package.json"), "utf8"));
+const version = npmManifest.version;
 
 test("release version check binds the tag, MoonBit module, and npm package", () => {
   const accepted = spawnSync(process.execPath, [script, repository, `v${version}`], { encoding: "utf8" });
@@ -18,6 +19,14 @@ test("release version check binds the tag, MoonBit module, and npm package", () 
   const rejected = spawnSync(process.execPath, [script, repository, "v0.0.0-invalid"], { encoding: "utf8" });
   assert.notEqual(rejected.status, 0);
   assert.match(rejected.stderr, /must equal/);
+});
+
+test("npm publication identifies the canonical GitHub repository", () => {
+  assert.deepEqual(npmManifest.repository, {
+    type: "git",
+    url: "https://github.com/Nanaloveyuki/orbit.git",
+    directory: "orbit-cli",
+  });
 });
 
 test("Mooncake dry-run accepts only the known successful 202 response", () => {

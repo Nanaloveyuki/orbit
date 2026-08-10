@@ -3,6 +3,11 @@
   "version": "0.1.0-alpha.1",
   "private": false,
   "description": "Development command-line interface for Orbit applications.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nanaloveyuki/orbit.git",
+    "directory": "orbit-cli"
+  },
   "type": "module",
   "bin": {
     "orbit": "./bin/orbit.mjs"
