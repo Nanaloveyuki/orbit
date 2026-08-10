@@ -16,10 +16,10 @@ pub let app_product_name : String? = Some("Orbit Example")
 pub let app_publisher : String? = None
 
 ///|
-pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Example\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[]},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}},\"build\":{},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"example.ping\"]}],\"plugins\":[]}"
+pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Example\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[],\"windows\":{\"webview_install_mode\":\"embed_bootstrapper\"}},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}},\"build\":{},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"example.ping\",\"orbit.dialog.open\"]}],\"plugins\":[]}"
 
 ///|
-pub let configuration_fingerprint = "dbf758d5cfd48a7d165c1bbd001bfc8b18fabfeb2b2544d03e7f63a7dbfd4f3c"
+pub let configuration_fingerprint = "e87ef8f1508eefd687906605645300c13ef748128b8af94a3c28b5a765c2de52"
 
 ///|
 pub let window_label = "main"
@@ -54,7 +54,10 @@ pub fn configured_ipc_policy() -> @ipc.CommandPolicy raise @ipc.IpcError {
       effect=@ipc.CapabilityEffect::allow(),
       principals=[@ipc.PrincipalSelector::window("main")],
       scopes=[],
-      commands=[@ipc.CommandName::new("example.ping")],
+      commands=[
+        @ipc.CommandName::new("example.ping"),
+        @ipc.CommandName::new("orbit.dialog.open"),
+      ],
     ),
   )
   policy
@@ -78,7 +81,7 @@ pub fn configured_windows() -> Array[@core.DesktopWindowOptions] {
         resource_provider=Some(
           @runtime.RuntimeResourceProvider::new(
             scheme=resource_scheme,
-            handler=handle_resource,
+            handler=handle_resource_0,
           ),
         ),
       ) catch {
@@ -92,7 +95,7 @@ pub fn configured_windows() -> Array[@core.DesktopWindowOptions] {
 }
 
 ///|
-pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
+pub fn resource_response_0(uri : String) -> @runtime.RuntimeResourceResponse? {
   match uri {
     "orbit://app/app.js" =>
       Some(
@@ -141,7 +144,92 @@ pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
             b'\x3A', b'\x20', b'\x24', b'\x7B', b'\x65', b'\x72', b'\x72', b'\x6F',
             b'\x72', b'\x2E', b'\x63', b'\x6F', b'\x64', b'\x65', b'\x7D', b'\x60',
             b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x7D', b'\x0A', b'\x7D', b'\x29',
-            b'\x3B', b'\x0A',
+            b'\x3B', b'\x0A', b'\x0A', b'\x64', b'\x6F', b'\x63', b'\x75', b'\x6D',
+            b'\x65', b'\x6E', b'\x74', b'\x2E', b'\x71', b'\x75', b'\x65', b'\x72',
+            b'\x79', b'\x53', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x6F',
+            b'\x72', b'\x28', b'\x22', b'\x23', b'\x70', b'\x69', b'\x63', b'\x6B',
+            b'\x2D', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x22', b'\x29', b'\x2E',
+            b'\x61', b'\x64', b'\x64', b'\x45', b'\x76', b'\x65', b'\x6E', b'\x74',
+            b'\x4C', b'\x69', b'\x73', b'\x74', b'\x65', b'\x6E', b'\x65', b'\x72',
+            b'\x28', b'\x22', b'\x63', b'\x6C', b'\x69', b'\x63', b'\x6B', b'\x22',
+            b'\x2C', b'\x20', b'\x61', b'\x73', b'\x79', b'\x6E', b'\x63', b'\x20',
+            b'\x28', b'\x29', b'\x20', b'\x3D', b'\x3E', b'\x20', b'\x7B', b'\x0A',
+            b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6E', b'\x73', b'\x74', b'\x20',
+            b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F',
+            b'\x6E', b'\x20', b'\x3D', b'\x20', b'\x64', b'\x6F', b'\x63', b'\x75',
+            b'\x6D', b'\x65', b'\x6E', b'\x74', b'\x2E', b'\x71', b'\x75', b'\x65',
+            b'\x72', b'\x79', b'\x53', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74',
+            b'\x6F', b'\x72', b'\x28', b'\x22', b'\x23', b'\x73', b'\x65', b'\x6C',
+            b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x22', b'\x29',
+            b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65',
+            b'\x63', b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65',
+            b'\x78', b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E',
+            b'\x74', b'\x20', b'\x3D', b'\x20', b'\x22', b'\x22', b'\x3B', b'\x0A',
+            b'\x20', b'\x20', b'\x74', b'\x72', b'\x79', b'\x20', b'\x7B', b'\x0A',
+            b'\x20', b'\x20', b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6E', b'\x73',
+            b'\x74', b'\x20', b'\x72', b'\x65', b'\x73', b'\x70', b'\x6F', b'\x6E',
+            b'\x73', b'\x65', b'\x20', b'\x3D', b'\x20', b'\x61', b'\x77', b'\x61',
+            b'\x69', b'\x74', b'\x20', b'\x77', b'\x69', b'\x6E', b'\x64', b'\x6F',
+            b'\x77', b'\x2E', b'\x5F', b'\x5F', b'\x4F', b'\x52', b'\x42', b'\x49',
+            b'\x54', b'\x5F', b'\x5F', b'\x2E', b'\x69', b'\x6E', b'\x76', b'\x6F',
+            b'\x6B', b'\x65', b'\x28', b'\x22', b'\x6F', b'\x72', b'\x62', b'\x69',
+            b'\x74', b'\x2E', b'\x64', b'\x69', b'\x61', b'\x6C', b'\x6F', b'\x67',
+            b'\x2E', b'\x6F', b'\x70', b'\x65', b'\x6E', b'\x22', b'\x2C', b'\x20',
+            b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x74', b'\x69', b'\x74', b'\x6C', b'\x65', b'\x3A', b'\x20', b'\x22',
+            b'\x43', b'\x68', b'\x6F', b'\x6F', b'\x73', b'\x65', b'\x20', b'\x61',
+            b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x22', b'\x2C', b'\x0A',
+            b'\x20', b'\x20', b'\x20', b'\x20', b'\x20', b'\x20', b'\x66', b'\x69',
+            b'\x6C', b'\x74', b'\x65', b'\x72', b'\x73', b'\x3A', b'\x20', b'\x5B',
+            b'\x7B', b'\x20', b'\x6E', b'\x61', b'\x6D', b'\x65', b'\x3A', b'\x20',
+            b'\x22', b'\x54', b'\x65', b'\x78', b'\x74', b'\x20', b'\x61', b'\x6E',
+            b'\x64', b'\x20', b'\x73', b'\x6F', b'\x75', b'\x72', b'\x63', b'\x65',
+            b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73', b'\x22', b'\x2C',
+            b'\x20', b'\x65', b'\x78', b'\x74', b'\x65', b'\x6E', b'\x73', b'\x69',
+            b'\x6F', b'\x6E', b'\x73', b'\x3A', b'\x20', b'\x5B', b'\x22', b'\x74',
+            b'\x78', b'\x74', b'\x22', b'\x2C', b'\x20', b'\x22', b'\x6D', b'\x64',
+            b'\x22', b'\x2C', b'\x20', b'\x22', b'\x6D', b'\x62', b'\x74', b'\x22',
+            b'\x5D', b'\x20', b'\x7D', b'\x5D', b'\x0A', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x7D', b'\x29', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x69', b'\x66', b'\x20', b'\x28', b'\x72', b'\x65', b'\x73',
+            b'\x70', b'\x6F', b'\x6E', b'\x73', b'\x65', b'\x2E', b'\x63', b'\x61',
+            b'\x6E', b'\x63', b'\x65', b'\x6C', b'\x6C', b'\x65', b'\x64', b'\x29',
+            b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69',
+            b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78', b'\x74', b'\x43',
+            b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74', b'\x20', b'\x3D',
+            b'\x20', b'\x22', b'\x53', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74',
+            b'\x69', b'\x6F', b'\x6E', b'\x20', b'\x63', b'\x61', b'\x6E', b'\x63',
+            b'\x65', b'\x6C', b'\x6C', b'\x65', b'\x64', b'\x2E', b'\x22', b'\x3B',
+            b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20', b'\x7D', b'\x20', b'\x65',
+            b'\x6C', b'\x73', b'\x65', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20',
+            b'\x20', b'\x20', b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6E', b'\x73',
+            b'\x74', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73', b'\x20',
+            b'\x3D', b'\x20', b'\x72', b'\x65', b'\x73', b'\x70', b'\x6F', b'\x6E',
+            b'\x73', b'\x65', b'\x2E', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73',
+            b'\x2E', b'\x6D', b'\x61', b'\x70', b'\x28', b'\x28', b'\x66', b'\x69',
+            b'\x6C', b'\x65', b'\x29', b'\x20', b'\x3D', b'\x3E', b'\x20', b'\x60',
+            b'\x24', b'\x7B', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x2E', b'\x6E',
+            b'\x61', b'\x6D', b'\x65', b'\x7D', b'\x20', b'\x28', b'\x24', b'\x7B',
+            b'\x66', b'\x69', b'\x6C', b'\x65', b'\x2E', b'\x69', b'\x64', b'\x7D',
+            b'\x29', b'\x60', b'\x29', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x20', b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63',
+            b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78',
+            b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74',
+            b'\x20', b'\x3D', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73',
+            b'\x2E', b'\x6A', b'\x6F', b'\x69', b'\x6E', b'\x28', b'\x22', b'\x2C',
+            b'\x20', b'\x22', b'\x29', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x7D', b'\x0A', b'\x20', b'\x20', b'\x7D', b'\x20', b'\x63',
+            b'\x61', b'\x74', b'\x63', b'\x68', b'\x20', b'\x28', b'\x65', b'\x72',
+            b'\x72', b'\x6F', b'\x72', b'\x29', b'\x20', b'\x7B', b'\x0A', b'\x20',
+            b'\x20', b'\x20', b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63',
+            b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78',
+            b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74',
+            b'\x20', b'\x3D', b'\x20', b'\x60', b'\x49', b'\x50', b'\x43', b'\x20',
+            b'\x65', b'\x72', b'\x72', b'\x6F', b'\x72', b'\x3A', b'\x20', b'\x24',
+            b'\x7B', b'\x65', b'\x72', b'\x72', b'\x6F', b'\x72', b'\x2E', b'\x63',
+            b'\x6F', b'\x64', b'\x65', b'\x7D', b'\x60', b'\x3B', b'\x0A', b'\x20',
+            b'\x20', b'\x7D', b'\x0A', b'\x7D', b'\x29', b'\x3B', b'\x0A',
           ]),
         ),
       )
@@ -249,13 +337,30 @@ pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
             b'\x20', b'\x62', b'\x61', b'\x63', b'\x6B', b'\x67', b'\x72', b'\x6F',
             b'\x75', b'\x6E', b'\x64', b'\x3A', b'\x20', b'\x23', b'\x32', b'\x38',
             b'\x34', b'\x64', b'\x34', b'\x61', b'\x3B', b'\x20', b'\x7D', b'\x0A',
-            b'\x0A', b'\x23', b'\x6D', b'\x65', b'\x73', b'\x73', b'\x61', b'\x67',
-            b'\x65', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x6D', b'\x61',
+            b'\x0A', b'\x23', b'\x70', b'\x69', b'\x63', b'\x6B', b'\x2D', b'\x66',
+            b'\x69', b'\x6C', b'\x65', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20',
+            b'\x6D', b'\x61', b'\x72', b'\x67', b'\x69', b'\x6E', b'\x2D', b'\x6C',
+            b'\x65', b'\x66', b'\x74', b'\x3A', b'\x20', b'\x38', b'\x70', b'\x78',
+            b'\x3B', b'\x0A', b'\x7D', b'\x0A', b'\x0A', b'\x23', b'\x6D', b'\x65',
+            b'\x73', b'\x73', b'\x61', b'\x67', b'\x65', b'\x2C', b'\x0A', b'\x23',
+            b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F',
+            b'\x6E', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x6D', b'\x61',
             b'\x72', b'\x67', b'\x69', b'\x6E', b'\x2D', b'\x74', b'\x6F', b'\x70',
             b'\x3A', b'\x20', b'\x31', b'\x38', b'\x70', b'\x78', b'\x3B', b'\x0A',
             b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6C', b'\x6F', b'\x72', b'\x3A',
             b'\x20', b'\x23', b'\x62', b'\x39', b'\x63', b'\x39', b'\x64', b'\x37',
-            b'\x3B', b'\x0A', b'\x7D', b'\x0A',
+            b'\x3B', b'\x0A', b'\x7D', b'\x0A', b'\x0A', b'\x23', b'\x73', b'\x65',
+            b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x20',
+            b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x6D', b'\x61', b'\x72', b'\x67',
+            b'\x69', b'\x6E', b'\x2D', b'\x74', b'\x6F', b'\x70', b'\x3A', b'\x20',
+            b'\x38', b'\x70', b'\x78', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x66',
+            b'\x6F', b'\x6E', b'\x74', b'\x2D', b'\x66', b'\x61', b'\x6D', b'\x69',
+            b'\x6C', b'\x79', b'\x3A', b'\x20', b'\x75', b'\x69', b'\x2D', b'\x6D',
+            b'\x6F', b'\x6E', b'\x6F', b'\x73', b'\x70', b'\x61', b'\x63', b'\x65',
+            b'\x2C', b'\x20', b'\x43', b'\x6F', b'\x6E', b'\x73', b'\x6F', b'\x6C',
+            b'\x61', b'\x73', b'\x2C', b'\x20', b'\x6D', b'\x6F', b'\x6E', b'\x6F',
+            b'\x73', b'\x70', b'\x61', b'\x63', b'\x65', b'\x3B', b'\x0A', b'\x7D',
+            b'\x0A',
           ]),
         ),
       )
@@ -341,9 +446,23 @@ pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
             b'\x20', b'\x69', b'\x6E', b'\x74', b'\x65', b'\x72', b'\x61', b'\x63',
             b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x3C', b'\x2F', b'\x62', b'\x75',
             b'\x74', b'\x74', b'\x6F', b'\x6E', b'\x3E', b'\x0A', b'\x20', b'\x20',
-            b'\x20', b'\x20', b'\x3C', b'\x64', b'\x69', b'\x76', b'\x20', b'\x69',
-            b'\x64', b'\x3D', b'\x22', b'\x6D', b'\x65', b'\x73', b'\x73', b'\x61',
-            b'\x67', b'\x65', b'\x22', b'\x20', b'\x61', b'\x72', b'\x69', b'\x61',
+            b'\x20', b'\x20', b'\x3C', b'\x62', b'\x75', b'\x74', b'\x74', b'\x6F',
+            b'\x6E', b'\x20', b'\x69', b'\x64', b'\x3D', b'\x22', b'\x70', b'\x69',
+            b'\x63', b'\x6B', b'\x2D', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x22',
+            b'\x20', b'\x74', b'\x79', b'\x70', b'\x65', b'\x3D', b'\x22', b'\x62',
+            b'\x75', b'\x74', b'\x74', b'\x6F', b'\x6E', b'\x22', b'\x3E', b'\x43',
+            b'\x68', b'\x6F', b'\x6F', b'\x73', b'\x65', b'\x20', b'\x66', b'\x69',
+            b'\x6C', b'\x65', b'\x3C', b'\x2F', b'\x62', b'\x75', b'\x74', b'\x74',
+            b'\x6F', b'\x6E', b'\x3E', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x3C', b'\x64', b'\x69', b'\x76', b'\x20', b'\x69', b'\x64', b'\x3D',
+            b'\x22', b'\x6D', b'\x65', b'\x73', b'\x73', b'\x61', b'\x67', b'\x65',
+            b'\x22', b'\x20', b'\x61', b'\x72', b'\x69', b'\x61', b'\x2D', b'\x6C',
+            b'\x69', b'\x76', b'\x65', b'\x3D', b'\x22', b'\x70', b'\x6F', b'\x6C',
+            b'\x69', b'\x74', b'\x65', b'\x22', b'\x3E', b'\x3C', b'\x2F', b'\x64',
+            b'\x69', b'\x76', b'\x3E', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x3C', b'\x64', b'\x69', b'\x76', b'\x20', b'\x69', b'\x64', b'\x3D',
+            b'\x22', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69',
+            b'\x6F', b'\x6E', b'\x22', b'\x20', b'\x61', b'\x72', b'\x69', b'\x61',
             b'\x2D', b'\x6C', b'\x69', b'\x76', b'\x65', b'\x3D', b'\x22', b'\x70',
             b'\x6F', b'\x6C', b'\x69', b'\x74', b'\x65', b'\x22', b'\x3E', b'\x3C',
             b'\x2F', b'\x64', b'\x69', b'\x76', b'\x3E', b'\x0A', b'\x20', b'\x20',
@@ -363,8 +482,20 @@ pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
 }
 
 ///|
+pub fn handle_resource_0(
+  request : @runtime.RuntimeResourceRequest,
+) -> @runtime.RuntimeResourceResponse? {
+  resource_response_0(request.uri())
+}
+
+///|
+pub fn resource_response(uri : String) -> @runtime.RuntimeResourceResponse? {
+  resource_response_0(uri)
+}
+
+///|
 pub fn handle_resource(
   request : @runtime.RuntimeResourceRequest,
 ) -> @runtime.RuntimeResourceResponse? {
-  resource_response(request.uri())
+  handle_resource_0(request)
 }

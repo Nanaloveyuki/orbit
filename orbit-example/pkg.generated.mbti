@@ -33,7 +33,11 @@ pub let entry_url : String
 
 pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
 
+pub fn handle_resource_0(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
 pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response_0(String) -> @orbit-runtime.RuntimeResourceResponse?
 
 pub let resource_scheme : String
 
