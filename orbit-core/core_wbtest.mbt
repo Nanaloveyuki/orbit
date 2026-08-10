@@ -303,6 +303,9 @@ async test "file writes reject oversized input and native failures" {
 ///|
 async test "directory reads require a matching local directory handle" {
   let root = "_build/orbit-core-directory-native-handle-v2"
+  @fs.rmdir(root, recursive=true) catch {
+    _ => ()
+  }
   @fs.mkdir(root, recursive=true)
   @fs.write_file("\{root}/note.txt", "note", create_mode=CreateOrTruncate)
   @fs.mkdir("\{root}/nested", recursive=true)
@@ -320,14 +323,37 @@ async test "directory reads require a matching local directory handle" {
   assert_eq(response.entries.length(), 2)
   assert_true(
     response.entries.any(entry => {
-      entry.name == "note.txt" && entry.kind == "file"
+      entry.name == "note.txt" && entry.kind == "file" && entry.id is None
     }),
   )
-  let nested = files
-    .mint_child_directory("main", capability.id(), "nested")
-    .unwrap_or_else(() => abort("could not mint child directory handle"))
+  let mut nested_id = None
+  for entry in response.entries {
+    if entry.name == "nested" {
+      nested_id = entry.id
+    }
+  }
+  let nested = match nested_id {
+    Some(id) => id
+    None => abort("expected nested directory capability in response")
+  }
+  let repeated = match
+    read_directory_capability(files, context, { id: capability.id() }) {
+    Ok(response) => response
+    Err(_) => abort("expected repeated directory read")
+  }
+  let mut repeated_nested_id = None
+  for entry in repeated.entries {
+    if entry.name == "nested" {
+      repeated_nested_id = entry.id
+    }
+  }
+  match repeated_nested_id {
+    Some(id) => assert_eq(id, nested)
+    None => abort("expected cached nested directory capability")
+  }
+  assert_eq(files.length(), 2)
   let nested_response = match
-    read_directory_capability(files, context, { id: nested.id() }) {
+    read_directory_capability(files, context, { id: nested }) {
     Ok(response) => response
     Err(_) => abort("expected child directory read")
   }
@@ -339,7 +365,7 @@ async test "directory reads require a matching local directory handle" {
   }
   assert_true(
     response.entries.any(entry => {
-      entry.name == "nested" && entry.kind == "directory"
+      entry.name == "nested" && entry.kind == "directory" && entry.id is Some(_)
     }),
   )
   match
@@ -370,6 +396,12 @@ async test "directory handles do not follow links or Windows reparse points" {
   let root = "_build/orbit-core-directory-no-follow-root-v2"
   let target = "_build/orbit-core-directory-no-follow-target-v2"
   let escape = "\{root}/escape"
+  @fs.rmdir(root, recursive=true) catch {
+    _ => ()
+  }
+  @fs.rmdir(target, recursive=true) catch {
+    _ => ()
+  }
   @fs.mkdir(root, recursive=true)
   @fs.mkdir(target, recursive=true)
   @fs.write_file(
@@ -409,6 +441,9 @@ async test "directory handles do not follow links or Windows reparse points" {
 async test "directory reads reject cancellation overflow and native failures" {
   let files = @file.FileCapabilityRegistry::new()
   let root = "_build/orbit-core-directory-native-cancelled"
+  @fs.rmdir(root, recursive=true) catch {
+    _ => ()
+  }
   @fs.mkdir(root, recursive=true)
   let cancelled = files
     .mint_directory("main", root)
@@ -422,6 +457,9 @@ async test "directory reads reject cancellation overflow and native failures" {
   files.revoke_window("main")
   @fs.rmdir(root, recursive=true)
   let oversized_root = "_build/orbit-core-directory-native-oversized-v2"
+  @fs.rmdir(oversized_root, recursive=true) catch {
+    _ => ()
+  }
   @fs.mkdir(oversized_root, recursive=true)
   for index in 0..<=max_directory_entries {
     @fs.write_file(

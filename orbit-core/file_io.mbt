@@ -42,6 +42,7 @@ priv struct FileDirectoryReadRequest {
 
 ///|
 priv struct FileDirectoryEntryResponse {
+  id : String?
   name : String
   kind : String
 } derive(ToJson)
@@ -288,7 +289,16 @@ async fn read_directory_capability(
   }
   let entries : Array[FileDirectoryEntryResponse] = []
   for entry in listed {
+    let id = match entry.kind {
+      @file.DirectoryEntryKind::Directory =>
+        match files.mint_child_directory(label, request.id, entry.name) {
+          Ok(capability) => Some(capability.id())
+          Err(_) => None
+        }
+      @file.DirectoryEntryKind::File => None
+    }
     entries.push({
+      id,
       name: entry.name,
       kind: match entry.kind {
         @file.DirectoryEntryKind::Directory => "directory"

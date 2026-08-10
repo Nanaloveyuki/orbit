@@ -67,3 +67,23 @@ button:hover { background: #284d4a; }
   margin-top: 8px;
   font-family: ui-monospace, Consolas, monospace;
 }
+
+#directory-entries {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  max-height: 216px;
+  overflow: auto;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.directory-entry {
+  min-height: 28px;
+  color: #b9c9d7;
+}
+
+.directory-entry button {
+  margin: 0;
+  padding: 4px 8px;
+  font-family: inherit;
+}

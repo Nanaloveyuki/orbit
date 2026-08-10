@@ -154,10 +154,15 @@ payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
 用于写入。
 
 `orbit.fs.read_directory` 只接受目录 picker 返回的 `Directory` handle 和
-`{ "id": "..." }`。它构造最多 128 个非隐藏直接子项的
-`{ "name", "kind" }` 数组，不接受相对或本机路径，也不为子项返回 handle。
-目录相对路径的读写、创建和删除需要跨平台的 no-follow 原生句柄能力，未纳入当前
-命令面。
+`{ "id": "..." }`。picker 返回时 Orbit 已取得目录的原生 no-follow handle；命令构造
+最多 128 个非隐藏直接子项的 `{ "name", "kind", "id" }` 数组，不接受相对或本机路径。
+文件的 `id` 为 `null`；只有能通过已持有父目录句柄安全打开的子目录才携带新的 opaque
+`id`，该 id 可以继续调用 `orbit.fs.read_directory`。symlink、Windows junction 和其他
+reparse point 不会被跟随或发放 child handle。
+同一父目录的同名子 capability 会复用；每个窗口最多保留 256 个目录 capability，达到
+上限时条目仍可显示但不会携带新的 `id`。
+
+目录 capability 目前不支持目录相对路径的读写、创建和删除。
 
 ## 远端 HTTPS 页面
 

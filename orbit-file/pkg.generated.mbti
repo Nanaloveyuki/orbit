@@ -20,6 +20,7 @@ pub(all) suberror FileCapabilityError {
   DirectoryUnavailable
   DirectoryReadFailed
   DirectoryTooLarge
+  DirectoryCapabilityLimit
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)

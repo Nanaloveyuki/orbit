@@ -11,6 +11,7 @@ pub(all) suberror FileCapabilityError {
   DirectoryUnavailable
   DirectoryReadFailed
   DirectoryTooLarge
+  DirectoryCapabilityLimit
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
@@ -32,14 +33,19 @@ priv enum FileCapabilityLocation {
 ///|
 struct FileCapabilityRecord {
   location : FileCapabilityLocation
+  name : String
   window_label : String
   kind : FileCapabilityKind
+  parent_id : String?
 }
 
 ///|
 pub struct FileCapabilityRegistry {
   priv records : Map[String, FileCapabilityRecord]
 }
+
+///|
+let max_directory_capabilities_per_window = 256
 
 ///|
 pub fn FileCapabilityRegistry::new() -> FileCapabilityRegistry {
@@ -107,6 +113,20 @@ fn file_capability_directory_error(
 }
 
 ///|
+fn directory_capability_count(
+  records : Map[String, FileCapabilityRecord],
+  window_label : String,
+) -> Int {
+  let mut count = 0
+  for _, record in records {
+    if record.window_label == window_label && record.kind == Directory {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
 /// Mints a new opaque host capability for a picker-selected native path.
 /// The path is intentionally never exposed by `FileCapability`.
 pub fn FileCapabilityRegistry::mint(
@@ -122,8 +142,15 @@ pub fn FileCapabilityRegistry::mint(
     Ok(id) => id
     Err(error) => return Err(error)
   }
-  self.records[id] = { location: Path(path), window_label, kind }
-  Ok({ id, name: file_display_name(path), kind })
+  let name = file_display_name(path)
+  self.records[id] = {
+    location: Path(path),
+    name,
+    window_label,
+    kind,
+    parent_id: None,
+  }
+  Ok({ id, name, kind })
 }
 
 ///|
@@ -135,6 +162,10 @@ pub fn FileCapabilityRegistry::mint_directory(
   window_label : String,
   path : String,
 ) -> Result[FileCapability, FileCapabilityError] {
+  if directory_capability_count(self.records, window_label) >=
+    max_directory_capabilities_per_window {
+    return Err(DirectoryCapabilityLimit)
+  }
   let id = match mint_handle_id(self.records) {
     Ok(id) => id
     Err(error) => return Err(error)
@@ -143,12 +174,15 @@ pub fn FileCapabilityRegistry::mint_directory(
     Ok(directory) => directory
     Err(error) => return Err(file_capability_directory_error(error))
   }
+  let name = file_display_name(path)
   self.records[id] = {
     location: Directory(directory),
+    name,
     window_label,
     kind: Directory,
+    parent_id: None,
   }
-  Ok({ id, name: file_display_name(path), kind: Directory })
+  Ok({ id, name, kind: Directory })
 }
 
 ///|
@@ -221,6 +255,21 @@ pub fn FileCapabilityRegistry::mint_child_directory(
   parent_id : String,
   name : String,
 ) -> Result[FileCapability, FileCapabilityError] {
+  for id, record in self.records {
+    if record.window_label == window_label &&
+      record.kind == Directory &&
+      record.name == name {
+      match record.parent_id {
+        Some(existing_parent) if existing_parent == parent_id =>
+          return Ok({ id, name, kind: Directory })
+        _ => ()
+      }
+    }
+  }
+  if directory_capability_count(self.records, window_label) >=
+    max_directory_capabilities_per_window {
+    return Err(DirectoryCapabilityLimit)
+  }
   let id = match mint_handle_id(self.records) {
     Ok(id) => id
     Err(error) => return Err(error)
@@ -235,8 +284,10 @@ pub fn FileCapabilityRegistry::mint_child_directory(
   }
   self.records[id] = {
     location: Directory(directory),
+    name,
     window_label,
     kind: Directory,
+    parent_id: Some(parent_id),
   }
   Ok({ id, name, kind: Directory })
 }

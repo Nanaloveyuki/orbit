@@ -54,6 +54,7 @@ document.querySelector("#save-file").addEventListener("click", async () => {
 document.querySelector("#pick-directory").addEventListener("click", async () => {
   const selection = document.querySelector("#selection");
   selection.textContent = "";
+  document.querySelector("#directory-entries").replaceChildren();
   try {
     const response = await window.__ORBIT__.invoke("orbit.dialog.pick_directory", {
       title: "Choose a folder to inspect"
@@ -61,14 +62,39 @@ document.querySelector("#pick-directory").addEventListener("click", async () => 
     if (response.cancelled) {
       selection.textContent = "Folder selection cancelled.";
     } else {
-      const directory = response.files[0];
-      const listing = await window.__ORBIT__.invoke("orbit.fs.read_directory", {
-        id: directory.id
-      });
-      const names = listing.entries.map(entry => entry.name).join(", ");
-      selection.textContent = `${directory.name}: ${names || "empty folder"}`;
+      await showDirectory(response.files[0]);
     }
   } catch (error) {
     selection.textContent = `IPC error: ${error.code}`;
   }
 });
+
+async function showDirectory(directory) {
+  const selection = document.querySelector("#selection");
+  const entries = document.querySelector("#directory-entries");
+  const listing = await window.__ORBIT__.invoke("orbit.fs.read_directory", {
+    id: directory.id
+  });
+  selection.textContent = `${directory.name}: ${listing.entries.length || "empty folder"}`;
+  entries.replaceChildren();
+  for (const entry of listing.entries) {
+    const row = document.createElement("div");
+    row.className = "directory-entry";
+    if (entry.kind === "directory" && entry.id) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = entry.name;
+      button.addEventListener("click", async () => {
+        try {
+          await showDirectory({ id: entry.id, name: entry.name });
+        } catch (error) {
+          selection.textContent = `IPC error: ${error.code}`;
+        }
+      });
+      row.append(button);
+    } else {
+      row.textContent = entry.name;
+    }
+    entries.append(row);
+  }
+}
