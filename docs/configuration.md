@@ -119,10 +119,33 @@ Orbit 工具只接受严格 JSON 和 `schema_version: 2`。未知字段、重复
 
 payload 是对象，可选字段为 `title`、`filters`、`default_name` 和
 `initial_directory`。每个 filter 使用 `{ "name": "Text", "extensions": ["txt"] }`。
+
 成功取消返回 `{ "cancelled": true, "files": [] }`；选择结果返回
 `{ "cancelled": false, "files": [{ "id", "name", "kind" }] }`。`id` 是绑定到选择
 窗口的随机 capability handle，页面永远不会收到原生路径。当前 Windows 支持 picker；
 其他 runtime 返回 `dialog_unsupported`。
+
+## 句柄文件读取
+
+`orbit.fs.read_binary` 和 `orbit.fs.read_text` 仅在 `@core.run_async` 启动的
+应用中可用。它们是异步命令，仍须显式向本地 `window` principal 授权；同步
+`run` 应用会得到标准 `async_unavailable` 响应。
+
+两个命令都只接受 picker 返回的 `{ "id": "..." }`，并且只接受 `Read` 句柄：
+目录、保存和其他窗口的句柄均会被拒绝。单次读取最多 64 KiB，`read_binary`
+返回 `{ "data": "<base64>", "size": <bytes> }`，`read_text` 返回
+`{ "text": "<utf8>", "size": <bytes> }`。本机路径不会出现在请求、响应或
+错误中。
+
+```json
+{
+  "identifier": "main-file-reads",
+  "effect": "allow",
+  "principals": [{ "kind": "window", "identifier": "main" }],
+  "scopes": [],
+  "commands": ["orbit.fs.read_text", "orbit.fs.read_binary"]
+}
+```
 
 ## 远端 HTTPS 页面
 

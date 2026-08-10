@@ -613,6 +613,13 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     Ok(_) => ()
   }
+  match self.register_file_read_commands() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(reason)
+    }
+    Ok(_) => ()
+  }
   if self.async_exit is None {
     match start_configured_plugins(self.plugins, self.options) {
       Err(reason) => {

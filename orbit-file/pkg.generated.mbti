@@ -12,6 +12,7 @@ pub(all) suberror FileCapabilityError {
   RandomUnavailable
   UnknownHandle(String)
   WrongPrincipal(String)
+  WrongKind(String)
 } derive(@debug.Debug)
 
 // Types and methods

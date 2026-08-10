@@ -10,6 +10,7 @@ pub(all) suberror FileCapabilityError {
   RandomUnavailable
   UnknownHandle(String)
   WrongPrincipal(String)
+  WrongKind(String)
 } derive(Debug)
 
 ///|
@@ -105,7 +106,7 @@ pub fn FileCapabilityRegistry::resolve(
     None => Err(UnknownHandle(id))
     Some(record) if record.window_label != window_label =>
       Err(WrongPrincipal(id))
-    Some(record) if record.kind != kind => Err(UnknownHandle(id))
+    Some(record) if record.kind != kind => Err(WrongKind(id))
     Some(record) => Ok(record.path)
   }
 }

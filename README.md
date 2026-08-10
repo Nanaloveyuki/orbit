@@ -139,8 +139,13 @@ const selected = await window.__ORBIT__.invoke("orbit.dialog.open", {
 if (!selected.cancelled) console.log(selected.files);
 ```
 
-文件内容读取与写入将在后续 capability 阶段只接受这些 handle；当前版本不会向页面
-提供任意路径文件系统 API。
+在 `@core.run_async` 启动的应用中，显式授予
+`orbit.fs.read_binary` 或 `orbit.fs.read_text` 后，页面可继续将同一 handle
+传给读取命令。读取命令只接受 `{ "id": "..." }`，单次至多 64 KiB；binary
+结果使用 base64，text 结果会验证 UTF-8。路径、目录句柄和保存句柄都不能用于读取。
+
+后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
+文件系统 API。
 
 ## React、Vue 与 Vite
 

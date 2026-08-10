@@ -30,9 +30,7 @@ fn main {
   }
   let factory = @moonview_runtime.MoonViewRuntimeFactory::new()
     as &@runtime.RuntimeFactory
-  ignore(
-    @core.run(factory, desktop_options) catch {
-      _ => fail("desktop application terminated with an error")
-    },
-  )
+  @core.run_async(factory, desktop_options, async fn() { @async.pause() }) catch {
+    _ => fail("desktop application terminated with an error")
+  }
 }

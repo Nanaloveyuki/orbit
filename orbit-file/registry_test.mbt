@@ -14,6 +14,10 @@ test "file capabilities remain bound to the selecting window" {
     Err(WrongPrincipal(_)) => ()
     _ => fail("expected cross-window denial")
   }
+  match registry.resolve("main", capability.id(), Write) {
+    Err(WrongKind(_)) => ()
+    _ => fail("expected operation-kind denial")
+  }
   registry.revoke_window("main")
   match registry.resolve("main", capability.id(), Read) {
     Err(UnknownHandle(_)) => ()
