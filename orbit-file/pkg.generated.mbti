@@ -8,14 +8,34 @@ import {
 // Values
 
 // Errors
+pub(all) suberror DirectoryHandleError {
+  OpenFailed
+  InvalidChildName
+  ReadFailed
+  TooLarge
+} derive(Eq, @debug.Debug)
+
 pub(all) suberror FileCapabilityError {
   RandomUnavailable
+  DirectoryUnavailable
+  DirectoryReadFailed
+  DirectoryTooLarge
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct DirectoryEntry {
+  name : String
+  kind : DirectoryEntryKind
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DirectoryEntryKind {
+  File
+  Directory
+} derive(Eq, @debug.Debug)
+
 pub struct FileCapability {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -36,7 +56,10 @@ pub struct FileCapabilityRegistry {
 }
 pub fn FileCapabilityRegistry::clear(Self) -> Unit
 pub fn FileCapabilityRegistry::length(Self) -> Int
+pub fn FileCapabilityRegistry::list_directory(Self, String, String, Int) -> Result[Array[DirectoryEntry], FileCapabilityError]
 pub fn FileCapabilityRegistry::mint(Self, String, String, FileCapabilityKind) -> Result[FileCapability, FileCapabilityError]
+pub fn FileCapabilityRegistry::mint_child_directory(Self, String, String, String) -> Result[FileCapability, FileCapabilityError]
+pub fn FileCapabilityRegistry::mint_directory(Self, String, String) -> Result[FileCapability, FileCapabilityError]
 pub fn FileCapabilityRegistry::new() -> Self
 pub fn FileCapabilityRegistry::resolve(Self, String, String, FileCapabilityKind) -> Result[String, FileCapabilityError]
 pub fn FileCapabilityRegistry::revoke_window(Self, String) -> Unit

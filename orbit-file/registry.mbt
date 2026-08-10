@@ -8,6 +8,9 @@ pub(all) enum FileCapabilityKind {
 ///|
 pub(all) suberror FileCapabilityError {
   RandomUnavailable
+  DirectoryUnavailable
+  DirectoryReadFailed
+  DirectoryTooLarge
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
@@ -21,8 +24,14 @@ pub struct FileCapability {
 } derive(Eq, Debug)
 
 ///|
+priv enum FileCapabilityLocation {
+  Path(String)
+  Directory(NativeDirectory)
+}
+
+///|
 struct FileCapabilityRecord {
-  path : String
+  location : FileCapabilityLocation
   window_label : String
   kind : FileCapabilityKind
 }
@@ -72,6 +81,32 @@ fn random_handle_id() -> String? {
 }
 
 ///|
+fn mint_handle_id(
+  records : Map[String, FileCapabilityRecord],
+) -> Result[String, FileCapabilityError] {
+  for _ in 0..<8 {
+    let id = match random_handle_id() {
+      Some(id) => id
+      None => return Err(RandomUnavailable)
+    }
+    if !records.contains(id) {
+      return Ok(id)
+    }
+  }
+  Err(RandomUnavailable)
+}
+
+///|
+fn file_capability_directory_error(
+  error : DirectoryHandleError,
+) -> FileCapabilityError {
+  match error {
+    TooLarge => DirectoryTooLarge
+    _ => DirectoryUnavailable
+  }
+}
+
+///|
 /// Mints a new opaque host capability for a picker-selected native path.
 /// The path is intentionally never exposed by `FileCapability`.
 pub fn FileCapabilityRegistry::mint(
@@ -80,17 +115,40 @@ pub fn FileCapabilityRegistry::mint(
   path : String,
   kind : FileCapabilityKind,
 ) -> Result[FileCapability, FileCapabilityError] {
-  for _ in 0..<8 {
-    let id = match random_handle_id() {
-      Some(id) => id
-      None => return Err(RandomUnavailable)
-    }
-    if !self.records.contains(id) {
-      self.records[id] = { path, window_label, kind }
-      return Ok({ id, name: file_display_name(path), kind })
-    }
+  if kind == Directory {
+    return Err(DirectoryUnavailable)
   }
-  Err(RandomUnavailable)
+  let id = match mint_handle_id(self.records) {
+    Ok(id) => id
+    Err(error) => return Err(error)
+  }
+  self.records[id] = { location: Path(path), window_label, kind }
+  Ok({ id, name: file_display_name(path), kind })
+}
+
+///|
+/// Mints a directory capability that owns a no-follow native root handle.
+/// The selected path is converted to a handle immediately and is never kept as
+/// a follow-up path string.
+pub fn FileCapabilityRegistry::mint_directory(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  path : String,
+) -> Result[FileCapability, FileCapabilityError] {
+  let id = match mint_handle_id(self.records) {
+    Ok(id) => id
+    Err(error) => return Err(error)
+  }
+  let directory = match native_directory_open_path(path) {
+    Ok(directory) => directory
+    Err(error) => return Err(file_capability_directory_error(error))
+  }
+  self.records[id] = {
+    location: Directory(directory),
+    window_label,
+    kind: Directory,
+  }
+  Ok({ id, name: file_display_name(path), kind: Directory })
 }
 
 ///|
@@ -107,7 +165,87 @@ pub fn FileCapabilityRegistry::resolve(
     Some(record) if record.window_label != window_label =>
       Err(WrongPrincipal(id))
     Some(record) if record.kind != kind => Err(WrongKind(id))
-    Some(record) => Ok(record.path)
+    Some(record) =>
+      match record.location {
+        Path(path) => Ok(path)
+        Directory(_) => Err(WrongKind(id))
+      }
+  }
+}
+
+///|
+fn FileCapabilityRegistry::resolve_directory(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  id : String,
+) -> Result[NativeDirectory, FileCapabilityError] {
+  match self.records.get(id) {
+    None => Err(UnknownHandle(id))
+    Some(record) if record.window_label != window_label =>
+      Err(WrongPrincipal(id))
+    Some(record) if record.kind != Directory => Err(WrongKind(id))
+    Some(record) =>
+      match record.location {
+        Directory(directory) => Ok(directory)
+        Path(_) => Err(DirectoryUnavailable)
+      }
+  }
+}
+
+///|
+/// Lists a picker-authorized directory through its held native handle. The
+/// returned entries intentionally carry names and kinds only.
+pub fn FileCapabilityRegistry::list_directory(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  id : String,
+  max_entries : Int,
+) -> Result[Array[DirectoryEntry], FileCapabilityError] {
+  let directory = match self.resolve_directory(window_label, id) {
+    Ok(directory) => directory
+    Err(error) => return Err(error)
+  }
+  match native_directory_list(directory, max_entries) {
+    Ok(entries) => Ok(entries)
+    Err(TooLarge) => Err(DirectoryTooLarge)
+    Err(_) => Err(DirectoryReadFailed)
+  }
+}
+
+///|
+/// Mints a child directory capability relative to a held parent handle. The
+/// component is validated by the native boundary and cannot escape the root.
+pub fn FileCapabilityRegistry::mint_child_directory(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  parent_id : String,
+  name : String,
+) -> Result[FileCapability, FileCapabilityError] {
+  let id = match mint_handle_id(self.records) {
+    Ok(id) => id
+    Err(error) => return Err(error)
+  }
+  let parent = match self.resolve_directory(window_label, parent_id) {
+    Ok(parent) => parent
+    Err(error) => return Err(error)
+  }
+  let directory = match native_directory_open_relative(parent, name) {
+    Ok(directory) => directory
+    Err(error) => return Err(file_capability_directory_error(error))
+  }
+  self.records[id] = {
+    location: Directory(directory),
+    window_label,
+    kind: Directory,
+  }
+  Ok({ id, name, kind: Directory })
+}
+
+///|
+fn close_capability_record(record : FileCapabilityRecord) -> Unit {
+  match record.location {
+    Directory(directory) => native_directory_close(directory)
+    Path(_) => ()
   }
 }
 
@@ -119,6 +257,7 @@ pub fn FileCapabilityRegistry::revoke_window(
   let ids : Array[String] = []
   for id, record in self.records {
     if record.window_label == window_label {
+      close_capability_record(record)
       ids.push(id)
     }
   }
@@ -129,6 +268,9 @@ pub fn FileCapabilityRegistry::revoke_window(
 
 ///|
 pub fn FileCapabilityRegistry::clear(self : FileCapabilityRegistry) -> Unit {
+  for _, record in self.records {
+    close_capability_record(record)
+  }
   self.records.clear()
 }
 

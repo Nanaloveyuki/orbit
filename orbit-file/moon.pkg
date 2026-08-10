@@ -1,9 +1,10 @@
 import {
   "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
 }
 
 supported_targets = "native"
 
 options(
-  "native-stub": [ "secure_random.c" ],
+  "native-stub": [ "secure_random.c", "secure_directory.c" ],
 )
