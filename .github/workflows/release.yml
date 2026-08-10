@@ -72,7 +72,7 @@ jobs:
       - name: Publish npm package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish release/*.tgz --access public --provenance
+        run: npm publish ./release/*.tgz --access public --provenance
       - name: Publish Mooncake module
         run: moon publish
       - name: Publish GitHub release
