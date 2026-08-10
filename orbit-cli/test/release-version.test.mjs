@@ -37,6 +37,12 @@ test("release publishes the npm artifact through an explicit relative path", () 
   assert.doesNotMatch(releaseWorkflow, /NODE_AUTH_TOKEN|NPM_TOKEN/);
 });
 
+test("GitHub prereleases follow the same channel classification as npm", () => {
+  assert.match(releaseWorkflow, /RELEASE_CHANNEL=.*npm-dist-tag\.mjs/);
+  assert.match(releaseWorkflow, /if \[ "\$RELEASE_CHANNEL" != "latest" \]/);
+  assert.match(releaseWorkflow, /--generate-notes \$PRERELEASE_FLAG/);
+});
+
 test("npm dist-tags follow the release channel", () => {
   assert.equal(npmDistTag("0.1.0-alpha.1"), "alpha");
   assert.equal(npmDistTag("0.1.0-RC.2"), "rc");
