@@ -34,6 +34,14 @@ typedef struct {
 #endif
 } orbit_directory_handle_t;
 
+typedef struct {
+#if defined(_WIN32)
+  void *handle;
+#else
+  int fd;
+#endif
+} orbit_read_file_handle_t;
+
 static void orbit_directory_finalize(void *self) {
   orbit_directory_handle_t *directory = (orbit_directory_handle_t *)self;
 #if defined(_WIN32)
@@ -61,6 +69,35 @@ static orbit_directory_handle_t *orbit_directory_wrap(void) {
   directory->fd = -1;
 #endif
   return directory;
+}
+
+static void orbit_read_file_finalize(void *self) {
+  orbit_read_file_handle_t *file = (orbit_read_file_handle_t *)self;
+#if defined(_WIN32)
+  if (file->handle != NULL && file->handle != (void *)(intptr_t)-1) {
+    CloseHandle((HANDLE)file->handle);
+    file->handle = NULL;
+  }
+#else
+  if (file->fd >= 0) {
+    close(file->fd);
+    file->fd = -1;
+  }
+#endif
+}
+
+static orbit_read_file_handle_t *orbit_read_file_wrap(void) {
+  orbit_read_file_handle_t *file =
+    (orbit_read_file_handle_t *)moonbit_make_external_object(
+      orbit_read_file_finalize,
+      sizeof(orbit_read_file_handle_t)
+    );
+#if defined(_WIN32)
+  file->handle = NULL;
+#else
+  file->fd = -1;
+#endif
+  return file;
 }
 
 static int orbit_directory_is_hidden_name(const char *name, size_t length) {
@@ -280,6 +317,15 @@ static int orbit_directory_handle_is_safe_directory(HANDLE handle) {
     (information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0;
 }
 
+static int orbit_directory_handle_is_safe_regular_file(HANDLE handle) {
+  BY_HANDLE_FILE_INFORMATION information;
+  if (!GetFileInformationByHandle(handle, &information)) {
+    return 0;
+  }
+  return (information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 &&
+    (information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0;
+}
+
 static orbit_directory_handle_t *orbit_directory_open_windows_path(
   const uint8_t *path,
   int32_t length,
@@ -375,6 +421,106 @@ static orbit_directory_handle_t *orbit_directory_open_windows_child(
   orbit_directory_handle_t *directory = orbit_directory_wrap();
   directory->handle = child;
   return directory;
+}
+
+static orbit_read_file_handle_t *orbit_directory_open_windows_read_file(
+  orbit_directory_handle_t *parent,
+  const uint8_t *name,
+  int32_t length,
+  int32_t *status
+) {
+  if (!orbit_directory_is_valid_child_name(name, length)) {
+    *status = ORBIT_DIRECTORY_STATUS_INVALID_CHILD_NAME;
+    return NULL;
+  }
+  orbit_nt_create_file_fn create_file = NULL;
+  orbit_nt_query_directory_file_fn query_directory = NULL;
+  if (!orbit_directory_nt_functions(&create_file, &query_directory)) {
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  int32_t wide_length = 0;
+  wchar_t *wide = orbit_directory_utf8_to_wide(name, length, &wide_length);
+  if (wide == NULL || wide_length > 0x7fff / (int32_t)sizeof(wchar_t)) {
+    free(wide);
+    *status = ORBIT_DIRECTORY_STATUS_INVALID_CHILD_NAME;
+    return NULL;
+  }
+  UNICODE_STRING object_name;
+  object_name.Length = (USHORT)(wide_length * (int32_t)sizeof(wchar_t));
+  object_name.MaximumLength = object_name.Length;
+  object_name.Buffer = wide;
+  OBJECT_ATTRIBUTES attributes;
+  InitializeObjectAttributes(
+    &attributes,
+    &object_name,
+    OBJ_CASE_INSENSITIVE | OBJ_DONT_REPARSE,
+    (HANDLE)parent->handle,
+    NULL
+  );
+  IO_STATUS_BLOCK io_status;
+  HANDLE child = NULL;
+  NTSTATUS result = create_file(
+    &child,
+    FILE_READ_DATA | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+    &attributes,
+    &io_status,
+    NULL,
+    0,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    FILE_OPEN,
+    FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT |
+      FILE_OPEN_FOR_BACKUP_INTENT,
+    NULL,
+    0
+  );
+  free(wide);
+  if (result < 0 || child == NULL ||
+      !orbit_directory_handle_is_safe_regular_file(child)) {
+    if (child != NULL) {
+      CloseHandle(child);
+    }
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  orbit_read_file_handle_t *file = orbit_read_file_wrap();
+  file->handle = child;
+  return file;
+}
+
+static moonbit_bytes_t orbit_read_file_bytes_windows(
+  orbit_read_file_handle_t *file,
+  int32_t max_bytes,
+  int32_t *status
+) {
+  LARGE_INTEGER size;
+  if (!GetFileSizeEx((HANDLE)file->handle, &size) || size.QuadPart < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+  if (size.QuadPart > max_bytes) {
+    *status = ORBIT_DIRECTORY_STATUS_TOO_LARGE;
+    return moonbit_make_bytes(0, 0);
+  }
+  moonbit_bytes_t bytes = moonbit_make_bytes((int32_t)size.QuadPart, 0);
+  LARGE_INTEGER origin;
+  origin.QuadPart = 0;
+  if (!SetFilePointerEx((HANDLE)file->handle, origin, NULL, FILE_BEGIN)) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+  size_t offset = 0;
+  while (offset < (size_t)size.QuadPart) {
+    DWORD read = 0;
+    DWORD requested = (DWORD)((size_t)size.QuadPart - offset);
+    if (!ReadFile((HANDLE)file->handle, bytes + offset, requested, &read, NULL) ||
+        read == 0) {
+      *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+      return moonbit_make_bytes(0, 0);
+    }
+    offset += read;
+  }
+  return bytes;
 }
 
 static int orbit_directory_append_windows_entry(
@@ -583,6 +729,67 @@ static orbit_directory_handle_t *orbit_directory_open_posix_child(
   return directory;
 }
 
+static orbit_read_file_handle_t *orbit_directory_open_posix_read_file(
+  orbit_directory_handle_t *parent,
+  const uint8_t *name,
+  int32_t length,
+  int32_t *status
+) {
+  if (!orbit_directory_is_valid_child_name(name, length)) {
+    *status = ORBIT_DIRECTORY_STATUS_INVALID_CHILD_NAME;
+    return NULL;
+  }
+  char terminated[ORBIT_DIRECTORY_MAX_NAME_BYTES + 1];
+  memcpy(terminated, name, (size_t)length);
+  terminated[length] = '\0';
+  int fd = openat(parent->fd, terminated, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+  if (fd < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  struct stat information;
+  if (fstat(fd, &information) != 0 || !S_ISREG(information.st_mode)) {
+    close(fd);
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  orbit_read_file_handle_t *file = orbit_read_file_wrap();
+  file->fd = fd;
+  return file;
+}
+
+static moonbit_bytes_t orbit_read_file_bytes_posix(
+  orbit_read_file_handle_t *file,
+  int32_t max_bytes,
+  int32_t *status
+) {
+  struct stat information;
+  if (fstat(file->fd, &information) != 0 || information.st_size < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+  if (information.st_size > max_bytes) {
+    *status = ORBIT_DIRECTORY_STATUS_TOO_LARGE;
+    return moonbit_make_bytes(0, 0);
+  }
+  moonbit_bytes_t bytes = moonbit_make_bytes((int32_t)information.st_size, 0);
+  size_t offset = 0;
+  while (offset < (size_t)information.st_size) {
+    ssize_t read = pread(
+      file->fd,
+      bytes + offset,
+      (size_t)information.st_size - offset,
+      (off_t)offset
+    );
+    if (read <= 0) {
+      *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+      return moonbit_make_bytes(0, 0);
+    }
+    offset += (size_t)read;
+  }
+  return bytes;
+}
+
 static void orbit_directory_close_posix_stream(DIR *stream) {
   /* `dup` shares the open-file description with the held capability. Reset its
      directory position before closing so later listings always begin at root. */
@@ -741,5 +948,62 @@ MOONBIT_FFI_EXPORT moonbit_bytes_t orbit_file_directory_entries(
   return orbit_directory_entries_windows(directory, max_entries, status);
 #else
   return orbit_directory_entries_posix(directory, max_entries, status);
+#endif
+}
+
+MOONBIT_FFI_EXPORT orbit_read_file_handle_t *orbit_file_directory_open_read_file(
+  orbit_directory_handle_t *directory,
+  moonbit_bytes_t name,
+  int32_t *status
+) {
+  *status = ORBIT_DIRECTORY_STATUS_OK;
+  if (directory == NULL) {
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  int32_t length = Moonbit_array_length(name);
+#if defined(_WIN32)
+  if (directory->handle == NULL) {
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  return orbit_directory_open_windows_read_file(directory, name, length, status);
+#else
+  if (directory->fd < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
+    return NULL;
+  }
+  return orbit_directory_open_posix_read_file(directory, name, length, status);
+#endif
+}
+
+MOONBIT_FFI_EXPORT void orbit_file_read_file_close(orbit_read_file_handle_t *file) {
+  if (file != NULL) {
+    orbit_read_file_finalize(file);
+  }
+}
+
+MOONBIT_FFI_EXPORT moonbit_bytes_t orbit_file_read_file_bytes(
+  orbit_read_file_handle_t *file,
+  int32_t max_bytes,
+  int32_t *status
+) {
+  *status = ORBIT_DIRECTORY_STATUS_OK;
+  if (file == NULL || max_bytes < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+#if defined(_WIN32)
+  if (file->handle == NULL) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+  return orbit_read_file_bytes_windows(file, max_bytes, status);
+#else
+  if (file->fd < 0) {
+    *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    return moonbit_make_bytes(0, 0);
+  }
+  return orbit_read_file_bytes_posix(file, max_bytes, status);
 #endif
 }

@@ -12,6 +12,8 @@ pub(all) suberror FileCapabilityError {
   DirectoryReadFailed
   DirectoryTooLarge
   DirectoryCapabilityLimit
+  FileReadFailed
+  FileTooLarge
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
@@ -28,6 +30,7 @@ pub struct FileCapability {
 priv enum FileCapabilityLocation {
   Path(String)
   Directory(NativeDirectory)
+  NativeReadFile(NativeReadFile)
 }
 
 ///|
@@ -45,7 +48,7 @@ pub struct FileCapabilityRegistry {
 }
 
 ///|
-let max_directory_capabilities_per_window = 256
+let max_native_capabilities_per_window = 256
 
 ///|
 pub fn FileCapabilityRegistry::new() -> FileCapabilityRegistry {
@@ -113,14 +116,17 @@ fn file_capability_directory_error(
 }
 
 ///|
-fn directory_capability_count(
+fn native_capability_count(
   records : Map[String, FileCapabilityRecord],
   window_label : String,
 ) -> Int {
   let mut count = 0
   for _, record in records {
-    if record.window_label == window_label && record.kind == Directory {
-      count += 1
+    if record.window_label == window_label {
+      match record.location {
+        Directory(_) | NativeReadFile(_) => count += 1
+        Path(_) => ()
+      }
     }
   }
   count
@@ -162,8 +168,8 @@ pub fn FileCapabilityRegistry::mint_directory(
   window_label : String,
   path : String,
 ) -> Result[FileCapability, FileCapabilityError] {
-  if directory_capability_count(self.records, window_label) >=
-    max_directory_capabilities_per_window {
+  if native_capability_count(self.records, window_label) >=
+    max_native_capabilities_per_window {
     return Err(DirectoryCapabilityLimit)
   }
   let id = match mint_handle_id(self.records) {
@@ -202,7 +208,7 @@ pub fn FileCapabilityRegistry::resolve(
     Some(record) =>
       match record.location {
         Path(path) => Ok(path)
-        Directory(_) => Err(WrongKind(id))
+        Directory(_) | NativeReadFile(_) => Err(WrongKind(id))
       }
   }
 }
@@ -221,7 +227,7 @@ fn FileCapabilityRegistry::resolve_directory(
     Some(record) =>
       match record.location {
         Directory(directory) => Ok(directory)
-        Path(_) => Err(DirectoryUnavailable)
+        Path(_) | NativeReadFile(_) => Err(DirectoryUnavailable)
       }
   }
 }
@@ -266,8 +272,8 @@ pub fn FileCapabilityRegistry::mint_child_directory(
       }
     }
   }
-  if directory_capability_count(self.records, window_label) >=
-    max_directory_capabilities_per_window {
+  if native_capability_count(self.records, window_label) >=
+    max_native_capabilities_per_window {
     return Err(DirectoryCapabilityLimit)
   }
   let id = match mint_handle_id(self.records) {
@@ -293,9 +299,85 @@ pub fn FileCapabilityRegistry::mint_child_directory(
 }
 
 ///|
+/// Mints a read capability for a regular file relative to a held directory
+/// handle. The native boundary rejects links, directories, and traversal.
+pub fn FileCapabilityRegistry::mint_child_read_file(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  parent_id : String,
+  name : String,
+) -> Result[FileCapability, FileCapabilityError] {
+  for id, record in self.records {
+    if record.window_label == window_label &&
+      record.kind == Read &&
+      record.name == name {
+      match record.parent_id {
+        Some(existing_parent) if existing_parent == parent_id =>
+          return Ok({ id, name, kind: Read })
+        _ => ()
+      }
+    }
+  }
+  if native_capability_count(self.records, window_label) >=
+    max_native_capabilities_per_window {
+    return Err(DirectoryCapabilityLimit)
+  }
+  let id = match mint_handle_id(self.records) {
+    Ok(id) => id
+    Err(error) => return Err(error)
+  }
+  let parent = match self.resolve_directory(window_label, parent_id) {
+    Ok(parent) => parent
+    Err(error) => return Err(error)
+  }
+  let file = match native_directory_open_read_relative(parent, name) {
+    Ok(file) => file
+    Err(error) => return Err(file_capability_directory_error(error))
+  }
+  self.records[id] = {
+    location: NativeReadFile(file),
+    name,
+    window_label,
+    kind: Read,
+    parent_id: Some(parent_id),
+  }
+  Ok({ id, name, kind: Read })
+}
+
+///|
+/// Reads an opaque directory-derived file capability. `None` means the
+/// capability is a picker path handle and should use the existing async path
+/// reader; `Some` is read only through the held native handle.
+pub fn FileCapabilityRegistry::read_native_file(
+  self : FileCapabilityRegistry,
+  window_label : String,
+  id : String,
+  max_bytes : Int,
+) -> Result[Bytes?, FileCapabilityError] {
+  match self.records.get(id) {
+    None => Err(UnknownHandle(id))
+    Some(record) if record.window_label != window_label =>
+      Err(WrongPrincipal(id))
+    Some(record) if record.kind != Read => Err(WrongKind(id))
+    Some(record) =>
+      match record.location {
+        Path(_) => Ok(None)
+        NativeReadFile(file) =>
+          match native_read_file_read(file, max_bytes) {
+            Ok(bytes) => Ok(Some(bytes))
+            Err(TooLarge) => Err(FileTooLarge)
+            Err(_) => Err(FileReadFailed)
+          }
+        Directory(_) => Err(WrongKind(id))
+      }
+  }
+}
+
+///|
 fn close_capability_record(record : FileCapabilityRecord) -> Unit {
   match record.location {
     Directory(directory) => native_directory_close(directory)
+    NativeReadFile(file) => native_read_file_close(file)
     Path(_) => ()
   }
 }
