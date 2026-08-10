@@ -408,6 +408,7 @@ pub fn RuntimeOptions::remote_navigation(
 pub(open) trait WebViewRuntime {
   fn capabilities(Self) -> RuntimeCapabilities
   fn show_file_dialog(Self, RuntimeFileDialogOptions) -> RuntimeFileDialogResult raise RuntimeError
+  fn open_print_dialog(Self) -> Unit raise RuntimeError
   fn navigate(Self, String) -> Unit raise RuntimeError
   fn evaluate_script(Self, String, String) -> Unit raise RuntimeError
   fn post_message(Self, String) -> Unit raise RuntimeError

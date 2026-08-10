@@ -59,6 +59,11 @@ impl WebViewRuntime for FakeRuntime with fn show_file_dialog(_self, _options) {
 }
 
 ///|
+impl WebViewRuntime for FakeRuntime with fn open_print_dialog(_self) {
+  raise Unsupported("print dialogs are unavailable in FakeRuntime")
+}
+
+///|
 impl WebViewRuntime for FakeRuntime with fn navigate(self, _url) {
   if self.destroyed {
     raise InvalidState("navigate after destroy")
@@ -152,6 +157,19 @@ test "unsupported runtimes reject file dialogs explicitly" {
         RuntimeFileDialogOptions::new(kind=RuntimeFileDialogKind::OpenFile),
       ),
     )
+    false
+  } catch {
+    Unsupported(_) => true
+    _ => false
+  }
+  assert_true(rejected)
+}
+
+///|
+test "unsupported runtimes reject print dialogs explicitly" {
+  let runtime = FakeRuntime::{ destroyed: false, handler: None }
+  let rejected = try {
+    WebViewRuntime::open_print_dialog(runtime)
     false
   } catch {
     Unsupported(_) => true

@@ -121,6 +121,10 @@ Windows 本地窗口可以在 capability 明确授予后调用内建的
 `orbit.dialog.pick_directory`。结果只包含不透明 handle、显示名称和项目类型，绝不包含
 本机路径；HTTP、插件和远端页面不能使用这些命令。
 
+同样可显式授予 `orbit.window.print`。它只接受 `{}`，只为调用它的本地窗口打开当前
+WebView 文档的原生打印对话框，并返回 `{ "opened": true }`；远端、HTTP、插件和后台
+principal 都不能调用它。
+
 ```json
 {
   "identifier": "main-file-dialogs",
@@ -156,8 +160,8 @@ picker 返回时取得目录的原生 no-follow handle；枚举最多 128 个非
 同一父目录的同名子 capability 会复用；每个窗口最多保留 256 个目录派生的原生
 capability（文件和目录合计），达到上限时条目仍可显示但不会携带新的 `id`。
 
-目录 capability 目前只支持受限枚举和安全的子目录导航；目录内文件的相对读写、创建和
-删除仍不提供。
+目录 capability 支持受限枚举、安全子目录导航和目录派生普通文件的只读访问；写入、创建
+和删除仍不提供。
 
 后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
 文件系统 API。

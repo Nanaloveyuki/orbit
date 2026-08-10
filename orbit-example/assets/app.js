@@ -69,6 +69,17 @@ document.querySelector("#pick-directory").addEventListener("click", async () => 
   }
 });
 
+document.querySelector("#print-page").addEventListener("click", async () => {
+  const selection = document.querySelector("#selection");
+  selection.textContent = "";
+  try {
+    await window.__ORBIT__.invoke("orbit.window.print", {});
+    selection.textContent = "Print dialog opened.";
+  } catch (error) {
+    selection.textContent = `IPC error: ${error.code}`;
+  }
+});
+
 async function showDirectory(directory) {
   const selection = document.querySelector("#selection");
   const entries = document.querySelector("#directory-entries");

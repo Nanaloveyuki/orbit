@@ -387,7 +387,8 @@ fn DesktopApp::dispatch_ipc_message(
             @ipc.InvocationClientMessage::Cancel(id) =>
               dispatcher.cancel(invocation_scope, id)
             @ipc.InvocationClientMessage::Invoke(request) =>
-              if is_dialog_command(request.command()) {
+              if is_dialog_command(request.command()) ||
+                is_window_print_command(request.command()) {
                 self.deliver_ipc_response(
                   label,
                   runtime,
@@ -614,6 +615,13 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     Ok(_) => ()
   }
   match self.register_file_access_commands() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(reason)
+    }
+    Ok(_) => ()
+  }
+  match self.register_window_commands() {
     Err(reason) => {
       self.teardown()
       raise StartupFailed(reason)

@@ -24,6 +24,13 @@ impl @runtime.WebViewRuntime for RecordingRuntime with fn show_file_dialog(
 }
 
 ///|
+impl @runtime.WebViewRuntime for RecordingRuntime with fn open_print_dialog(
+  _self,
+) {
+  raise Unsupported("print dialogs are unavailable in RecordingRuntime")
+}
+
+///|
 impl @runtime.WebViewRuntime for RecordingRuntime with fn navigate(_self, _url) {
 
 }
@@ -109,6 +116,14 @@ test "file dialog command names are reserved by the UI runtime" {
     is_dialog_command(@ipc.CommandName::new("orbit.dialog.pick_directory")),
   )
   assert_false(is_dialog_command(@ipc.CommandName::new("example.ping")))
+}
+
+///|
+test "window print command name is reserved by the UI runtime" {
+  assert_true(
+    is_window_print_command(@ipc.CommandName::new("orbit.window.print")),
+  )
+  assert_false(is_window_print_command(@ipc.CommandName::new("example.ping")))
 }
 
 ///|
