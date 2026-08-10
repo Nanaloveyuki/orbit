@@ -112,6 +112,114 @@ test "file dialog command names are reserved by the UI runtime" {
 }
 
 ///|
+async test "file reads require a matching local read handle" {
+  let path = "_build/orbit-core-file-read.txt"
+  @fs.write_file(path, "hello", create_mode=CreateOrTruncate)
+  let files = @file.FileCapabilityRegistry::new()
+  let capability = files
+    .mint("main", path, Read)
+    .unwrap_or_else(() => abort("could not mint test file handle"))
+  let request = { id: capability.id() }
+  let context = @ipc.InvocationContext::window("main")
+  match read_binary_capability(files, context, request) {
+    Ok(response) => {
+      assert_eq(response.data, "aGVsbG8=")
+      assert_eq(response.size, 5)
+    }
+    Err(_) => abort("expected binary file read")
+  }
+  match read_text_capability(files, context, request) {
+    Ok(response) => {
+      assert_eq(response.text, "hello")
+      assert_eq(response.size, 5)
+    }
+    Err(_) => abort("expected text file read")
+  }
+  match
+    read_binary_capability(
+      files,
+      @ipc.InvocationContext::window("other"),
+      request,
+    ) {
+    Err(failure) => assert_eq(failure.code, "file_handle_denied")
+    Ok(_) => abort("expected cross-window denial")
+  }
+  files.revoke_window("main")
+  match read_text_capability(files, context, request) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected revoked-handle denial")
+  }
+  @fs.remove(path)
+}
+
+///|
+async test "file reads reject write handles and invalid UTF-8" {
+  let path = "_build/orbit-core-file-invalid-utf8.bin"
+  @fs.write_file(path, b"\xFF", create_mode=CreateOrTruncate)
+  let files = @file.FileCapabilityRegistry::new()
+  let write = files
+    .mint("main", path, Write)
+    .unwrap_or_else(() => abort("could not mint test file handle"))
+  let context = @ipc.InvocationContext::window("main")
+  match read_binary_capability(files, context, { id: write.id() }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected write-handle denial")
+  }
+  let read = files
+    .mint("main", path, Read)
+    .unwrap_or_else(() => abort("could not mint test file handle"))
+  match read_text_capability(files, context, { id: read.id() }) {
+    Err(failure) => assert_eq(failure.code, "invalid_utf8")
+    Ok(_) => abort("expected UTF-8 validation failure")
+  }
+  @fs.remove(path)
+}
+
+///|
+async test "file reads reject oversized content and non-window callers" {
+  let path = "_build/orbit-core-file-large.bin"
+  @fs.write_file(
+    path,
+    Bytes::make(max_file_read_bytes + 1, 0),
+    create_mode=CreateOrTruncate,
+  )
+  let files = @file.FileCapabilityRegistry::new()
+  let capability = files
+    .mint("main", path, Read)
+    .unwrap_or_else(() => abort("could not mint test file handle"))
+  let request = { id: capability.id() }
+  match
+    read_binary_capability(
+      files,
+      @ipc.InvocationContext::window("main"),
+      request,
+    ) {
+    Err(failure) => assert_eq(failure.code, "file_too_large")
+    Ok(_) => abort("expected read-size limit")
+  }
+  match
+    read_binary_capability(
+      files,
+      @ipc.InvocationContext::background_task("worker"),
+      request,
+    ) {
+    Err(failure) => assert_eq(failure.code, "file_unavailable")
+    Ok(_) => abort("expected non-window denial")
+  }
+  @fs.remove(path)
+  let missing = files
+    .mint("main", "_build/orbit-core-file-missing.txt", Read)
+    .unwrap_or_else(() => abort("could not mint missing-file handle"))
+  match
+    read_binary_capability(files, @ipc.InvocationContext::window("main"), {
+      id: missing.id(),
+    }) {
+    Err(failure) => assert_eq(failure.code, "file_read_failed")
+    Ok(_) => abort("expected native file-read failure")
+  }
+}
+
+///|
 fn async_ipc_policy(command : String) -> @ipc.CommandPolicy raise @ipc.IpcError {
   let policy = @ipc.CommandPolicy::new()
   policy.add_grant(

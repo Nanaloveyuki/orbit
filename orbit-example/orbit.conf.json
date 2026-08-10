@@ -33,7 +33,11 @@
       "effect": "allow",
       "principals": [{ "kind": "window", "identifier": "main" }],
       "scopes": [],
-      "commands": ["example.ping", "orbit.dialog.open"]
+      "commands": [
+        "example.ping",
+        "orbit.dialog.open",
+        "orbit.fs.read_text"
+      ]
     }
   ],
   "plugins": []

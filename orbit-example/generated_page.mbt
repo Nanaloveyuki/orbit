@@ -16,10 +16,10 @@ pub let app_product_name : String? = Some("Orbit Example")
 pub let app_publisher : String? = None
 
 ///|
-pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Example\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[],\"windows\":{\"webview_install_mode\":\"embed_bootstrapper\"}},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}},\"build\":{},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"example.ping\",\"orbit.dialog.open\"]}],\"plugins\":[]}"
+pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.example\",\"name\":\"Orbit Example\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Example\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Example\",\"width\":1024,\"height\":720,\"entry\":\"assets/index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[],\"windows\":{\"webview_install_mode\":\"embed_bootstrapper\"}},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self'\"}},\"build\":{},\"capabilities\":[{\"identifier\":\"main-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"example.ping\",\"orbit.dialog.open\",\"orbit.fs.read_text\"]}],\"plugins\":[]}"
 
 ///|
-pub let configuration_fingerprint = "e87ef8f1508eefd687906605645300c13ef748128b8af94a3c28b5a765c2de52"
+pub let configuration_fingerprint = "5d56035395ce9d9d49ce17151a49863033dd668c51559f059b556c381aa45d42"
 
 ///|
 pub let window_label = "main"
@@ -57,6 +57,7 @@ pub fn configured_ipc_policy() -> @ipc.CommandPolicy raise @ipc.IpcError {
       commands=[
         @ipc.CommandName::new("example.ping"),
         @ipc.CommandName::new("orbit.dialog.open"),
+        @ipc.CommandName::new("orbit.fs.read_text"),
       ],
     ),
   )
@@ -204,32 +205,43 @@ pub fn resource_response_0(uri : String) -> @runtime.RuntimeResourceResponse? {
             b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20', b'\x7D', b'\x20', b'\x65',
             b'\x6C', b'\x73', b'\x65', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20',
             b'\x20', b'\x20', b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6E', b'\x73',
-            b'\x74', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73', b'\x20',
-            b'\x3D', b'\x20', b'\x72', b'\x65', b'\x73', b'\x70', b'\x6F', b'\x6E',
-            b'\x73', b'\x65', b'\x2E', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73',
-            b'\x2E', b'\x6D', b'\x61', b'\x70', b'\x28', b'\x28', b'\x66', b'\x69',
-            b'\x6C', b'\x65', b'\x29', b'\x20', b'\x3D', b'\x3E', b'\x20', b'\x60',
-            b'\x24', b'\x7B', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x2E', b'\x6E',
-            b'\x61', b'\x6D', b'\x65', b'\x7D', b'\x20', b'\x28', b'\x24', b'\x7B',
-            b'\x66', b'\x69', b'\x6C', b'\x65', b'\x2E', b'\x69', b'\x64', b'\x7D',
-            b'\x29', b'\x60', b'\x29', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20',
-            b'\x20', b'\x20', b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63',
-            b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78',
-            b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74',
-            b'\x20', b'\x3D', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73',
-            b'\x2E', b'\x6A', b'\x6F', b'\x69', b'\x6E', b'\x28', b'\x22', b'\x2C',
-            b'\x20', b'\x22', b'\x29', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20',
-            b'\x20', b'\x7D', b'\x0A', b'\x20', b'\x20', b'\x7D', b'\x20', b'\x63',
-            b'\x61', b'\x74', b'\x63', b'\x68', b'\x20', b'\x28', b'\x65', b'\x72',
-            b'\x72', b'\x6F', b'\x72', b'\x29', b'\x20', b'\x7B', b'\x0A', b'\x20',
-            b'\x20', b'\x20', b'\x20', b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63',
-            b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78',
-            b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74',
-            b'\x20', b'\x3D', b'\x20', b'\x60', b'\x49', b'\x50', b'\x43', b'\x20',
-            b'\x65', b'\x72', b'\x72', b'\x6F', b'\x72', b'\x3A', b'\x20', b'\x24',
-            b'\x7B', b'\x65', b'\x72', b'\x72', b'\x6F', b'\x72', b'\x2E', b'\x63',
-            b'\x6F', b'\x64', b'\x65', b'\x7D', b'\x60', b'\x3B', b'\x0A', b'\x20',
-            b'\x20', b'\x7D', b'\x0A', b'\x7D', b'\x29', b'\x3B', b'\x0A',
+            b'\x74', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x20', b'\x3D',
+            b'\x20', b'\x72', b'\x65', b'\x73', b'\x70', b'\x6F', b'\x6E', b'\x73',
+            b'\x65', b'\x2E', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x73', b'\x5B',
+            b'\x30', b'\x5D', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x20', b'\x20', b'\x63', b'\x6F', b'\x6E', b'\x73', b'\x74', b'\x20',
+            b'\x63', b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74', b'\x20',
+            b'\x3D', b'\x20', b'\x61', b'\x77', b'\x61', b'\x69', b'\x74', b'\x20',
+            b'\x77', b'\x69', b'\x6E', b'\x64', b'\x6F', b'\x77', b'\x2E', b'\x5F',
+            b'\x5F', b'\x4F', b'\x52', b'\x42', b'\x49', b'\x54', b'\x5F', b'\x5F',
+            b'\x2E', b'\x69', b'\x6E', b'\x76', b'\x6F', b'\x6B', b'\x65', b'\x28',
+            b'\x22', b'\x6F', b'\x72', b'\x62', b'\x69', b'\x74', b'\x2E', b'\x66',
+            b'\x73', b'\x2E', b'\x72', b'\x65', b'\x61', b'\x64', b'\x5F', b'\x74',
+            b'\x65', b'\x78', b'\x74', b'\x22', b'\x2C', b'\x20', b'\x7B', b'\x20',
+            b'\x69', b'\x64', b'\x3A', b'\x20', b'\x66', b'\x69', b'\x6C', b'\x65',
+            b'\x2E', b'\x69', b'\x64', b'\x20', b'\x7D', b'\x29', b'\x3B', b'\x0A',
+            b'\x20', b'\x20', b'\x20', b'\x20', b'\x20', b'\x20', b'\x73', b'\x65',
+            b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F', b'\x6E', b'\x2E',
+            b'\x74', b'\x65', b'\x78', b'\x74', b'\x43', b'\x6F', b'\x6E', b'\x74',
+            b'\x65', b'\x6E', b'\x74', b'\x20', b'\x3D', b'\x20', b'\x60', b'\x24',
+            b'\x7B', b'\x66', b'\x69', b'\x6C', b'\x65', b'\x2E', b'\x6E', b'\x61',
+            b'\x6D', b'\x65', b'\x7D', b'\x20', b'\x28', b'\x24', b'\x7B', b'\x63',
+            b'\x6F', b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74', b'\x2E', b'\x73',
+            b'\x69', b'\x7A', b'\x65', b'\x7D', b'\x20', b'\x62', b'\x79', b'\x74',
+            b'\x65', b'\x73', b'\x2C', b'\x20', b'\x24', b'\x7B', b'\x66', b'\x69',
+            b'\x6C', b'\x65', b'\x2E', b'\x69', b'\x64', b'\x7D', b'\x29', b'\x60',
+            b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20', b'\x7D', b'\x0A',
+            b'\x20', b'\x20', b'\x7D', b'\x20', b'\x63', b'\x61', b'\x74', b'\x63',
+            b'\x68', b'\x20', b'\x28', b'\x65', b'\x72', b'\x72', b'\x6F', b'\x72',
+            b'\x29', b'\x20', b'\x7B', b'\x0A', b'\x20', b'\x20', b'\x20', b'\x20',
+            b'\x73', b'\x65', b'\x6C', b'\x65', b'\x63', b'\x74', b'\x69', b'\x6F',
+            b'\x6E', b'\x2E', b'\x74', b'\x65', b'\x78', b'\x74', b'\x43', b'\x6F',
+            b'\x6E', b'\x74', b'\x65', b'\x6E', b'\x74', b'\x20', b'\x3D', b'\x20',
+            b'\x60', b'\x49', b'\x50', b'\x43', b'\x20', b'\x65', b'\x72', b'\x72',
+            b'\x6F', b'\x72', b'\x3A', b'\x20', b'\x24', b'\x7B', b'\x65', b'\x72',
+            b'\x72', b'\x6F', b'\x72', b'\x2E', b'\x63', b'\x6F', b'\x64', b'\x65',
+            b'\x7D', b'\x60', b'\x3B', b'\x0A', b'\x20', b'\x20', b'\x7D', b'\x0A',
+            b'\x7D', b'\x29', b'\x3B', b'\x0A',
           ]),
         ),
       )

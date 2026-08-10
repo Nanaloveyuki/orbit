@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/async",
   "Nanaloveyuki/orbit/orbit-core" @core,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/orbit/orbit-plugin" @plugin,

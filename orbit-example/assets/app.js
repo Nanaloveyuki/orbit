@@ -18,8 +18,9 @@ document.querySelector("#pick-file").addEventListener("click", async () => {
     if (response.cancelled) {
       selection.textContent = "Selection cancelled.";
     } else {
-      const files = response.files.map((file) => `${file.name} (${file.id})`);
-      selection.textContent = files.join(", ");
+      const file = response.files[0];
+      const content = await window.__ORBIT__.invoke("orbit.fs.read_text", { id: file.id });
+      selection.textContent = `${file.name} (${content.size} bytes, ${file.id})`;
     }
   } catch (error) {
     selection.textContent = `IPC error: ${error.code}`;
