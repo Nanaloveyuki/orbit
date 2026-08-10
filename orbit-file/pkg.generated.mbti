@@ -21,6 +21,8 @@ pub(all) suberror FileCapabilityError {
   DirectoryReadFailed
   DirectoryTooLarge
   DirectoryCapabilityLimit
+  FileReadFailed
+  FileTooLarge
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
@@ -60,8 +62,10 @@ pub fn FileCapabilityRegistry::length(Self) -> Int
 pub fn FileCapabilityRegistry::list_directory(Self, String, String, Int) -> Result[Array[DirectoryEntry], FileCapabilityError]
 pub fn FileCapabilityRegistry::mint(Self, String, String, FileCapabilityKind) -> Result[FileCapability, FileCapabilityError]
 pub fn FileCapabilityRegistry::mint_child_directory(Self, String, String, String) -> Result[FileCapability, FileCapabilityError]
+pub fn FileCapabilityRegistry::mint_child_read_file(Self, String, String, String) -> Result[FileCapability, FileCapabilityError]
 pub fn FileCapabilityRegistry::mint_directory(Self, String, String) -> Result[FileCapability, FileCapabilityError]
 pub fn FileCapabilityRegistry::new() -> Self
+pub fn FileCapabilityRegistry::read_native_file(Self, String, String, Int) -> Result[Bytes?, FileCapabilityError]
 pub fn FileCapabilityRegistry::resolve(Self, String, String, FileCapabilityKind) -> Result[String, FileCapabilityError]
 pub fn FileCapabilityRegistry::revoke_window(Self, String) -> Unit
 

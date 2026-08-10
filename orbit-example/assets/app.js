@@ -80,13 +80,20 @@ async function showDirectory(directory) {
   for (const entry of listing.entries) {
     const row = document.createElement("div");
     row.className = "directory-entry";
-    if (entry.kind === "directory" && entry.id) {
+    if (entry.id) {
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = entry.name;
       button.addEventListener("click", async () => {
         try {
-          await showDirectory({ id: entry.id, name: entry.name });
+          if (entry.kind === "directory") {
+            await showDirectory({ id: entry.id, name: entry.name });
+          } else {
+            const content = await window.__ORBIT__.invoke("orbit.fs.read_text", {
+              id: entry.id
+            });
+            selection.textContent = `${entry.name}: ${content.size} bytes`;
+          }
         } catch (error) {
           selection.textContent = `IPC error: ${error.code}`;
         }

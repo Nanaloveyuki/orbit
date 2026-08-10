@@ -321,13 +321,12 @@ async test "directory reads require a matching local directory handle" {
     Err(_) => abort("expected handle-bound directory read")
   }
   assert_eq(response.entries.length(), 2)
-  assert_true(
-    response.entries.any(entry => {
-      entry.name == "note.txt" && entry.kind == "file" && entry.id is None
-    }),
-  )
+  let mut note_id = None
   let mut nested_id = None
   for entry in response.entries {
+    if entry.name == "note.txt" {
+      note_id = entry.id
+    }
     if entry.name == "nested" {
       nested_id = entry.id
     }
@@ -336,13 +335,29 @@ async test "directory reads require a matching local directory handle" {
     Some(id) => id
     None => abort("expected nested directory capability in response")
   }
+  let note = match note_id {
+    Some(id) => id
+    None => abort("expected native read capability for regular file")
+  }
+  match read_text_capability(files, context, { id: note }) {
+    Ok(response) => assert_eq(response.text, "note")
+    Err(_) => abort("expected directory-derived file read")
+  }
+  match read_text_capability(files, context, { id: note }) {
+    Ok(response) => assert_eq(response.text, "note")
+    Err(_) => abort("expected repeat directory-derived file read")
+  }
   let repeated = match
     read_directory_capability(files, context, { id: capability.id() }) {
     Ok(response) => response
     Err(_) => abort("expected repeated directory read")
   }
   let mut repeated_nested_id = None
+  let mut repeated_note_id = None
   for entry in repeated.entries {
+    if entry.name == "note.txt" {
+      repeated_note_id = entry.id
+    }
     if entry.name == "nested" {
       repeated_nested_id = entry.id
     }
@@ -351,7 +366,11 @@ async test "directory reads require a matching local directory handle" {
     Some(id) => assert_eq(id, nested)
     None => abort("expected cached nested directory capability")
   }
-  assert_eq(files.length(), 2)
+  match repeated_note_id {
+    Some(id) => assert_eq(id, note)
+    None => abort("expected cached native read capability")
+  }
+  assert_eq(files.length(), 3)
   let nested_response = match
     read_directory_capability(files, context, { id: nested }) {
     Ok(response) => response

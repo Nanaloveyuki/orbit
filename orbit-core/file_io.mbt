@@ -58,6 +58,21 @@ fn file_read_failure(code : String, message : String) -> @ipc.CommandFailure {
 }
 
 ///|
+fn resolve_file_window_label(
+  context : @ipc.InvocationContext,
+) -> Result[String, @ipc.CommandFailure] {
+  match context.principal() {
+    Window(label) => Ok(label)
+    _ =>
+      Err(
+        file_read_failure(
+          "file_unavailable", "file access requires a local window",
+        ),
+      )
+  }
+}
+
+///|
 fn resolve_file_path(
   files : @file.FileCapabilityRegistry,
   context : @ipc.InvocationContext,
@@ -69,14 +84,9 @@ fn resolve_file_path(
       file_read_failure("invalid_handle", "file handle must not be empty"),
     )
   }
-  let label = match context.principal() {
-    Window(label) => label
-    _ =>
-      return Err(
-        file_read_failure(
-          "file_unavailable", "file access requires a local window",
-        ),
-      )
+  let label = match resolve_file_window_label(context) {
+    Ok(label) => label
+    Err(failure) => return Err(failure)
   }
   match files.resolve(label, id, kind) {
     Ok(path) => Ok(path)
@@ -105,13 +115,57 @@ async fn read_capability_bytes(
   context : @ipc.InvocationContext,
   request : FileReadRequest,
 ) -> Result[Bytes, @ipc.CommandFailure] {
-  link_async_fs()
-  let path = match resolve_file_path(files, context, request.id, Read) {
-    Ok(path) => path
+  if request.id.is_empty() {
+    return Err(
+      file_read_failure("invalid_handle", "file handle must not be empty"),
+    )
+  }
+  let label = match resolve_file_window_label(context) {
+    Ok(label) => label
     Err(failure) => return Err(failure)
+  }
+  let native = match
+    files.read_native_file(label, request.id, max_file_read_bytes) {
+    Ok(bytes) => bytes
+    Err(WrongPrincipal(_)) =>
+      return Err(
+        file_read_failure(
+          "file_handle_denied", "file handle belongs to another window",
+        ),
+      )
+    Err(WrongKind(_)) =>
+      return Err(
+        file_read_failure(
+          "file_handle_invalid", "file handle does not allow this operation",
+        ),
+      )
+    Err(FileTooLarge) =>
+      return Err(
+        file_read_failure(
+          "file_too_large", "file exceeds the 64 KiB read limit",
+        ),
+      )
+    Err(FileReadFailed) =>
+      return Err(file_read_failure("file_read_failed", "could not read file"))
+    Err(_) =>
+      return Err(
+        file_read_failure("file_handle_invalid", "file handle is unavailable"),
+      )
   }
   if context.cancellation().is_cancelled() {
     return Err(file_read_failure("cancelled", "file read was cancelled"))
+  }
+  match native {
+    Some(bytes) => return Ok(bytes)
+    None => ()
+  }
+  link_async_fs()
+  let path = match files.resolve(label, request.id, Read) {
+    Ok(path) => path
+    Err(_) =>
+      return Err(
+        file_read_failure("file_handle_invalid", "file handle is unavailable"),
+      )
   }
   let file = @fs.open(path, mode=ReadOnly) catch {
     _ =>
@@ -295,7 +349,11 @@ async fn read_directory_capability(
           Ok(capability) => Some(capability.id())
           Err(_) => None
         }
-      @file.DirectoryEntryKind::File => None
+      @file.DirectoryEntryKind::File =>
+        match files.mint_child_read_file(label, request.id, entry.name) {
+          Ok(capability) => Some(capability.id())
+          Err(_) => None
+        }
     }
     entries.push({
       id,
