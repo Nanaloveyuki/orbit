@@ -613,7 +613,7 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     Ok(_) => ()
   }
-  match self.register_file_read_commands() {
+  match self.register_file_access_commands() {
     Err(reason) => {
       self.teardown()
       raise StartupFailed(reason)

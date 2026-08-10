@@ -22,15 +22,27 @@ priv struct FileTextReadResponse {
 } derive(ToJson)
 
 ///|
+priv struct FileWriteRequest {
+  id : String
+  text : String
+} derive(FromJson)
+
+///|
+priv struct FileWriteResponse {
+  size : Int
+} derive(ToJson)
+
+///|
 fn file_read_failure(code : String, message : String) -> @ipc.CommandFailure {
   @ipc.CommandFailure::new(code~, message~)
 }
 
 ///|
-fn resolve_read_path(
+fn resolve_file_path(
   files : @file.FileCapabilityRegistry,
   context : @ipc.InvocationContext,
   id : String,
+  kind : @file.FileCapabilityKind,
 ) -> Result[String, @ipc.CommandFailure] {
   if id.is_empty() {
     return Err(
@@ -42,11 +54,11 @@ fn resolve_read_path(
     _ =>
       return Err(
         file_read_failure(
-          "file_unavailable", "file reads require a local window",
+          "file_unavailable", "file access requires a local window",
         ),
       )
   }
-  match files.resolve(label, id, Read) {
+  match files.resolve(label, id, kind) {
     Ok(path) => Ok(path)
     Err(WrongPrincipal(_)) =>
       Err(
@@ -57,7 +69,7 @@ fn resolve_read_path(
     Err(WrongKind(_)) =>
       Err(
         file_read_failure(
-          "file_handle_invalid", "file handle does not allow reads",
+          "file_handle_invalid", "file handle does not allow this operation",
         ),
       )
     Err(_) =>
@@ -74,7 +86,7 @@ async fn read_capability_bytes(
   request : FileReadRequest,
 ) -> Result[Bytes, @ipc.CommandFailure] {
   link_async_fs()
-  let path = match resolve_read_path(files, context, request.id) {
+  let path = match resolve_file_path(files, context, request.id, Read) {
     Ok(path) => path
     Err(failure) => return Err(failure)
   }
@@ -141,7 +153,65 @@ async fn read_text_capability(
 }
 
 ///|
-fn DesktopApp::register_file_read_commands(
+fn temporary_write_path(target : String, handle : String) -> String {
+  let token = handle
+    .replace_all(old="/", new="_")
+    .replace_all(old="+", new="-")
+    .replace_all(old="=", new="")
+  "\{target}.orbit-tmp-\{token}"
+}
+
+///|
+async fn remove_temporary_write(path : String) -> Unit {
+  @fs.remove(path) catch {
+    _ => ()
+  }
+}
+
+///|
+async fn write_text_capability(
+  files : @file.FileCapabilityRegistry,
+  context : @ipc.InvocationContext,
+  request : FileWriteRequest,
+) -> Result[FileWriteResponse, @ipc.CommandFailure] {
+  link_async_fs()
+  let path = match resolve_file_path(files, context, request.id, Write) {
+    Ok(path) => path
+    Err(failure) => return Err(failure)
+  }
+  let bytes = @utf8.encode(request.text, bom=false)
+  if bytes.length() > max_file_read_bytes {
+    return Err(
+      file_read_failure("file_too_large", "text exceeds the 64 KiB write limit"),
+    )
+  }
+  if context.cancellation().is_cancelled() {
+    return Err(file_read_failure("cancelled", "file write was cancelled"))
+  }
+  let temporary = temporary_write_path(path, request.id)
+  @fs.write_file(temporary, bytes, create_mode=CreateNew, sync=Full) catch {
+    _ => {
+      remove_temporary_write(temporary)
+      return Err(file_read_failure("file_write_failed", "could not write file"))
+    }
+  }
+  if context.cancellation().is_cancelled() {
+    remove_temporary_write(temporary)
+    return Err(file_read_failure("cancelled", "file write was cancelled"))
+  }
+  @fs.rename(temporary, path, replace=true) catch {
+    _ => {
+      remove_temporary_write(temporary)
+      return Err(
+        file_read_failure("file_write_failed", "could not replace file"),
+      )
+    }
+  }
+  Ok({ size: bytes.length() })
+}
+
+///|
+fn DesktopApp::register_file_access_commands(
   self : DesktopApp,
 ) -> Result[Unit, String] {
   match self.options.ipc_registry {
@@ -162,6 +232,14 @@ fn DesktopApp::register_file_read_commands(
         read_text_capability(self.files, context, request)
       }) catch {
         _ => return Err("file read command is already registered")
+      }
+      let write = @ipc.CommandName::new("orbit.fs.write_text") catch {
+        _ => return Err("invalid built-in file write command")
+      }
+      registry.register_async_context(write, async fn(context, request) {
+        write_text_capability(self.files, context, request)
+      }) catch {
+        _ => return Err("file write command is already registered")
       }
       Ok(())
     }

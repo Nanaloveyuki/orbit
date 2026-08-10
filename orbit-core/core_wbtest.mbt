@@ -220,6 +220,87 @@ async test "file reads reject oversized content and non-window callers" {
 }
 
 ///|
+async test "file writes atomically replace only matching write handles" {
+  let path = "_build/orbit-core-file-write.txt"
+  @fs.write_file(path, "old", create_mode=CreateOrTruncate)
+  let files = @file.FileCapabilityRegistry::new()
+  let write = files
+    .mint("main", path, Write)
+    .unwrap_or_else(() => abort("could not mint test write handle"))
+  let context = @ipc.InvocationContext::window("main")
+  match write_text_capability(files, context, { id: write.id(), text: "new" }) {
+    Ok(response) => assert_eq(response.size, 3)
+    Err(_) => abort("expected handle-bound write")
+  }
+  assert_eq(@fs.read_file(path).text(), "new")
+  assert_false(@fs.can_read(temporary_write_path(path, write.id())))
+  let read = files
+    .mint("main", path, Read)
+    .unwrap_or_else(() => abort("could not mint test read handle"))
+  match
+    write_text_capability(files, context, { id: read.id(), text: "denied" }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected read-handle denial")
+  }
+  files.revoke_window("main")
+  match
+    write_text_capability(files, context, { id: write.id(), text: "denied" }) {
+    Err(failure) => assert_eq(failure.code, "file_handle_invalid")
+    Ok(_) => abort("expected revoked-handle denial")
+  }
+  @fs.remove(path)
+}
+
+///|
+async test "file writes reject oversized input and native failures" {
+  let files = @file.FileCapabilityRegistry::new()
+  let cancelled_path = "_build/orbit-core-cancelled-write.txt"
+  @fs.write_file(cancelled_path, "original", create_mode=CreateOrTruncate)
+  let cancelled_capability = files
+    .mint("main", cancelled_path, Write)
+    .unwrap_or_else(() => abort("could not mint cancelled write handle"))
+  let cancelled_context = @ipc.InvocationContext::window("main")
+  cancelled_context.cancellation().cancel()
+  match
+    write_text_capability(files, cancelled_context, {
+      id: cancelled_capability.id(),
+      text: "replacement",
+    }) {
+    Err(failure) => assert_eq(failure.code, "cancelled")
+    Ok(_) => abort("expected cancelled write")
+  }
+  assert_eq(@fs.read_file(cancelled_path).text(), "original")
+  assert_false(
+    @fs.can_read(
+      temporary_write_path(cancelled_path, cancelled_capability.id()),
+    ),
+  )
+  @fs.remove(cancelled_path)
+  let target = "_build/orbit-core-missing-parent/file.txt"
+  let capability = files
+    .mint("main", target, Write)
+    .unwrap_or_else(() => abort("could not mint test write handle"))
+  let context = @ipc.InvocationContext::window("main")
+  match
+    write_text_capability(files, context, { id: capability.id(), text: "x" }) {
+    Err(failure) => assert_eq(failure.code, "file_write_failed")
+    Ok(_) => abort("expected native file-write failure")
+  }
+  let fragments = []
+  for _ in 0..<=max_file_read_bytes {
+    fragments.push("x")
+  }
+  match
+    write_text_capability(files, context, {
+      id: capability.id(),
+      text: fragments.join(""),
+    }) {
+    Err(failure) => assert_eq(failure.code, "file_too_large")
+    Ok(_) => abort("expected write-size limit")
+  }
+}
+
+///|
 fn async_ipc_policy(command : String) -> @ipc.CommandPolicy raise @ipc.IpcError {
   let policy = @ipc.CommandPolicy::new()
   policy.add_grant(
