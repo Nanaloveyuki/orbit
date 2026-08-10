@@ -52,7 +52,8 @@ button {
 button:hover { background: #284d4a; }
 
 #pick-file,
-#save-file {
+#save-file,
+#pick-directory {
   margin-left: 8px;
 }
 

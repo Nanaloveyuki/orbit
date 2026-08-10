@@ -37,8 +37,10 @@
         "example.ping",
         "orbit.dialog.open",
         "orbit.dialog.save",
+        "orbit.dialog.pick_directory",
         "orbit.fs.read_text",
-        "orbit.fs.write_text"
+        "orbit.fs.write_text",
+        "orbit.fs.read_directory"
       ]
     }
   ],
