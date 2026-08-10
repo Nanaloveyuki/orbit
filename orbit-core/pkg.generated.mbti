@@ -42,8 +42,11 @@ pub struct DesktopOptions {
   plugin_declarations : Array[@orbit-plugin.PluginDeclaration]
   plugin_development_directory : String?
   event_router : @orbit-event.EventRouter?
+  builtin_file_capabilities : Bool
 }
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?) -> Self raise CoreError
+pub fn DesktopOptions::builtin_file_capabilities_enabled(Self) -> Bool
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, builtin_file_capabilities? : Bool) -> Self raise CoreError
+pub fn DesktopOptions::with_builtin_file_capabilities(Self, enabled? : Bool) -> Self
 
 pub struct DesktopWindowOptions {
   window_title : String

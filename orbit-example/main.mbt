@@ -25,7 +25,7 @@ fn main {
     ipc_registry=Some(ipc_registry),
     ipc_policy=Some(ipc_policy),
     plugin_declarations=configured_plugins(),
-  ) catch {
+  ).with_builtin_file_capabilities() catch {
     _ => fail("could not create desktop options")
   }
   let factory = @moonview_runtime.MoonViewRuntimeFactory::new()

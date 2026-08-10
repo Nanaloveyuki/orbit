@@ -65,6 +65,27 @@ test "desktop options reject duplicate window labels" {
 }
 
 ///|
+test "builtin file capabilities require explicit opt-in" {
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let options = DesktopOptions::new(windows=[
+    DesktopWindowOptions::new("Orbit", runtime_options),
+  ])
+  assert_false(options.builtin_file_capabilities_enabled())
+  assert_true(
+    options.with_builtin_file_capabilities().builtin_file_capabilities_enabled(),
+  )
+  assert_false(
+    options
+    .with_builtin_file_capabilities(enabled=false)
+    .builtin_file_capabilities_enabled(),
+  )
+}
+
+///|
 test "desktop options use the plugin directory from the environment" {
   @env.set_env_var("ORBIT_PLUGIN_DIRECTORY", "environment-plugins")
   let runtime_options = @runtime.RuntimeOptions::new(

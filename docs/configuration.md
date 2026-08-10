@@ -103,9 +103,20 @@ Orbit 工具只接受严格 JSON 和 `schema_version: 2`。未知字段、重复
 ## 原生文件对话框
 
 `orbit.dialog.open`、`orbit.dialog.open_multiple`、`orbit.dialog.save` 和
-`orbit.dialog.pick_directory` 是 Orbit 在配置 IPC registry 时自动注册的内建命令。它们
-默认没有权限，且仅接受 `window` principal；不要向 `remote_page`、`http_client`、
-`plugin` 或 `background_task` 授予这些命令。
+`orbit.dialog.pick_directory` 及 `orbit.fs.*` 属于可选的内建文件 capability bridge，不会
+因为配置了 IPC registry 而自动注册。应用必须明确启用：
+
+```moonbit
+let options = @core.DesktopOptions::new(
+  windows~,
+  ipc_registry=Some(registry),
+  ipc_policy=Some(policy),
+).with_builtin_file_capabilities()
+```
+
+启用后这些命令默认仍没有权限，且仅接受 `window` principal；不要向 `remote_page`、
+`http_client`、`plugin` 或 `background_task` 授予它们。应用若自行管理文件系统，应保持
+bridge 关闭并只注册自己的业务命令。
 
 ```json
 {
