@@ -7,7 +7,7 @@ Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管�
 以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
 IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
 
-当前版本为 `0.1.0-alpha.1`。Windows 和 Linux 已进入持续集成验证；API 与配置仍可能在
+当前版本为 `0.1.0-alpha.2`。Windows 和 Linux 已进入持续集成验证；API 与配置仍可能在
 正式版前调整。
 
 ## 已实现
@@ -66,21 +66,35 @@ sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
 
 ## 在应用中使用
 
-Orbit 的 MoonBit 模块和 Node.js CLI 已分别发布到 Mooncakes 与 npm：
+新应用可以直接由 npm CLI 创建：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.1
+npx @nanaloveyuki/orbit-cli@alpha init my-orbit-app \
+  --name "My Orbit App" \
+  --identifier com.example.my-orbit-app \
+  --module example/my-orbit-app
+cd my-orbit-app
+moon update
+npm install
+npm run orbit:run
+```
+
+`init` 原子创建一个不会覆盖现有目录的 vanilla 应用，包含 MoonBit native 入口、schema
+v2 配置、受 capability 保护的 IPC 示例、前端资源和 npm scripts。第一次运行会生成
+`generated_page.mbt`；建议将该文件提交，以便审查嵌入资源与权限变化。
+
+向现有模块添加 Orbit：
+
+```sh
+moon add Nanaloveyuki/orbit@0.1.0-alpha.2
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
+npx orbit generate
+npx orbit run
 ```
 
-当前还没有 `orbit init` 脚手架。创建应用时建议复制
-[`orbit-example`](orbit-example/) 的最小结构，再替换应用标识、前端资源和命令。
-在外部 MoonBit 模块中，生成器位于安装后的 Mooncakes 目录，因此 CLI 需要显式指定：
-
-```sh
-npx orbit generate --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
-npx orbit run --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
-```
+CLI 会优先使用工作区内的 `orbit-build`，其次使用 Mooncakes 已物化的生成器；首次构建
+需要时会按 `moon.mod` 的固定版本 fetch 到项目级 `.repos`。`--orbit-build` 仅用于显式
+覆盖。
 
 MoonBit 后端注册命令，配置文件决定哪个页面可以调用它：
 
@@ -119,8 +133,8 @@ CLI 启动明确配置的 Vite 命令并等待 `dev_url`：
 ```
 
 ```sh
-npx orbit dev --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
-npx orbit build --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+npx orbit dev
+npx orbit build
 ```
 
 CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 `orbit.conf.json`。
@@ -130,10 +144,8 @@ CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 
 [`@nanaloveyuki/orbit-cli`](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli)
 是零运行时依赖的 Node.js 20+ 工具，覆盖以下常用流程：
 
-以下短命令适用于 Orbit 仓库本身；外部项目执行需要生成器的命令时，请按上文增加
-`--orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build`。
-
 ```sh
+npx orbit init --help
 npx orbit diagnose --json
 npx orbit bindings
 npx orbit icon --source assets/icon-1024.png --out-dir icons

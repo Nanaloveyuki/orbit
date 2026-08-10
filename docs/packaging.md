@@ -7,7 +7,6 @@ Orbit CLI 先生成资源并编译应用，再从 Moon native build 输出创建
 
 ```sh
 npx orbit package \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
   --release \
   --out-dir dist
 npx orbit verify-package --package-dir dist

@@ -174,7 +174,6 @@ Orbit 工具只接受严格 JSON 和 `schema_version: 2`。未知字段、重复
 
 ```sh
 npx orbit migrate-config \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
   --config old-orbit.conf.json \
   --output orbit.conf.json
 ```

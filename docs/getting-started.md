@@ -56,30 +56,46 @@ moon run orbit-example
 
 ## 创建应用
 
-当前 alpha 版本没有脚手架命令。最直接的方式是复制 `orbit-example`，然后修改：
-
-1. `orbit.conf.json` 中的应用标识、名称、版本和窗口；
-2. `assets/` 或 Vite 前端目录；
-3. `main.mbt` 中的命令注册；
-4. `moon.pkg` 中的包名和 import。
-
-在新 MoonBit 模块中安装发布版本：
+使用 npm 发布的 CLI 创建应用：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.1
+npx @nanaloveyuki/orbit-cli@alpha init desktop-app \
+  --name "Desktop App" \
+  --identifier com.example.desktop \
+  --module example/desktop-app
+cd desktop-app
+moon update
+npm install
+npm run orbit:run
+```
+
+`init` 只接受一个尚不存在的目标目录，不会合并或覆盖文件。未传参数时，显示名、应用
+identifier 和 MoonBit module 会从目录名生成开发默认值；发布前应通过显式选项选择稳定
+身份。
+
+模板包含：
+
+1. `orbit.conf.json` 中的 schema v2 应用、窗口和 capability；
+2. `assets/` 中可直接运行的 HTML/CSS/JavaScript；
+3. `main.mbt` 中的 MoonBit IPC 注册与桌面入口；
+4. `moon.pkg`、`moon.mod` 和常用 npm scripts。
+
+第一次 `orbit:run` 会生成 `generated_page.mbt`。建议提交该文件，使嵌入资源、配置指纹
+和权限策略的变化可审查。
+
+向已有 MoonBit 模块手工安装：
+
+```sh
+moon add Nanaloveyuki/orbit@0.1.0-alpha.2
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
+npx orbit generate --config orbit.conf.json
+npx orbit run --config orbit.conf.json
 ```
 
-外部模块中的生成器安装在 `.mooncakes` 下。现阶段需通过 `--orbit-build` 指出路径：
-
-```sh
-npx orbit generate \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
-  --config orbit.conf.json
-npx orbit run \
-  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
-  --config orbit.conf.json
-```
+CLI 优先解析当前工作区的 `orbit-build`，其次使用 Mooncakes 中已物化的发布包。首次
+构建尚无本地依赖目录时，它会读取 `moon.mod` 的固定 Orbit 版本并执行一次 `moon
+fetch`，将生成器准备到项目级 `.repos`。只有自定义 monorepo 或离线工具布局需要
+`--orbit-build`。
 
 配置、输出和应用包不在工作区根目录时，使用 `--config`、`--output`、`--package` 和
 `--workspace` 显式指定。运行 `npx orbit --help` 查看完整参数。
@@ -133,7 +149,7 @@ try {
 也可以生成只包含页面实际获授权命令的 bindings：
 
 ```sh
-npx orbit bindings --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+npx orbit bindings
 ```
 
 `orbit-bindings.mjs` 是调用便利层；运行时能力策略始终是最终权限依据。
@@ -158,7 +174,7 @@ React、Vue、Svelte 或普通 Vite 项目都使用同一配置：
 开发时：
 
 ```sh
-npx orbit dev --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build
+npx orbit dev
 ```
 
 CLI 启动 `dev_command`、等待精确的 `dev_url`、运行桌面应用，并在应用退出后终止前端
