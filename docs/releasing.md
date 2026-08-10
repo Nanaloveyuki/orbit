@@ -19,7 +19,8 @@ The release workflow verifies the tag, runs MoonBit and Node tests, performs a
 Mooncake dry run, packs the npm artifact, creates a draft GitHub Release,
 attests the artifacts, publishes npm with provenance, publishes Mooncake, and
 only then makes the GitHub Release public. A failure leaves the GitHub Release
-as a draft for inspection.
+as a draft for inspection. npm prereleases use their first prerelease identifier
+as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
 `.moon-version` selects an installer-supported MoonBit channel. CI records the
 resolved compiler and build-tool versions with `moon version --all` before

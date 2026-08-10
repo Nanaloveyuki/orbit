@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { acceptsMooncakeDryRunResult } from "../scripts/mooncake-dry-run.mjs";
+import { npmDistTag } from "../scripts/npm-dist-tag.mjs";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const script = resolve(repository, "orbit-cli", "scripts", "verify-release-version.mjs");
@@ -31,7 +32,15 @@ test("npm publication identifies the canonical GitHub repository", () => {
 });
 
 test("release publishes the npm artifact through an explicit relative path", () => {
-  assert.match(releaseWorkflow, /npm publish \.\/release\/\*\.tgz --access public --provenance/);
+  assert.match(releaseWorkflow, /npm publish \.\/release\/\*\.tgz --access public --provenance --tag/);
+});
+
+test("npm dist-tags follow the release channel", () => {
+  assert.equal(npmDistTag("0.1.0-alpha.1"), "alpha");
+  assert.equal(npmDistTag("0.1.0-RC.2"), "rc");
+  assert.equal(npmDistTag("0.1.0-1"), "next");
+  assert.equal(npmDistTag("0.1.0"), "latest");
+  assert.throws(() => npmDistTag("not-a-version"), /invalid release version/);
 });
 
 test("Mooncake dry-run accepts only the known successful 202 response", () => {

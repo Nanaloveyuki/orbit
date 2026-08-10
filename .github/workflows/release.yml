@@ -72,7 +72,9 @@ jobs:
       - name: Publish npm package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish ./release/*.tgz --access public --provenance
+        run: |
+          NPM_DIST_TAG="$(node orbit-cli/scripts/npm-dist-tag.mjs "$(node -p "require('./orbit-cli/package.json').version")")"
+          npm publish ./release/*.tgz --access public --provenance --tag "$NPM_DIST_TAG"
       - name: Publish Mooncake module
         run: moon publish
       - name: Publish GitHub release
