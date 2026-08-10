@@ -60,8 +60,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          RELEASE_CHANNEL="$(node orbit-cli/scripts/npm-dist-tag.mjs "$(node -p "require('./orbit-cli/package.json').version")")"
+          PRERELEASE_FLAG=""
+          if [ "$RELEASE_CHANNEL" != "latest" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
           gh release create "$GITHUB_REF_NAME" --verify-tag --draft \
-            --title "$GITHUB_REF_NAME" --generate-notes
+            --title "$GITHUB_REF_NAME" --generate-notes $PRERELEASE_FLAG
           gh release upload "$GITHUB_REF_NAME" release/*.tgz release/SHA256SUMS
       - name: Attest release artifacts
         uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
