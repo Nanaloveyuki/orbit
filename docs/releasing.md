@@ -1,8 +1,8 @@
-# Releasing Orbit And Orbit Applications
+# Releasing Orbit
 
-Orbit framework releases and application releases are separate workflows. The
-framework publishes the Mooncake module and npm CLI. An application uses a
-pinned Orbit CLI to build and publish its own executables and installers.
+This document is for Orbit maintainers publishing the Mooncakes module, npm
+CLI, and GitHub Release. Application packaging is documented separately in
+[`packaging.md`](packaging.md).
 
 ## Orbit Framework Release
 
@@ -37,31 +37,7 @@ platform-dependent exit code after a successful dry-run response; the tested
 wrapper accepts such an exit only when the output contains both the `202 Accepted`
 status and the explicit no-changes success message.
 
-## Linux Application Packages
-
-Build the directory package in release mode on Linux before selecting a native
-format:
-
-```sh
-orbit package --config orbit.conf.json --release --out-dir dist
-orbit verify-package --package-dir dist
-orbit linux-package --package-dir dist --format deb --out-dir artifacts \
-  --sign-command 'sign-linux {artifact} {package_dir} {package_manifest}'
-orbit verify-linux-package --artifact artifacts/example_1.0.0-1_amd64.deb
-```
-
-Run `linux-package` separately in an Ubuntu/Debian, Fedora, or Arch build job
-for `deb`, `rpm`, or `arch`. Orbit invokes that distribution's standard
-`dpkg-deb`, `rpmbuild`, or `makepkg`; it does not route builds through WSL or
-containers automatically. `makepkg` must run as an unprivileged user.
-
-Every artifact has an adjacent `*.orbit-linux-package.json` file containing the
-final size and SHA-256, source package compatibility profile, architecture,
-format, package revision, and whether the external signing hook ran. The flag
-records hook execution; signature trust must still be checked with the signing
-system's own verification command before publication.
-
-Application repositories should publish the native artifact, Orbit metadata,
-the signing system's detached signature or bundle, and a `SHA256SUMS` file.
-Keep GitHub authentication and release creation in the application's CI rather
-than placing GitHub API access inside Orbit CLI.
+Application repositories should pin the Orbit CLI version, publish the native
+artifact together with Orbit metadata, include the signing system's detached
+signature or bundle and a `SHA256SUMS` file, and keep GitHub authentication in
+their own CI rather than placing GitHub API access inside Orbit CLI.

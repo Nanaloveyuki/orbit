@@ -10,15 +10,35 @@ Commands that compile an application also require the native platform SDKs used
 by that application.
 
 ```sh
-npx @nanaloveyuki/orbit-cli build --config orbit.conf.json
-npx @nanaloveyuki/orbit-cli package --config orbit.conf.json --release --out-dir dist
-npx @nanaloveyuki/orbit-cli linux-package --package-dir dist --format deb --allow-unsigned
+npm install --save-dev @nanaloveyuki/orbit-cli@alpha
+npx orbit --help
 ```
+
+After adding `Nanaloveyuki/orbit` to a MoonBit module, point the CLI at the
+published generator package:
+
+```sh
+npx orbit dev \
+  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
+  --config orbit.conf.json
+npx orbit package \
+  --orbit-build .mooncakes/Nanaloveyuki/orbit/orbit-build \
+  --config orbit.conf.json \
+  --release \
+  --out-dir dist
+npx orbit verify-package --package-dir dist
+```
+
+The Orbit repository itself has a local `orbit-build` package, so its example
+commands do not need the explicit `--orbit-build` option.
 
 Production installer, archive, and native-package commands require an external
 `--sign-command`. `--allow-unsigned` is only an explicit local-development
-opt-out. See the repository [README](https://github.com/Nanaloveyuki/orbit) and
-[`docs/releasing.md`](https://github.com/Nanaloveyuki/orbit/blob/main/docs/releasing.md)
-for configuration, artifact verification, and release workflows.
+opt-out.
+
+- [Orbit overview and runnable example](https://github.com/Nanaloveyuki/orbit)
+- [Getting started](https://github.com/Nanaloveyuki/orbit/blob/main/docs/getting-started.md)
+- [Configuration](https://github.com/Nanaloveyuki/orbit/blob/main/docs/configuration.md)
+- [Packaging and verification](https://github.com/Nanaloveyuki/orbit/blob/main/docs/packaging.md)
 
 License: Apache-2.0.
