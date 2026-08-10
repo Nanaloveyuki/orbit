@@ -6,9 +6,12 @@ pinned Orbit CLI to build and publish its own executables and installers.
 
 ## Orbit Framework Release
 
-The repository `release` environment must contain `NPM_TOKEN`,
-`MOONCAKE_USERNAME`, and `MOONCAKE_TOKEN`. Protect that environment with the
-required reviewers for the repository.
+The repository `release` environment must contain `MOONCAKE_USERNAME` and
+`MOONCAKE_TOKEN`. Protect that environment with the required reviewers for the
+repository. Configure npm trusted publishing for `@nanaloveyuki/orbit-cli`
+with GitHub owner `Nanaloveyuki`, repository `orbit`, workflow `release.yml`,
+environment `release`, and the `npm publish` action. The workflow uses GitHub
+OIDC and must not receive an npm write token.
 
 1. Update `moon.mod` and `orbit-cli/package.json` to the same version.
 2. Merge the version change through the normal validation workflow.

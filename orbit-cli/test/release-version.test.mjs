@@ -33,6 +33,8 @@ test("npm publication identifies the canonical GitHub repository", () => {
 
 test("release publishes the npm artifact through an explicit relative path", () => {
   assert.match(releaseWorkflow, /npm publish \.\/release\/\*\.tgz --access public --provenance --tag/);
+  assert.match(releaseWorkflow, /id-token: write/);
+  assert.doesNotMatch(releaseWorkflow, /NODE_AUTH_TOKEN|NPM_TOKEN/);
 });
 
 test("npm dist-tags follow the release channel", () => {
