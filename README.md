@@ -147,9 +147,16 @@ if (!selected.cancelled) console.log(selected.files);
 `orbit.fs.write_text` 只接受保存 picker 返回的 `Write` handle 和 UTF-8 `text`；它在
 同目录中完成写入和替换，成功只返回字节数。读取句柄、目录句柄和任意原生路径不能写入。
 
-目录 picker 返回的 `Directory` handle 可传给 `orbit.fs.read_directory`。它只枚举最多
-128 个非隐藏的直接子项名称和类型，不接受路径参数，也不为子项发放 handle。
-基于目录的相对路径读写需要原生 no-follow 句柄实现，当前版本不提供。
+目录 picker 返回的 `Directory` handle 可传给 `orbit.fs.read_directory`。Orbit 会在
+picker 返回时取得目录的原生 no-follow handle；枚举最多 128 个非隐藏直接子项，不接受
+路径参数。每个条目只有 `{ "name", "kind", "id" }`：文件的 `id` 为 `null`；能够
+安全地以该句柄为根打开的子目录才有新的 opaque `id`，可再次传给同一命令。symlink、
+Windows junction 和其他 reparse point 不会被枚举或跟随。
+同一父目录的同名子 capability 会复用；每个窗口最多保留 256 个目录 capability，达到
+上限时条目仍可显示但不会携带新的 `id`。
+
+目录 capability 目前只支持受限枚举和安全的子目录导航；目录内文件的相对读写、创建和
+删除仍不提供。
 
 后续的文件写入 capability 也只会接受这些 handle；当前版本不会向页面提供任意路径
 文件系统 API。

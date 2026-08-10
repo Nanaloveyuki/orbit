@@ -583,6 +583,13 @@ static orbit_directory_handle_t *orbit_directory_open_posix_child(
   return directory;
 }
 
+static void orbit_directory_close_posix_stream(DIR *stream) {
+  /* `dup` shares the open-file description with the held capability. Reset its
+     directory position before closing so later listings always begin at root. */
+  rewinddir(stream);
+  closedir(stream);
+}
+
 static moonbit_bytes_t orbit_directory_entries_posix(
   orbit_directory_handle_t *directory,
   int32_t max_entries,
@@ -605,17 +612,17 @@ static moonbit_bytes_t orbit_directory_entries_posix(
   }
   orbit_directory_buffer_t output = { 0 };
   if (!orbit_directory_buffer_append_u32(&output, 0)) {
-    closedir(stream);
+    orbit_directory_close_posix_stream(stream);
     *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
     return moonbit_make_bytes(0, 0);
   }
-  errno = 0;
   for (;;) {
+    errno = 0;
     struct dirent *entry = readdir(stream);
     if (entry == NULL) {
       if (errno != 0) {
         orbit_directory_buffer_free(&output);
-        closedir(stream);
+        orbit_directory_close_posix_stream(stream);
         *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
         return moonbit_make_bytes(0, 0);
       }
@@ -628,7 +635,7 @@ static moonbit_bytes_t orbit_directory_entries_posix(
     }
     if (name_length == 0 || name_length > ORBIT_DIRECTORY_MAX_NAME_BYTES) {
       orbit_directory_buffer_free(&output);
-      closedir(stream);
+      orbit_directory_close_posix_stream(stream);
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
       return moonbit_make_bytes(0, 0);
     }
@@ -638,7 +645,7 @@ static moonbit_bytes_t orbit_directory_entries_posix(
         continue;
       }
       orbit_directory_buffer_free(&output);
-      closedir(stream);
+      orbit_directory_close_posix_stream(stream);
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
       return moonbit_make_bytes(0, 0);
     }
@@ -647,7 +654,7 @@ static moonbit_bytes_t orbit_directory_entries_posix(
     }
     if (output.count >= max_entries) {
       orbit_directory_buffer_free(&output);
-      closedir(stream);
+      orbit_directory_close_posix_stream(stream);
       *status = ORBIT_DIRECTORY_STATUS_TOO_LARGE;
       return moonbit_make_bytes(0, 0);
     }
@@ -658,12 +665,12 @@ static moonbit_bytes_t orbit_directory_entries_posix(
           name_length
         )) {
       orbit_directory_buffer_free(&output);
-      closedir(stream);
+      orbit_directory_close_posix_stream(stream);
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
       return moonbit_make_bytes(0, 0);
     }
   }
-  closedir(stream);
+  orbit_directory_close_posix_stream(stream);
   output.data[0] = (uint8_t)(output.count & 0xff);
   output.data[1] = (uint8_t)((output.count >> 8) & 0xff);
   output.data[2] = (uint8_t)((output.count >> 16) & 0xff);
