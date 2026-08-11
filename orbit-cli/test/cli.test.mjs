@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -298,6 +299,39 @@ test("unsupported WebView hosts produce a stable diagnostic fallback", () => {
     status: "unsupported",
     version: null,
   });
+});
+
+test("diagnose emits one JSON report when the native check fails", (context) => {
+  const workspace = mkdtempSync(join(tmpdir(), "orbit-diagnose-"));
+  context.after(() => rmSync(workspace, { recursive: true, force: true }));
+  const moon = join(workspace, process.platform === "win32" ? "fake-moon.cmd" : "fake-moon");
+  if (process.platform === "win32") {
+    writeFileSync(moon, [
+      "@echo off",
+      "if \"%1\"==\"--version\" (",
+      "  echo fake moon",
+      "  exit /b 0",
+      ")",
+      "exit /b 41",
+      "",
+    ].join("\r\n"));
+  } else {
+    writeFileSync(moon, "#!/bin/sh\n[ \"$1\" = \"--version\" ] && exit 0\nexit 41\n");
+    chmodSync(moon, 0o755);
+  }
+
+  const result = spawnSync(process.execPath, [
+    resolve("bin/orbit.mjs"),
+    "diagnose",
+    "--json",
+    "--moon",
+    moon,
+  ], { cwd: workspace, encoding: "utf8" });
+  assert.equal(result.status, 41);
+  assert.equal(result.stdout.trim().split(/\r?\n/).length, 1);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(report.check, { status: "failed", exit_code: 41 });
+  assert.deepEqual(report.configuration, { status: "unavailable", fingerprint: null });
 });
 
 test("migrate-config requires a distinct explicit output path", () => {
