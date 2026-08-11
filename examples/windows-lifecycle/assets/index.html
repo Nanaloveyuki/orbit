@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orbit Lifecycle Example</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">WINDOWS LIFECYCLE REFERENCE</p>
+    <h1>Orbit Lifecycle Example</h1>
+    <p class="summary">Close this window or use the tray menu to release the embedded WebView. The next activation recreates it and restores state held by the MoonBit application.</p>
+    <label for="state">Persisted application state</label>
+    <textarea id="state" rows="6" spellcheck="false"></textarea>
+    <div class="actions">
+      <button id="save" type="button">Save state</button>
+      <button id="pick-file" type="button">Choose file</button>
+      <button id="print-page" type="button">Print page</button>
+    </div>
+    <output id="status" aria-live="polite">Loading saved state...</output>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "app": {
+    "identifier": "dev.orbit.lifecycle",
+    "name": "Orbit Lifecycle Example",
+    "version": "0.1.0",
+    "product_name": "Orbit Lifecycle Example",
+    "windows": [
+      {
+        "label": "main",
+        "title": "Orbit Lifecycle Example",
+        "width": 880,
+        "height": 620,
+        "entry": "assets/index.html",
+        "visible": true,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "icons": [],
+    "windows": { "webview_install_mode": "embed_bootstrapper" }
+  },
+  "web": {
+    "embedded": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'"
+    }
+  },
+  "build": {},
+  "capabilities": [
+    {
+      "identifier": "main-window-commands",
+      "effect": "allow",
+      "principals": [{ "kind": "window", "identifier": "main" }],
+      "scopes": [],
+      "commands": [
+        "lifecycle.state.load",
+        "lifecycle.state.save",
+        "orbit.dialog.open",
+        "orbit.window.print"
+      ]
+    }
+  ],
+  "plugins": []
+}

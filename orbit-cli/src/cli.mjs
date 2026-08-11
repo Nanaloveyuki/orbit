@@ -32,9 +32,9 @@ const webviewInstallModes = new Set([
 ]);
 
 export const compatibilityProfile = Object.freeze({
-  orbit: "0.1.0-alpha.2",
-  orby: "0.1.0-beta.3",
-  moonview: "0.1.0-beta.6",
+  orbit: "0.1.0-alpha.3",
+  orby: "0.1.0-beta.4",
+  moonview: "0.1.0-beta.7",
   plugin_abi: 2,
   plugin_sidecar_schema: 2,
   configuration_schema: 2,

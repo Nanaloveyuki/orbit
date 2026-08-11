@@ -1,0 +1,17 @@
+import {
+  "Nanaloveyuki/image",
+  "moonbitlang/async",
+  "Nanaloveyuki/orbit/orbit-core" @core,
+  "Nanaloveyuki/orbit/orbit-desktop-file" @desktop_file,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-plugin" @plugin,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+  "Nanaloveyuki/orbit/orbit-runtime-moonview" @moonview_runtime,
+  "Nanaloveyuki/orbit/orbit-tray" @tray,
+  "Nanaloveyuki/orbit/orbit-tray-windows" @tray_windows,
+  "Nanaloveyuki/orbit/orbit-utils" @utils,
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
