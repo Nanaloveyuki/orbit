@@ -284,6 +284,14 @@ impl DesktopExtension for WindowsTrayExtension with fn poll(self, controller) {
 }
 
 ///|
+impl DesktopExtension for WindowsTrayExtension with fn window_suspended(
+  _self,
+  _label,
+) {
+  Ok(())
+}
+
+///|
 impl DesktopExtension for WindowsTrayExtension with fn window_destroyed(
   _self,
   _label,

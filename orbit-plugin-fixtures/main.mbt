@@ -326,6 +326,14 @@ impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn set_bounds(
 }
 
 ///|
+impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn set_visible(
+  _self,
+  _visible,
+) {
+
+}
+
+///|
 impl @runtime.WebViewRuntime for CoreFixtureRuntime with fn destroy(_self) {
 
 }

@@ -414,6 +414,7 @@ pub(open) trait WebViewRuntime {
   fn post_message(Self, String) -> Unit raise RuntimeError
   fn set_message_handler(Self, ((RuntimePageMessage) -> Unit)?) -> Unit raise RuntimeError
   fn set_bounds(Self, RuntimeBounds) -> Unit raise RuntimeError
+  fn set_visible(Self, Bool) -> Unit raise RuntimeError
   /// Implementations must make repeated destruction safe and stop callbacks.
   fn destroy(Self) -> Unit raise RuntimeError
 }

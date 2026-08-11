@@ -138,6 +138,33 @@ let options = @core.DesktopOptions::new(
 WebView 文档的原生打印对话框，并返回 `{ "opened": true }`；远端、HTTP、插件和后台
 principal 都不能调用它。
 
+### 轻量运行模式
+
+关闭窗口时，应用可保留 Orby 顶层窗口和托盘，但释放该窗口的嵌入 WebView。关闭最后一个
+WebView 后，MoonView 会释放 Windows 上对应的 WebView2 controller 与 environment；Linux
+会销毁 GTK WebView child，但不承诺回收 WebKitGTK 的全部进程级缓存。
+
+将 close policy 返回为 `Suspend`，或在托盘回调中调用
+`DesktopController::suspend_window(label)`。之后 `show_window(label)` 会在原窗口中创建一个
+新的 WebView，并按原始 `RuntimeOptions` 重新加载页面：
+
+```moonbit
+let options = @core.DesktopOptions::new(
+  windows~,
+  close_request_handler=Some((_label, _controller) => {
+    @core.DesktopCloseAction::suspend()
+  }),
+  runtime_suspend_handler=Some(label => {
+    // Persist application-owned state previously received through IPC.
+    save_window_state(label)
+  }),
+)
+```
+
+`runtime_suspend_handler` 在 UI thread 上、运行时释放之前调用。Orbit 不会同步导出任意 DOM
+状态；应用应使用正常 IPC 将主要状态保存到 MoonBit，或使用持久化的浏览器存储。挂起期间
+UI-bound extension command 不可用，`orbit-desktop-file` 会撤销该窗口的文件 capability。
+
 ```json
 {
   "identifier": "main-file-dialogs",

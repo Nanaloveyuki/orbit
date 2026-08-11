@@ -127,6 +127,15 @@ impl DesktopExtension for DesktopFileExtension with fn poll(_self, _controller) 
 }
 
 ///|
+impl DesktopExtension for DesktopFileExtension with fn window_suspended(
+  self,
+  label,
+) {
+  self.files.revoke_window(label)
+  Ok(())
+}
+
+///|
 impl DesktopExtension for DesktopFileExtension with fn window_destroyed(
   self,
   label,

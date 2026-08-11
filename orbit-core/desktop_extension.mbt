@@ -2,19 +2,39 @@
 pub(all) suberror DesktopControllerError {
   WindowUnavailable(String)
   HostUnavailable
+  RuntimeOperationFailed(String)
 } derive(Debug)
 
 ///|
 pub enum DesktopCloseAction {
   Destroy
   Hide
+  /// Hides the top-level window and releases its embedded WebView runtime.
+  /// Showing the window creates a fresh runtime using its original options.
+  Suspend
 } derive(Eq, Debug)
+
+///|
+pub fn DesktopCloseAction::destroy() -> DesktopCloseAction {
+  Destroy
+}
+
+///|
+pub fn DesktopCloseAction::hide() -> DesktopCloseAction {
+  Hide
+}
+
+///|
+pub fn DesktopCloseAction::suspend() -> DesktopCloseAction {
+  Suspend
+}
 
 ///|
 pub struct DesktopController {
   priv show_window : (String) -> Result[Unit, DesktopControllerError]
   priv hide_window : (String) -> Result[Unit, DesktopControllerError]
   priv focus_window : (String) -> Result[Unit, DesktopControllerError]
+  priv suspend_window : (String) -> Result[Unit, DesktopControllerError]
   priv exit_application : () -> Result[Unit, DesktopControllerError]
 }
 
@@ -46,6 +66,19 @@ pub fn DesktopController::focus_window(
   label : String,
 ) -> Unit raise DesktopControllerError {
   match (self.focus_window)(label) {
+    Ok(_) => ()
+    Err(error) => raise error
+  }
+}
+
+///|
+/// Hides `label` and releases its embedded runtime. The window and application
+/// remain alive, and a later `show_window` recreates the runtime.
+pub fn DesktopController::suspend_window(
+  self : DesktopController,
+  label : String,
+) -> Unit raise DesktopControllerError {
+  match (self.suspend_window)(label) {
     Ok(_) => ()
     Err(error) => raise error
   }
@@ -158,6 +191,9 @@ pub(open) trait DesktopExtension {
   fn commands(Self) -> Array[DesktopCommand]
   fn start(Self, DesktopController) -> Result[Unit, String]
   fn poll(Self, DesktopController) -> Result[Unit, String]
+  /// Called before a live window's embedded runtime is released. The native
+  /// window remains alive and may later receive a fresh runtime.
+  fn window_suspended(Self, String) -> Result[Unit, String]
   fn window_destroyed(Self, String) -> Result[Unit, String]
   fn shutdown(Self) -> Result[Unit, String]
 }

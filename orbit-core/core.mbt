@@ -57,6 +57,7 @@ pub struct DesktopOptions {
   event_router : @event.EventRouter?
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
+  runtime_suspend_handler : ((String) -> Unit)?
 }
 
 ///|
@@ -87,6 +88,7 @@ pub fn DesktopOptions::new(
   event_router? : @event.EventRouter? = None,
   extensions? : Array[&DesktopExtension] = [],
   close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)? = None,
+  runtime_suspend_handler? : ((String) -> Unit)? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -126,6 +128,7 @@ pub fn DesktopOptions::new(
     event_router,
     extensions,
     close_request_handler,
+    runtime_suspend_handler,
   }
 }
 
@@ -219,10 +222,17 @@ struct DesktopApp {
 ///|
 priv struct MountedWindow {
   label : String
+  options : DesktopWindowOptions
   window : @orby.Window
+  runtime : Ref[&@runtime.WebViewRuntime?]
+  page_event_subscription : Ref[@event.EventSubscription?]
+  extension_window_destroyed : Ref[Bool]
+}
+
+///|
+priv struct MountedRuntime {
   runtime : &@runtime.WebViewRuntime
   page_event_subscription : @event.EventSubscription?
-  extension_window_destroyed : Ref[Bool]
 }
 
 ///|
@@ -270,9 +280,11 @@ fn DesktopApp::unsubscribe_page_events(
   self : DesktopApp,
   mounted : MountedWindow,
 ) -> Unit {
-  match (self.options.event_router, mounted.page_event_subscription) {
-    (Some(router), Some(subscription)) =>
+  match (self.options.event_router, mounted.page_event_subscription.val) {
+    (Some(router), Some(subscription)) => {
       router.unsubscribe_additional(subscription)
+      mounted.page_event_subscription.val = None
+    }
     _ => ()
   }
 }
@@ -299,11 +311,17 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     self.unsubscribe_page_events(mounted)
   }
   for mounted in self.windows {
-    mounted.runtime.set_message_handler(None) catch {
-      _ => ()
-    }
-    mounted.runtime.destroy() catch {
-      _ => ()
+    match mounted.runtime.val {
+      Some(runtime) => {
+        runtime.set_message_handler(None) catch {
+          _ => ()
+        }
+        runtime.destroy() catch {
+          _ => ()
+        }
+        mounted.runtime.val = None
+      }
+      None => ()
     }
   }
   for mounted in self.windows {
@@ -469,10 +487,22 @@ fn DesktopApp::controller(self : DesktopApp) -> DesktopController {
   {
     show_window: label => {
       match self.mounted_for_label(label) {
-        Some(mounted) if !mounted.window.is_destroyed() => {
-          mounted.window.set_visible(true)
-          Ok(())
-        }
+        Some(mounted) if !mounted.window.is_destroyed() =>
+          match self.resume_window_runtime(mounted) {
+            Ok(_) => {
+              match mounted.runtime.val {
+                Some(runtime) =>
+                  runtime.set_visible(true) catch {
+                    error =>
+                      return Err(RuntimeOperationFailed(runtime_reason(error)))
+                  }
+                None => ()
+              }
+              mounted.window.set_visible(true)
+              Ok(())
+            }
+            Err(reason) => Err(RuntimeOperationFailed(reason))
+          }
         _ => Err(WindowUnavailable(label))
       }
     },
@@ -491,6 +521,19 @@ fn DesktopApp::controller(self : DesktopApp) -> DesktopController {
           mounted.window.focus()
           Ok(())
         }
+        _ => Err(WindowUnavailable(label))
+      }
+    },
+    suspend_window: label => {
+      match self.mounted_for_label(label) {
+        Some(mounted) if !mounted.window.is_destroyed() =>
+          match self.suspend_window_runtime(mounted) {
+            Ok(_) => {
+              mounted.window.set_visible(false)
+              Ok(())
+            }
+            Err(reason) => Err(RuntimeOperationFailed(reason))
+          }
         _ => Err(WindowUnavailable(label))
       }
     },
@@ -525,7 +568,7 @@ fn DesktopApp::runtime_for_label(
   label : String,
 ) -> &@runtime.WebViewRuntime? {
   match self.mounted_for_label(label) {
-    Some(mounted) if !mounted.window.is_destroyed() => Some(mounted.runtime)
+    Some(mounted) if !mounted.window.is_destroyed() => mounted.runtime.val
     _ => None
   }
 }
@@ -537,14 +580,18 @@ fn DesktopApp::ui_context(
 ) -> DesktopUiContext? {
   match self.mounted_for_label(label) {
     Some(mounted) if !mounted.window.is_destroyed() =>
-      Some({
-        label_: label,
-        show_dialog: options => {
-          Ok(mounted.runtime.show_file_dialog(options)) catch {
-            error => Err(error)
-          }
-        },
-      })
+      match mounted.runtime.val {
+        Some(runtime) =>
+          Some({
+            label_: label,
+            show_dialog: options => {
+              Ok(runtime.show_file_dialog(options)) catch {
+                error => Err(error)
+              }
+            },
+          })
+        None => None
+      }
     _ => None
   }
 }
@@ -638,6 +685,51 @@ fn DesktopApp::notify_window_destroyed(
       _ => ()
     }
   }
+}
+
+///|
+fn DesktopApp::notify_window_suspended(
+  self : DesktopApp,
+  mounted : MountedWindow,
+) -> Result[Unit, String] {
+  for extension in self.started_extensions {
+    match extension.window_suspended(mounted.label) {
+      Err(reason) =>
+        return Err(
+          "desktop extension \{extension.identifier()} suspend failed: \{reason}",
+        )
+      Ok(_) => ()
+    }
+  }
+  Ok(())
+}
+
+///|
+fn DesktopApp::suspend_window_runtime(
+  self : DesktopApp,
+  mounted : MountedWindow,
+) -> Result[Unit, String] {
+  let runtime = match mounted.runtime.val {
+    Some(runtime) => runtime
+    None => return Ok(())
+  }
+  match self.options.runtime_suspend_handler {
+    Some(handler) => handler(mounted.label)
+    None => ()
+  }
+  match self.notify_window_suspended(mounted) {
+    Err(reason) => return Err(reason)
+    Ok(_) => ()
+  }
+  self.unsubscribe_page_events(mounted)
+  runtime.set_message_handler(None) catch {
+    _ => ()
+  }
+  runtime.destroy() catch {
+    error => return Err(runtime_reason(error))
+  }
+  mounted.runtime.val = None
+  Ok(())
 }
 
 ///|
@@ -742,39 +834,19 @@ fn DesktopApp::finish_async_exit(self : DesktopApp) -> Unit {
 }
 
 ///|
-fn DesktopApp::mount_window(
+fn DesktopApp::mount_runtime(
   self : DesktopApp,
-  active : @orby.ActiveApp,
   options : DesktopWindowOptions,
-) -> MountedWindow raise CoreError {
-  let bounds = options.runtime_options.bounds
-  let window = active.create_window(
-    @orby.WindowOptions::new(
-      title=options.window_title,
-      size=@orby.Size::new(width=bounds.width, height=bounds.height),
-      visible=options.runtime_options.visible,
-      resizable=options.resizable,
-    ),
-  ) catch {
+  window : @orby.Window,
+) -> MountedRuntime raise CoreError {
+  let host = window.webview_host() catch {
     error => raise StartupFailed(window_reason(error))
   }
-  let host = window.webview_host() catch {
-    error => {
-      window.destroy()
-      raise StartupFailed(window_reason(error))
-    }
-  }
   let native_handle = host.native_handle() catch {
-    error => {
-      window.destroy()
-      raise StartupFailed(window_reason(error))
-    }
+    error => raise StartupFailed(window_reason(error))
   }
   let runtime_host = @runtime.RuntimeHost::new(native_handle) catch {
-    InvalidState(message) => {
-      window.destroy()
-      raise StartupFailed(message)
-    }
+    InvalidState(message) => raise StartupFailed(message)
     _ => raise StartupFailed("runtime host creation failed")
   }
   let page_events_enabled = self.options.event_router is Some(_) &&
@@ -800,10 +872,7 @@ fn DesktopApp::mount_window(
     self.record_runtime_event(options.runtime_options.label(), event)
   })
   let runtime = self.factory.create(runtime_host, runtime_options) catch {
-    error => {
-      window.destroy()
-      raise StartupFailed(runtime_reason(error))
-    }
+    error => raise StartupFailed(runtime_reason(error))
   }
   match self.options.ipc_registry {
     Some(_) =>
@@ -821,7 +890,6 @@ fn DesktopApp::mount_window(
           runtime.destroy() catch {
             _ => ()
           }
-          window.destroy()
           raise StartupFailed(runtime_reason(error))
         }
       }
@@ -833,11 +901,71 @@ fn DesktopApp::mount_window(
     options.ipc_principal,
     runtime,
   )
+  { runtime, page_event_subscription }
+}
+
+///|
+fn core_reason(error : CoreError) -> String {
+  match error {
+    InitializationFailed(message)
+    | StartupFailed(message)
+    | RuntimeFailed(message) => message
+  }
+}
+
+///|
+fn DesktopApp::resume_window_runtime(
+  self : DesktopApp,
+  mounted : MountedWindow,
+) -> Result[Unit, String] {
+  if mounted.runtime.val is Some(_) {
+    return Ok(())
+  }
+  let runtime = self.mount_runtime(mounted.options, mounted.window) catch {
+    error => return Err(core_reason(error))
+  }
+  runtime.runtime.set_visible(true) catch {
+    error => {
+      runtime.runtime.destroy() catch {
+        _ => ()
+      }
+      return Err(runtime_reason(error))
+    }
+  }
+  mounted.runtime.val = Some(runtime.runtime)
+  mounted.page_event_subscription.val = runtime.page_event_subscription
+  Ok(())
+}
+
+///|
+fn DesktopApp::mount_window(
+  self : DesktopApp,
+  active : @orby.ActiveApp,
+  options : DesktopWindowOptions,
+) -> MountedWindow raise CoreError {
+  let bounds = options.runtime_options.bounds
+  let window = active.create_window(
+    @orby.WindowOptions::new(
+      title=options.window_title,
+      size=@orby.Size::new(width=bounds.width, height=bounds.height),
+      visible=options.runtime_options.visible,
+      resizable=options.resizable,
+    ),
+  ) catch {
+    error => raise StartupFailed(window_reason(error))
+  }
+  let runtime = self.mount_runtime(options, window) catch {
+    error => {
+      window.destroy()
+      raise error
+    }
+  }
   {
     label: options.runtime_options.label(),
+    options,
     window,
-    runtime,
-    page_event_subscription,
+    runtime: Ref(Some(runtime.runtime)),
+    page_event_subscription: Ref(runtime.page_event_subscription),
     extension_window_destroyed: Ref(false),
   }
 }
@@ -948,7 +1076,11 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         catch {
           _ => ()
         } noraise {
-          bounds => mounted.runtime.set_bounds(bounds) catch { _ => () }
+          bounds =>
+            match mounted.runtime.val {
+              Some(runtime) => runtime.set_bounds(bounds) catch { _ => () }
+              None => ()
+            }
         }
       }
     CloseRequested => {
@@ -960,24 +1092,48 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         mounted.window.set_visible(false)
         return
       }
+      if action == Suspend {
+        match self.suspend_window_runtime(mounted) {
+          Ok(_) => mounted.window.set_visible(false)
+          Err(reason) =>
+            if self.pending_runtime_failure is None {
+              self.pending_runtime_failure = Some(
+                "window runtime suspension failed: \{reason}",
+              )
+            }
+        }
+        return
+      }
       self.notify_window_destroyed(mounted)
       self.unsubscribe_page_events(mounted)
-      mounted.runtime.set_message_handler(None) catch {
-        _ => ()
-      }
-      mounted.runtime.destroy() catch {
-        _ => ()
+      match mounted.runtime.val {
+        Some(runtime) => {
+          runtime.set_message_handler(None) catch {
+            _ => ()
+          }
+          runtime.destroy() catch {
+            _ => ()
+          }
+          mounted.runtime.val = None
+        }
+        None => ()
       }
       mounted.window.destroy()
     }
     Destroyed => {
       self.notify_window_destroyed(mounted)
       self.unsubscribe_page_events(mounted)
-      mounted.runtime.set_message_handler(None) catch {
-        _ => ()
-      }
-      mounted.runtime.destroy() catch {
-        _ => ()
+      match mounted.runtime.val {
+        Some(runtime) => {
+          runtime.set_message_handler(None) catch {
+            _ => ()
+          }
+          runtime.destroy() catch {
+            _ => ()
+          }
+          mounted.runtime.val = None
+        }
+        None => ()
       }
       if !self.has_live_windows() {
         self.finish_async_exit()
