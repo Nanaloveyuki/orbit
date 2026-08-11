@@ -199,6 +199,26 @@ test "desktop options retain the runtime suspension handler" {
 }
 
 ///|
+test "desktop options retain optional diagnostics" {
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let history = @diagnostics.DiagnosticHistory::new()
+  let options = DesktopOptions::new(
+    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+    diagnostic_sink=Some(history as &@diagnostics.DiagnosticSink),
+    diagnostic_configuration_fingerprint=Some("f00d"),
+  )
+  match options.diagnostic_sink {
+    Some(_) => ()
+    None => abort("expected the diagnostics sink")
+  }
+  assert_eq(options.diagnostic_configuration_fingerprint, Some("f00d"))
+}
+
+///|
 test "desktop commands reject invalid names at construction" {
   let rejected = try {
     ignore(DesktopCommand::ui("", (_, _) => Ok(Json::null())))

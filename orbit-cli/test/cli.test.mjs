@@ -20,6 +20,7 @@ import {
   packageMetadataCommand,
   packageIntegrity,
   parseInvocation,
+  probeWebViewRuntime,
   verifyInstaller,
   verifyArchive,
   verifyPackage,
@@ -289,6 +290,14 @@ test("run and diagnose map to the expected Moon workflows", () => {
   assert.deepEqual(moonCommands(run).at(-1), ["run", "--target", "native", resolve(cwd, ".")]);
   const diagnose = parseInvocation(["diagnose", "--json"], cwd);
   assert.deepEqual(moonCommands(diagnose), [["check", "--target", "native", resolve(cwd, ".")]]);
+});
+
+test("unsupported WebView hosts produce a stable diagnostic fallback", () => {
+  assert.deepEqual(probeWebViewRuntime("darwin"), {
+    kind: "unknown",
+    status: "unsupported",
+    version: null,
+  });
 });
 
 test("migrate-config requires a distinct explicit output path", () => {

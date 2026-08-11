@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { arch, homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { gzipSync } from "node:zlib";
@@ -32,7 +32,7 @@ const webviewInstallModes = new Set([
 ]);
 
 export const compatibilityProfile = Object.freeze({
-  orbit: "0.1.0-alpha.3",
+  orbit: "0.1.0-alpha.4",
   orby: "0.1.0-beta.4",
   moonview: "0.1.0-beta.7",
   plugin_abi: 2,
@@ -383,6 +383,81 @@ function runMoon(invocation, args) {
     return false;
   }
   return true;
+}
+
+function runMoonCaptured(invocation, args) {
+  const processSpec = moonProcess(invocation, args);
+  const result = spawnSync(processSpec.command, processSpec.args, {
+    cwd: invocation.workspace,
+    encoding: "utf8",
+    env: commandEnvironment(invocation),
+  });
+  return {
+    ok: !result.error && result.status === 0,
+    status: result.status ?? 1,
+  };
+}
+
+function probeCommand(command, args) {
+  const result = spawnSync(command, args, { encoding: "utf8" });
+  return result.error || result.status !== 0 ? null : result.stdout.trim();
+}
+
+export function probeWebViewRuntime(hostPlatform = platform()) {
+  if (hostPlatform === "win32") {
+    const runtimeId = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+    const keys = [
+      `HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\${runtimeId}`,
+      `HKLM\\SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\${runtimeId}`,
+      `HKCU\\Software\\Microsoft\\EdgeUpdate\\Clients\\${runtimeId}`,
+    ];
+    const version = keys
+      .map((key) => probeCommand("reg", ["query", key, "/v", "pv"])
+        ?.match(/\bpv\s+REG_\w+\s+([^\r\n\s]+)/i)?.[1] ?? null)
+      .find((candidate) => candidate && candidate !== "0.0.0.0") ?? null;
+    return { kind: "webview2", status: version ? "available" : "unknown", version };
+  }
+  if (hostPlatform === "linux") {
+    const version = probeCommand("pkg-config", ["--modversion", "webkit2gtk-4.1"]);
+    return { kind: "webkitgtk", status: version ? "available" : "unknown", version };
+  }
+  return { kind: "unknown", status: "unsupported", version: null };
+}
+
+export function diagnoseReport(invocation) {
+  let configuration = { status: "unknown", fingerprint: null };
+  try {
+    const metadata = loadPackageMetadata(invocation);
+    configuration = {
+      status: "available",
+      fingerprint: metadata.configuration_fingerprint,
+    };
+  } catch {
+    configuration = { status: "unavailable", fingerprint: null };
+  }
+  const moonVersion = probeCommand(invocation.moon, ["--version"]);
+  const check = runMoonCaptured(invocation, ["check", "--target", "native", invocation.packagePath]);
+  return {
+    schema_version: 1,
+    command: "diagnose",
+    host: { platform: platform(), arch: arch() },
+    moon: { version: moonVersion },
+    configuration,
+    webview_runtime: probeWebViewRuntime(),
+    check: { status: check.ok ? "passed" : "failed", exit_code: check.status },
+  };
+}
+
+function failedDiagnoseReport() {
+  return {
+    schema_version: 1,
+    command: "diagnose",
+    host: { platform: platform(), arch: arch() },
+    moon: { version: null },
+    configuration: { status: "unavailable", fingerprint: null },
+    webview_runtime: probeWebViewRuntime(),
+    check: { status: "failed", exit_code: 1 },
+  };
 }
 
 function prepareOrbitBuild(invocation) {
@@ -1674,6 +1749,25 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
         environment.stdout.write(`orbit: ${error.message}\n`);
       }
       process.exitCode = 2;
+    }
+    return;
+  }
+
+  if (invocation.command === "diagnose") {
+    try {
+      const report = diagnoseReport(invocation);
+      if (invocation.json) {
+        environment.stdout.write(`${JSON.stringify(report)}\n`);
+      } else {
+        environment.stdout.write(`Orbit diagnostics: ${report.check.status}\n`);
+        environment.stdout.write(`WebView runtime: ${report.webview_runtime.kind} (${report.webview_runtime.status})\n`);
+      }
+      if (report.check.status !== "passed") process.exitCode = report.check.exit_code;
+    } catch {
+      const report = failedDiagnoseReport();
+      if (invocation.json) environment.stdout.write(`${JSON.stringify(report)}\n`);
+      else environment.stdout.write("Orbit diagnostics: failed\n");
+      process.exitCode = 1;
     }
     return;
   }

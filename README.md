@@ -7,7 +7,7 @@ Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管�
 以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
 IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
 
-当前开发版本为 `0.1.0-alpha.3`（未发布）。Windows x64 是当前唯一的一等支持目标；Linux
+当前开发版本为 `0.1.0-alpha.4`（未发布）。Windows x64 是当前唯一的一等支持目标；Linux
 保持持续构建、打包验证的实验性支持。API 与配置仍可能在正式版前调整。
 
 ## 已实现
@@ -20,6 +20,7 @@ IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue
 - HTTPS 远端页面、精确 origin 白名单和嵌入式失败回退页。
 - 原生插件 ABI v1/v2、sidecar schema、权限声明和可观察的安全关闭。
 - Vite 开发/生产流程，以及 JavaScript IPC bindings 生成。
+- 可选、内存限定的桌面生命周期诊断记录与 JSON 环境检查。
 - 图标生成、可校验目录包、Windows NSIS 安装包、Linux `tar.gz`、deb、rpm 和 Arch 包。
 
 ## 五分钟运行
@@ -86,7 +87,7 @@ v2 配置、受 capability 保护的 IPC 示例、前端资源和 npm scripts。
 向现有模块添加 Orbit：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.3
+moon add Nanaloveyuki/orbit@0.1.0-alpha.4
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit run
@@ -232,6 +233,8 @@ npx orbit build
 ```
 
 CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 `orbit.conf.json`。
+`diagnose --json` 输出单个版本化 JSON 文档，用于采集本机 WebView 与编译环境状态；完整
+字段与应用内生命周期历史见[诊断](docs/diagnostics.md)。
 
 ## CLI 与发布产物
 

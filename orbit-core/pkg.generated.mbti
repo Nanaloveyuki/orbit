@@ -2,6 +2,7 @@
 package "Nanaloveyuki/orbit/orbit-core"
 
 import {
+  "Nanaloveyuki/orbit/orbit-diagnostics",
   "Nanaloveyuki/orbit/orbit-event",
   "Nanaloveyuki/orbit/orbit-ipc",
   "Nanaloveyuki/orbit/orbit-plugin",
@@ -82,8 +83,10 @@ pub struct DesktopOptions {
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
   runtime_suspend_handler : ((String) -> Result[Unit, String])?
+  diagnostic_sink : &@orbit-diagnostics.DiagnosticSink?
+  diagnostic_configuration_fingerprint : String?
 }
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?, runtime_suspend_handler? : ((String) -> Result[Unit, String])?) -> Self raise CoreError
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?, runtime_suspend_handler? : ((String) -> Result[Unit, String])?, diagnostic_sink? : &@orbit-diagnostics.DiagnosticSink?, diagnostic_configuration_fingerprint? : String?) -> Self raise CoreError
 
 pub struct DesktopUiContext {
   // private fields

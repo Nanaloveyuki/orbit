@@ -6,6 +6,12 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+## 0.1.0-alpha.4 - 2026-08-11
+
+- Added opt-in, bounded in-memory lifecycle diagnostics backed by BitLogger
+  history, with fixed safe fields and no implicit persistence.
+- `orbit diagnose --json` now emits a schema-versioned environment report while
+  retaining the native MoonBit compilation check.
 - `orbit init` now includes a Windows signed-release workflow, pinned MoonBit
   toolchain file, and application release checklist. The workflow requires a
   matching tag, a configured signing command, descriptor verification, and a

@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-diagnostics"
+
+import {
+  "Nanaloveyuki/BitLogger/src/core",
+  "Nanaloveyuki/BitLogger/src/sink_graph",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct BitLoggerDiagnosticSink {
+  sink : &@sink_graph.Sink
+}
+pub fn BitLoggerDiagnosticSink::new(&@sink_graph.Sink) -> Self
+pub impl DiagnosticSink for BitLoggerDiagnosticSink
+
+pub struct DiagnosticEvent {
+  level : DiagnosticLevel
+  kind : DiagnosticKind
+  window_label : String?
+  configuration_fingerprint : String?
+}
+pub fn DiagnosticEvent::new(DiagnosticKind, level? : DiagnosticLevel, window_label? : String?, configuration_fingerprint? : String?) -> Self
+pub fn DiagnosticEvent::to_record(Self) -> @core.Record
+pub fn DiagnosticEvent::with_configuration_fingerprint(Self, String) -> Self
+
+pub struct DiagnosticHistory {
+  sink : @sink_graph.HistorySink
+}
+pub fn DiagnosticHistory::capacity(Self) -> Int
+pub fn DiagnosticHistory::clear(Self) -> Unit
+pub fn DiagnosticHistory::count(Self) -> Int
+pub fn DiagnosticHistory::dropped_count(Self) -> Int
+pub fn DiagnosticHistory::new(capacity? : Int) -> Self
+pub fn DiagnosticHistory::snapshot(Self) -> Array[@core.Record]
+pub impl DiagnosticSink for DiagnosticHistory
+
+pub(all) enum DiagnosticKind {
+  DesktopStarting
+  DesktopStarted
+  DesktopStartupFailed
+  RuntimeReady
+  RuntimeFailed
+  RuntimeDestroyed
+  RuntimeSuspended
+  RuntimeSuspendFailed
+  RuntimeResumed
+  RuntimeResumeFailed
+  ExtensionStartFailed
+  ExtensionPollFailed
+  ExtensionShutdownFailed
+  PluginStartupFailed
+  PluginPollFailed
+  DesktopStopping
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DiagnosticLevel {
+  Info
+  Warning
+  Error
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+pub(open) trait DiagnosticSink {
+  fn record(Self, DiagnosticEvent) -> Unit
+}

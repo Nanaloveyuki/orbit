@@ -1,6 +1,6 @@
 # Security Policy
 
-Orbit is pre-release software. `0.1.0-alpha.3` may change its public API, but
+Orbit is pre-release software. `0.1.0-alpha.4` may change its public API, but
 security defects affecting the documented Windows x64 support surface are still
 handled as release blockers.
 
