@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-tray-windows"
+
+import {
+  "Nanaloveyuki/orbit/orbit-core",
+  "Nanaloveyuki/orbit/orbit-tray",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type MountedTrayItem
+
+pub struct WindowsTrayExtension {
+  // private fields
+}
+pub fn WindowsTrayExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn WindowsTrayExtension::new(Array[@orbit-tray.TrayItem], (@orbit-core.DesktopController, @orbit-tray.TrayController, @orbit-tray.TrayItemId, @orbit-tray.TrayEvent) -> Unit) -> Self
+
+// Type aliases
+
+// Traits

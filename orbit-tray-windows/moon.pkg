@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "Nanaloveyuki/image",
+  "Nanaloveyuki/orbit/orbit-core" @core,
+  "Nanaloveyuki/orbit/orbit-tray" @tray,
+}
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "native_tray.c" ],
+)
