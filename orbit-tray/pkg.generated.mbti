@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-tray"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror TrayError {
+  InvalidIdentifier(String)
+  DuplicateMenuCommand(String)
+  EmptyIcon
+  Unavailable
+} derive(@debug.Debug)
+
+// Types and methods
+pub struct TrayCommandId {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn TrayCommandId::new(String) -> Self raise TrayError
+pub fn TrayCommandId::value(Self) -> String
+
+pub struct TrayController {
+  // private fields
+}
+pub fn TrayController::new((TrayItem) -> Result[Unit, TrayError], (TrayItemId) -> Result[Unit, TrayError]) -> Self
+pub fn TrayController::open_menu(Self, TrayItemId) -> Unit raise TrayError
+pub fn TrayController::replace_item(Self, TrayItem) -> Unit raise TrayError
+
+pub(all) enum TrayEvent {
+  PrimaryActivation
+  SecondaryActivation
+  Command(TrayCommandId)
+} derive(@debug.Debug)
+
+pub struct TrayIcon {
+  png : Bytes
+}
+pub fn TrayIcon::from_png(Bytes) -> Self raise TrayError
+pub fn TrayIcon::png(Self) -> Bytes
+
+pub struct TrayItem {
+  id : TrayItemId
+  icon : TrayIcon
+  tooltip : String
+  visible : Bool
+  menu : Array[TrayMenuEntry]
+}
+pub fn TrayItem::icon(Self) -> TrayIcon
+pub fn TrayItem::id(Self) -> TrayItemId
+pub fn TrayItem::menu(Self) -> Array[TrayMenuEntry]
+pub fn TrayItem::new(TrayItemId, TrayIcon, String, visible? : Bool, menu? : Array[TrayMenuEntry]) -> Self raise TrayError
+pub fn TrayItem::tooltip(Self) -> String
+pub fn TrayItem::visible(Self) -> Bool
+
+pub struct TrayItemId {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn TrayItemId::new(String) -> Self raise TrayError
+pub fn TrayItemId::value(Self) -> String
+
+pub(all) enum TrayMenuEntry {
+  Command(TrayCommandId, String, Bool, Bool)
+  Separator
+  Submenu(String, Array[TrayMenuEntry])
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits
