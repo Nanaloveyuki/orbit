@@ -1,14 +1,10 @@
 import {
-  "moonbitlang/core/encoding/base64",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/async",
   "moonbitlang/async/cond_var",
   "moonbitlang/async/external_loop_integration" @external_loop,
-  "moonbitlang/async/fs",
   "Nanaloveyuki/orbit/orbit-event" @event,
-  "Nanaloveyuki/orbit/orbit-file" @file,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/orbit/orbit-ipc-async" @ipc_async,
   "Nanaloveyuki/orbit/orbit-ipc-moonview" @ipc_moonview,
@@ -18,7 +14,3 @@ import {
 }
 
 supported_targets = "native"
-
-options(
-  "native-stub": [ "async_fs_link.c" ],
-)

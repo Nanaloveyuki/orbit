@@ -121,15 +121,17 @@ Windows 本地窗口可以在 capability 明确授予后调用内建的
 `orbit.dialog.pick_directory`。结果只包含不透明 handle、显示名称和项目类型，绝不包含
 本机路径；HTTP、插件和远端页面不能使用这些命令。
 
-文件 picker 与 `orbit.fs.*` 不是核心默认 API。应用必须在创建 desktop options 后显式
-启用其可选桥接层；未启用时，即使 IPC policy 授予了对应命令，也不会注册任何文件命令：
+文件 picker 与 `orbit.fs.*` 位于独立的 `orbit-desktop-file` 扩展包。应用必须显式创建并
+注入该扩展；未注入时，即使 IPC policy 授予了对应命令，也不会注册任何文件命令：
 
 ```moonbit
+let file_extension = @desktop_file.DesktopFileExtension::new()
 let options = @core.DesktopOptions::new(
   windows~,
   ipc_registry=Some(registry),
   ipc_policy=Some(policy),
-).with_builtin_file_capabilities()
+  extensions=[file_extension.as_extension()],
+)
 ```
 
 同样可显式授予 `orbit.window.print`。它只接受 `{}`，只为调用它的本地窗口打开当前

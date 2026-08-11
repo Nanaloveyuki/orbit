@@ -20,12 +20,14 @@ fn main {
   let ipc_policy = configured_ipc_policy() catch {
     _ => fail("could not configure example IPC permissions")
   }
+  let file_extension = @desktop_file.DesktopFileExtension::new()
   let desktop_options = @core.DesktopOptions::new(
     windows=configured_windows(),
     ipc_registry=Some(ipc_registry),
     ipc_policy=Some(ipc_policy),
     plugin_declarations=configured_plugins(),
-  ).with_builtin_file_capabilities() catch {
+    extensions=[file_extension.as_extension()],
+  ) catch {
     _ => fail("could not create desktop options")
   }
   let factory = @moonview_runtime.MoonViewRuntimeFactory::new()

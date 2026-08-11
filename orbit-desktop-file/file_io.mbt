@@ -58,24 +58,14 @@ fn file_read_failure(code : String, message : String) -> @ipc.CommandFailure {
 }
 
 ///|
-fn resolve_file_window_label(
-  context : @ipc.InvocationContext,
-) -> Result[String, @ipc.CommandFailure] {
-  match context.principal() {
-    Window(label) => Ok(label)
-    _ =>
-      Err(
-        file_read_failure(
-          "file_unavailable", "file access requires a local window",
-        ),
-      )
-  }
+fn resolve_file_window_label(context : @core.DesktopAsyncContext) -> String {
+  context.label()
 }
 
 ///|
 fn resolve_file_path(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  label : String,
   id : String,
   kind : @file.FileCapabilityKind,
 ) -> Result[String, @ipc.CommandFailure] {
@@ -83,10 +73,6 @@ fn resolve_file_path(
     return Err(
       file_read_failure("invalid_handle", "file handle must not be empty"),
     )
-  }
-  let label = match resolve_file_window_label(context) {
-    Ok(label) => label
-    Err(failure) => return Err(failure)
   }
   match files.resolve(label, id, kind) {
     Ok(path) => Ok(path)
@@ -112,7 +98,7 @@ fn resolve_file_path(
 ///|
 async fn read_capability_bytes(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  context : @core.DesktopAsyncContext,
   request : FileReadRequest,
 ) -> Result[Bytes, @ipc.CommandFailure] {
   if request.id.is_empty() {
@@ -120,10 +106,7 @@ async fn read_capability_bytes(
       file_read_failure("invalid_handle", "file handle must not be empty"),
     )
   }
-  let label = match resolve_file_window_label(context) {
-    Ok(label) => label
-    Err(failure) => return Err(failure)
-  }
+  let label = resolve_file_window_label(context)
   let native = match
     files.read_native_file(label, request.id, max_file_read_bytes) {
     Ok(bytes) => bytes
@@ -152,7 +135,7 @@ async fn read_capability_bytes(
         file_read_failure("file_handle_invalid", "file handle is unavailable"),
       )
   }
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "file read was cancelled"))
   }
   match native {
@@ -190,7 +173,7 @@ async fn read_capability_bytes(
     _ =>
       return Err(file_read_failure("file_read_failed", "could not read file"))
   }
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "file read was cancelled"))
   }
   Ok(bytes)
@@ -199,7 +182,7 @@ async fn read_capability_bytes(
 ///|
 async fn read_binary_capability(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  context : @core.DesktopAsyncContext,
   request : FileReadRequest,
 ) -> Result[FileBinaryReadResponse, @ipc.CommandFailure] {
   let bytes = match read_capability_bytes(files, context, request) {
@@ -212,7 +195,7 @@ async fn read_binary_capability(
 ///|
 async fn read_text_capability(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  context : @core.DesktopAsyncContext,
   request : FileReadRequest,
 ) -> Result[FileTextReadResponse, @ipc.CommandFailure] {
   let bytes = match read_capability_bytes(files, context, request) {
@@ -245,11 +228,12 @@ async fn remove_temporary_write(path : String) -> Unit {
 ///|
 async fn write_text_capability(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  context : @core.DesktopAsyncContext,
   request : FileWriteRequest,
 ) -> Result[FileWriteResponse, @ipc.CommandFailure] {
   link_async_fs()
-  let path = match resolve_file_path(files, context, request.id, Write) {
+  let path = match
+    resolve_file_path(files, context.label(), request.id, Write) {
     Ok(path) => path
     Err(failure) => return Err(failure)
   }
@@ -259,7 +243,7 @@ async fn write_text_capability(
       file_read_failure("file_too_large", "text exceeds the 64 KiB write limit"),
     )
   }
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "file write was cancelled"))
   }
   let temporary = temporary_write_path(path, request.id)
@@ -269,7 +253,7 @@ async fn write_text_capability(
       return Err(file_read_failure("file_write_failed", "could not write file"))
     }
   }
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     remove_temporary_write(temporary)
     return Err(file_read_failure("cancelled", "file write was cancelled"))
   }
@@ -287,10 +271,10 @@ async fn write_text_capability(
 ///|
 async fn read_directory_capability(
   files : @file.FileCapabilityRegistry,
-  context : @ipc.InvocationContext,
+  context : @core.DesktopAsyncContext,
   request : FileDirectoryReadRequest,
 ) -> Result[FileDirectoryReadResponse, @ipc.CommandFailure] {
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "directory read was cancelled"))
   }
   @async.sleep(0) catch {
@@ -302,15 +286,7 @@ async fn read_directory_capability(
       file_read_failure("invalid_handle", "file handle must not be empty"),
     )
   }
-  let label = match context.principal() {
-    Window(label) => label
-    _ =>
-      return Err(
-        file_read_failure(
-          "file_unavailable", "file access requires a local window",
-        ),
-      )
-  }
+  let label = context.label()
   let listed = match
     files.list_directory(label, request.id, max_directory_entries) {
     Ok(entries) => entries
@@ -364,52 +340,8 @@ async fn read_directory_capability(
       },
     })
   }
-  if context.cancellation().is_cancelled() {
+  if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "directory read was cancelled"))
   }
   Ok({ entries, })
-}
-
-///|
-fn DesktopApp::register_file_access_commands(
-  self : DesktopApp,
-) -> Result[Unit, String] {
-  match self.options.ipc_registry {
-    None => Ok(())
-    Some(registry) => {
-      let binary = @ipc.CommandName::new("orbit.fs.read_binary") catch {
-        _ => return Err("invalid built-in file read command")
-      }
-      registry.register_async_context(binary, async fn(context, request) {
-        read_binary_capability(self.files, context, request)
-      }) catch {
-        _ => return Err("file read command is already registered")
-      }
-      let text = @ipc.CommandName::new("orbit.fs.read_text") catch {
-        _ => return Err("invalid built-in file read command")
-      }
-      registry.register_async_context(text, async fn(context, request) {
-        read_text_capability(self.files, context, request)
-      }) catch {
-        _ => return Err("file read command is already registered")
-      }
-      let write = @ipc.CommandName::new("orbit.fs.write_text") catch {
-        _ => return Err("invalid built-in file write command")
-      }
-      registry.register_async_context(write, async fn(context, request) {
-        write_text_capability(self.files, context, request)
-      }) catch {
-        _ => return Err("file write command is already registered")
-      }
-      let directory = @ipc.CommandName::new("orbit.fs.read_directory") catch {
-        _ => return Err("invalid built-in directory read command")
-      }
-      registry.register_async_context(directory, async fn(context, request) {
-        read_directory_capability(self.files, context, request)
-      }) catch {
-        _ => return Err("directory read command is already registered")
-      }
-      Ok(())
-    }
-  }
 }

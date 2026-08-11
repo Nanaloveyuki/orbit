@@ -65,27 +65,6 @@ test "desktop options reject duplicate window labels" {
 }
 
 ///|
-test "builtin file capabilities require explicit opt-in" {
-  let runtime_options = @runtime.RuntimeOptions::new(
-    label="main",
-    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
-    initial_content=Html("<main></main>"),
-  )
-  let options = DesktopOptions::new(windows=[
-    DesktopWindowOptions::new("Orbit", runtime_options),
-  ])
-  assert_false(options.builtin_file_capabilities_enabled())
-  assert_true(
-    options.with_builtin_file_capabilities().builtin_file_capabilities_enabled(),
-  )
-  assert_false(
-    options
-    .with_builtin_file_capabilities(enabled=false)
-    .builtin_file_capabilities_enabled(),
-  )
-}
-
-///|
 test "desktop options use the plugin directory from the environment" {
   @env.set_env_var("ORBIT_PLUGIN_DIRECTORY", "environment-plugins")
   let runtime_options = @runtime.RuntimeOptions::new(
@@ -128,5 +107,79 @@ test "desktop options reject an empty plugin directory from the environment" {
     _ => false
   }
   @env.unset_env_var("ORBIT_PLUGIN_DIRECTORY")
+  assert_true(rejected)
+}
+
+///|
+priv struct TestDesktopExtension {}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn identifier(_self) {
+  "test.extension"
+}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn commands(_self) {
+  []
+}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn start(_self, _controller) {
+  Ok(())
+}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn poll(_self, _controller) {
+  Ok(())
+}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn window_destroyed(
+  _self,
+  _label,
+) {
+  Ok(())
+}
+
+///|
+impl DesktopExtension for TestDesktopExtension with fn shutdown(_self) {
+  Ok(())
+}
+
+///|
+fn TestDesktopExtension::as_extension(
+  self : TestDesktopExtension,
+) -> &DesktopExtension {
+  self as &DesktopExtension
+}
+
+///|
+test "desktop options retain ordered extensions and close policy" {
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let extension = TestDesktopExtension::{  }
+  let options = DesktopOptions::new(
+    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+    extensions=[extension.as_extension()],
+  )
+  assert_eq(options.extensions.length(), 1)
+  match options.close_request_handler {
+    None => ()
+    Some(_) => abort("expected the default close policy")
+  }
+}
+
+///|
+test "desktop commands reject invalid names at construction" {
+  let rejected = try {
+    ignore(DesktopCommand::ui("", (_, _) => Ok(Json::null())))
+    false
+  } catch {
+    InitializationFailed(_) => true
+    _ => false
+  }
   assert_true(rejected)
 }

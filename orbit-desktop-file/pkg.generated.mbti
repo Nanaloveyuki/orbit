@@ -1,0 +1,22 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-desktop-file"
+
+import {
+  "Nanaloveyuki/orbit/orbit-core",
+  "Nanaloveyuki/orbit/orbit-file",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct DesktopFileExtension {
+  files : @orbit-file.FileCapabilityRegistry
+}
+pub fn DesktopFileExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn DesktopFileExtension::new() -> Self
+
+// Type aliases
+
+// Traits
