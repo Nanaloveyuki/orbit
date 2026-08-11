@@ -219,6 +219,23 @@ test "desktop options retain optional diagnostics" {
 }
 
 ///|
+test "desktop options leave diagnostics disabled by default" {
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let options = DesktopOptions::new(windows=[
+    DesktopWindowOptions::new("Orbit", runtime_options),
+  ])
+  assert_eq(options.diagnostic_configuration_fingerprint, None)
+  match options.diagnostic_sink {
+    None => ()
+    Some(_) => abort("expected diagnostics to remain disabled")
+  }
+}
+
+///|
 test "desktop commands reject invalid names at construction" {
   let rejected = try {
     ignore(DesktopCommand::ui("", (_, _) => Ok(Json::null())))
