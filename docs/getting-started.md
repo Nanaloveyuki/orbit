@@ -79,6 +79,7 @@ identifier 和 MoonBit module 会从目录名生成开发默认值；发布前�
 2. `assets/` 中可直接运行的 HTML/CSS/JavaScript；
 3. `main.mbt` 中的 MoonBit IPC 注册与桌面入口；
 4. `moon.pkg`、`moon.mod` 和常用 npm scripts。
+5. 固定 MoonBit 工具链、Windows 签名发行 workflow 与可复现发布清单。
 
 第一次 `orbit:run` 会生成 `generated_page.mbt`。建议提交该文件，使嵌入资源、配置指纹
 和权限策略的变化可审查。
@@ -181,6 +182,14 @@ CLI 启动 `dev_command`、等待精确的 `dev_url`、运行桌面应用，并�
 进程树。构建和打包时，CLI 先运行 `build_command`，再从 `dist_dir` 嵌入资源。
 
 Vite 模式与生产 `web.remote` 模式不能同时启用。
+
+## Windows 发布
+
+`init` 创建的应用包含 `.github/workflows/windows-release.yml` 和
+`docs/windows-release.md`。该 workflow 只接受与 `orbit.conf.json` 中应用版本一致的
+tag，要求显式的签名命令，验证 Orbit 目录包、安装器 descriptor 与 Windows
+Authenticode 签名后再创建 GitHub Release。应用维护者必须配置自己的证书提供方式和
+`ORBIT_WINDOWS_SIGN_COMMAND` 环境 secret；模板不会提供无签名发布的后门。
 
 ## 下一步
 

@@ -148,7 +148,7 @@ test("init creates a complete application without overwriting a target", (contex
   });
 
   assert.equal(application.slug, "desktop-app");
-  assert.equal(application.files.length, 10);
+  assert.equal(application.files.length, 13);
   for (const relativePath of application.files) {
     assert.equal(existsSync(join(target, relativePath)), true, relativePath);
   }
@@ -161,6 +161,12 @@ test("init creates a complete application without overwriting a target", (contex
     /"orbit:run": "orbit run"/,
   );
   assert.match(readFileSync(join(target, ".gitignore"), "utf8"), /^\.repos\/$/m);
+  assert.equal(readFileSync(join(target, ".moon-version"), "utf8"), "0.1.20260803\n");
+  const workflow = readFileSync(join(target, ".github", "workflows", "windows-release.yml"), "utf8");
+  assert.match(workflow, /ORBIT_WINDOWS_SIGN_COMMAND/);
+  assert.match(workflow, /Get-AuthenticodeSignature/);
+  assert.match(workflow, /gh release create/);
+  assert.match(readFileSync(join(target, "docs", "windows-release.md"), "utf8"), /Release Checklist/);
   const config = JSON.parse(readFileSync(join(target, "orbit.conf.json"), "utf8"));
   assert.equal(config.schema_version, 2);
   assert.equal(config.app.identifier, "com.example.desktop");

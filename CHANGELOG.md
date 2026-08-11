@@ -4,7 +4,14 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
-## 0.1.0-alpha.3 - Unreleased
+## Unreleased
+
+- `orbit init` now includes a Windows signed-release workflow, pinned MoonBit
+  toolchain file, and application release checklist. The workflow requires a
+  matching tag, a configured signing command, descriptor verification, and a
+  valid Authenticode signature before publishing.
+
+## 0.1.0-alpha.3 - 2026-08-11
 
 - Declared Windows x64 as Orbit's first-class desktop target.
 - Added the Windows tray, desktop extension lifecycle, and per-window WebView
