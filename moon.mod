@@ -1,6 +1,6 @@
 name = "Nanaloveyuki/orbit"
 
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 
 description = "Composable desktop application foundations for MoonBit."
 
@@ -17,6 +17,7 @@ preferred_target = "native"
 import {
   "gmlewis/sha256@0.17.32",
   "Nanaloveyuki/ajni@0.2.2",
+  "Nanaloveyuki/BitLogger@0.8.0",
   "Nanaloveyuki/parsec@0.1.3",
   "Nanaloveyuki/moonview@0.1.0-beta.7",
   "Nanaloveyuki/sync@0.7.1",

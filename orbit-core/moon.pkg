@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/cond_var",
   "moonbitlang/async/external_loop_integration" @external_loop,
   "Nanaloveyuki/orbit/orbit-event" @event,
+  "Nanaloveyuki/orbit/orbit-diagnostics" @diagnostics,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/orbit/orbit-ipc-async" @ipc_async,
   "Nanaloveyuki/orbit/orbit-ipc-moonview" @ipc_moonview,

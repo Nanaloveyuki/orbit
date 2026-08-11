@@ -58,6 +58,8 @@ pub struct DesktopOptions {
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
   runtime_suspend_handler : ((String) -> Result[Unit, String])?
+  diagnostic_sink : &@diagnostics.DiagnosticSink?
+  diagnostic_configuration_fingerprint : String?
 }
 
 ///|
@@ -89,6 +91,8 @@ pub fn DesktopOptions::new(
   extensions? : Array[&DesktopExtension] = [],
   close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)? = None,
   runtime_suspend_handler? : ((String) -> Result[Unit, String])? = None,
+  diagnostic_sink? : &@diagnostics.DiagnosticSink? = None,
+  diagnostic_configuration_fingerprint? : String? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -129,6 +133,8 @@ pub fn DesktopOptions::new(
     extensions,
     close_request_handler,
     runtime_suspend_handler,
+    diagnostic_sink,
+    diagnostic_configuration_fingerprint,
   }
 }
 
@@ -294,6 +300,7 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
   if self.shutting_down {
     return
   }
+  self.record_diagnostic(@diagnostics.DesktopStopping, @diagnostics.Info, None)
   self.shutting_down = true
   match self.async_ipc {
     Some(dispatcher) => dispatcher.cancel_all()
@@ -328,6 +335,27 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     mounted.window.destroy()
   }
   self.windows.clear()
+}
+
+///|
+fn DesktopApp::record_diagnostic(
+  self : DesktopApp,
+  kind : @diagnostics.DiagnosticKind,
+  level : @diagnostics.DiagnosticLevel,
+  window_label : String?,
+) -> Unit {
+  match self.options.diagnostic_sink {
+    Some(sink) =>
+      sink.record(
+        @diagnostics.DiagnosticEvent::new(
+          kind,
+          level~,
+          window_label~,
+          configuration_fingerprint=self.options.diagnostic_configuration_fingerprint,
+        ),
+      )
+    None => ()
+  }
 }
 
 ///|
@@ -644,10 +672,16 @@ fn DesktopApp::start_extensions(self : DesktopApp) -> Result[Unit, String] {
   for extension in self.options.extensions {
     match extension.start(self.controller()) {
       Ok(_) => self.started_extensions.push(extension)
-      Err(reason) =>
+      Err(reason) => {
+        self.record_diagnostic(
+          @diagnostics.ExtensionStartFailed,
+          @diagnostics.Error,
+          None,
+        )
         return Err(
           "desktop extension \{extension.identifier()} failed to start: \{reason}",
         )
+      }
     }
   }
   Ok(())
@@ -657,10 +691,16 @@ fn DesktopApp::start_extensions(self : DesktopApp) -> Result[Unit, String] {
 fn DesktopApp::shutdown_extensions(self : DesktopApp) -> Unit {
   for extension in self.started_extensions.rev() {
     match extension.shutdown() {
-      Err(reason) if self.teardown_failure is None =>
+      Err(reason) if self.teardown_failure is None => {
+        self.record_diagnostic(
+          @diagnostics.ExtensionShutdownFailed,
+          @diagnostics.Warning,
+          None,
+        )
         self.teardown_failure = Some(
           "desktop extension \{extension.identifier()} shutdown failed: \{reason}",
         )
+      }
       _ => ()
     }
   }
@@ -733,11 +773,25 @@ fn DesktopApp::suspend_window_runtime(
       self.options.runtime_suspend_handler,
       mounted.label,
     ) {
-    Err(reason) => return Err(reason)
+    Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.RuntimeSuspendFailed,
+        @diagnostics.Error,
+        Some(mounted.label),
+      )
+      return Err(reason)
+    }
     Ok(_) => ()
   }
   match self.notify_window_suspended(mounted) {
-    Err(reason) => return Err(reason)
+    Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.RuntimeSuspendFailed,
+        @diagnostics.Error,
+        Some(mounted.label),
+      )
+      return Err(reason)
+    }
     Ok(_) => ()
   }
   self.unsubscribe_page_events(mounted)
@@ -745,9 +799,21 @@ fn DesktopApp::suspend_window_runtime(
     _ => ()
   }
   runtime.destroy() catch {
-    error => return Err(runtime_reason(error))
+    error => {
+      self.record_diagnostic(
+        @diagnostics.RuntimeSuspendFailed,
+        @diagnostics.Error,
+        Some(mounted.label),
+      )
+      return Err(runtime_reason(error))
+    }
   }
   mounted.runtime.val = None
+  self.record_diagnostic(
+    @diagnostics.RuntimeSuspended,
+    @diagnostics.Info,
+    Some(mounted.label),
+  )
   Ok(())
 }
 
@@ -941,18 +1007,35 @@ fn DesktopApp::resume_window_runtime(
     return Ok(())
   }
   let runtime = self.mount_runtime(mounted.options, mounted.window) catch {
-    error => return Err(core_reason(error))
+    error => {
+      self.record_diagnostic(
+        @diagnostics.RuntimeResumeFailed,
+        @diagnostics.Error,
+        Some(mounted.label),
+      )
+      return Err(core_reason(error))
+    }
   }
   runtime.runtime.set_visible(true) catch {
     error => {
       runtime.runtime.destroy() catch {
         _ => ()
       }
+      self.record_diagnostic(
+        @diagnostics.RuntimeResumeFailed,
+        @diagnostics.Error,
+        Some(mounted.label),
+      )
       return Err(runtime_reason(error))
     }
   }
   mounted.runtime.val = Some(runtime.runtime)
   mounted.page_event_subscription.val = runtime.page_event_subscription
+  self.record_diagnostic(
+    @diagnostics.RuntimeResumed,
+    @diagnostics.Info,
+    Some(mounted.label),
+  )
   Ok(())
 }
 
@@ -1007,19 +1090,42 @@ fn DesktopApp::record_runtime_event(
     payload,
   )
   match event {
-    Failed(error) =>
+    Ready =>
+      self.record_diagnostic(
+        @diagnostics.RuntimeReady,
+        @diagnostics.Info,
+        Some(label),
+      )
+    Destroyed =>
+      self.record_diagnostic(
+        @diagnostics.RuntimeDestroyed,
+        @diagnostics.Info,
+        Some(label),
+      )
+    Failed(error) => {
+      self.record_diagnostic(
+        @diagnostics.RuntimeFailed,
+        @diagnostics.Error,
+        Some(label),
+      )
       if !self.shutting_down && self.pending_runtime_failure is None {
         self.pending_runtime_failure = Some(runtime_reason(error))
       }
-    _ => ()
+    }
   }
 }
 
 ///|
 pub impl @orby.App for DesktopApp with fn started(self, active) {
   self.active = Some(active)
+  self.record_diagnostic(@diagnostics.DesktopStarting, @diagnostics.Info, None)
   match self.validate_extensions() {
     Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.DesktopStartupFailed,
+        @diagnostics.Error,
+        None,
+      )
       self.teardown()
       raise StartupFailed(reason)
     }
@@ -1028,6 +1134,11 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
   for options in self.options.windows {
     let mounted = self.mount_window(active, options) catch {
       error => {
+        self.record_diagnostic(
+          @diagnostics.DesktopStartupFailed,
+          @diagnostics.Error,
+          None,
+        )
         self.teardown()
         match error {
           InitializationFailed(message)
@@ -1040,6 +1151,11 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
   }
   match self.start_extensions() {
     Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.DesktopStartupFailed,
+        @diagnostics.Error,
+        None,
+      )
       self.teardown()
       raise StartupFailed(self.teardown_failure.unwrap_or(reason))
     }
@@ -1047,6 +1163,11 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
   }
   match self.register_extension_commands() {
     Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.DesktopStartupFailed,
+        @diagnostics.Error,
+        None,
+      )
       self.teardown()
       raise StartupFailed(self.teardown_failure.unwrap_or(reason))
     }
@@ -1054,6 +1175,11 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
   }
   match self.register_window_commands() {
     Err(reason) => {
+      self.record_diagnostic(
+        @diagnostics.DesktopStartupFailed,
+        @diagnostics.Error,
+        None,
+      )
       self.teardown()
       raise StartupFailed(reason)
     }
@@ -1062,12 +1188,18 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
   if self.async_exit is None {
     match start_configured_plugins(self.plugins, self.options) {
       Err(reason) => {
+        self.record_diagnostic(
+          @diagnostics.PluginStartupFailed,
+          @diagnostics.Error,
+          None,
+        )
         self.teardown()
         raise StartupFailed(self.teardown_failure.unwrap_or(reason))
       }
       Ok(_) => ()
     }
   }
+  self.record_diagnostic(@diagnostics.DesktopStarted, @diagnostics.Info, None)
 }
 
 ///|
@@ -1169,6 +1301,11 @@ pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
     for extension in self.started_extensions {
       match extension.poll(self.controller()) {
         Err(reason) => {
+          self.record_diagnostic(
+            @diagnostics.ExtensionPollFailed,
+            @diagnostics.Error,
+            None,
+          )
           self.pending_runtime_failure = Some(
             "desktop extension \{extension.identifier()} poll failed: \{reason}",
           )
@@ -1178,8 +1315,14 @@ pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
       }
     }
     match self.plugins.poll_events() {
-      Err(error) =>
+      Err(error) => {
+        self.record_diagnostic(
+          @diagnostics.PluginPollFailed,
+          @diagnostics.Error,
+          None,
+        )
         self.pending_runtime_failure = Some(plugin_start_reason(error))
+      }
       Ok(_) => ()
     }
   }

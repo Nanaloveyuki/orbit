@@ -99,6 +99,7 @@ fn windows_tray_extension() -> &@core.DesktopExtension? {
 ///|
 fn main {
   let state = { latest: Ref({ "value": "" }) }
+  let diagnostics = @diagnostics.DiagnosticHistory::new()
   let ipc_registry = command_registry(state) catch {
     _ => fail("could not register IPC commands")
   }
@@ -120,6 +121,8 @@ fn main {
       @core.DesktopCloseAction::suspend()
     }),
     runtime_suspend_handler=Some(_label => Ok(())),
+    diagnostic_sink=Some(diagnostics as &@diagnostics.DiagnosticSink),
+    diagnostic_configuration_fingerprint=Some(configuration_fingerprint),
   ) catch {
     _ => fail("could not create desktop options")
   }

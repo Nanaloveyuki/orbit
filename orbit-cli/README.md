@@ -41,6 +41,11 @@ Orbit version from `moon.mod` and runs `moon fetch` into the project-local
 `.repos` cache. `--orbit-build` remains an explicit override for custom
 repository layouts.
 
+`orbit diagnose --json` emits a single schema-versioned JSON document with the
+host, Moon version, configuration fingerprint when available, best-effort
+WebView runtime status, and native compilation-check result. It does not mix
+compiler output into JSON output.
+
 Production installer, archive, and native-package commands require an external
 `--sign-command`. `--allow-unsigned` is only an explicit local-development
 opt-out.
@@ -48,6 +53,7 @@ opt-out.
 - [Orbit overview and runnable example](https://github.com/Nanaloveyuki/orbit)
 - [Getting started](https://github.com/Nanaloveyuki/orbit/blob/main/docs/getting-started.md)
 - [Configuration](https://github.com/Nanaloveyuki/orbit/blob/main/docs/configuration.md)
+- [Diagnostics](https://github.com/Nanaloveyuki/orbit/blob/main/docs/diagnostics.md)
 - [Packaging and verification](https://github.com/Nanaloveyuki/orbit/blob/main/docs/packaging.md)
 
 License: Apache-2.0.

@@ -1,6 +1,6 @@
 # Platform Support
 
-Orbit `0.1.0-alpha.3` is a pre-release desktop framework. Its public support
+Orbit `0.1.0-alpha.4` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
 | Capability | Windows x64 | Linux x64 | macOS |
@@ -36,3 +36,6 @@ cache. macOS has no Orbit top-level window host.
   by configuration alone and unavailable on non-Windows targets.
 - Orbit does not provide auto-updates, crash-report collection, enterprise
   policy management, or a process-global WebView runtime shutdown contract.
+- Lifecycle diagnostics are memory-only, opt-in, and intentionally contain only
+  reviewed fixed fields. Applications own retention beyond `DiagnosticHistory`
+  and any export or upload policy.
