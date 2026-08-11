@@ -24,9 +24,40 @@ pub(all) suberror CoreError {
   RuntimeFailed(String)
 } derive(@debug.Debug)
 
+pub(all) suberror DesktopControllerError {
+  WindowUnavailable(String)
+  HostUnavailable
+} derive(@debug.Debug)
+
 // Types and methods
 type DesktopApp
 pub impl @orby.App for DesktopApp
+
+pub struct DesktopAsyncContext {
+  // private fields
+}
+pub fn DesktopAsyncContext::is_cancelled(Self) -> Bool
+pub fn DesktopAsyncContext::label(Self) -> String
+
+pub enum DesktopCloseAction {
+  Destroy
+  Hide
+} derive(Eq, @debug.Debug)
+
+pub struct DesktopCommand {
+  // private fields
+}
+pub fn DesktopCommand::async_command(String, async (DesktopAsyncContext, Json) -> Result[Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
+pub fn DesktopCommand::name(Self) -> @orbit-ipc.CommandName
+pub fn DesktopCommand::ui(String, (DesktopUiContext, Json) -> Result[Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
+
+pub struct DesktopController {
+  // private fields
+}
+pub fn DesktopController::exit(Self) -> Unit raise DesktopControllerError
+pub fn DesktopController::focus_window(Self, String) -> Unit raise DesktopControllerError
+pub fn DesktopController::hide_window(Self, String) -> Unit raise DesktopControllerError
+pub fn DesktopController::show_window(Self, String) -> Unit raise DesktopControllerError
 
 pub enum DesktopIpcPrincipal {
   Window
@@ -42,11 +73,16 @@ pub struct DesktopOptions {
   plugin_declarations : Array[@orbit-plugin.PluginDeclaration]
   plugin_development_directory : String?
   event_router : @orbit-event.EventRouter?
-  builtin_file_capabilities : Bool
+  extensions : Array[&DesktopExtension]
+  close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
 }
-pub fn DesktopOptions::builtin_file_capabilities_enabled(Self) -> Bool
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, builtin_file_capabilities? : Bool) -> Self raise CoreError
-pub fn DesktopOptions::with_builtin_file_capabilities(Self, enabled? : Bool) -> Self
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?) -> Self raise CoreError
+
+pub struct DesktopUiContext {
+  // private fields
+}
+pub fn DesktopUiContext::label(Self) -> String
+pub fn DesktopUiContext::show_file_dialog(Self, @orbit-runtime.RuntimeFileDialogOptions) -> @orbit-runtime.RuntimeFileDialogResult raise @orbit-runtime.RuntimeError
 
 pub struct DesktopWindowOptions {
   window_title : String
@@ -59,3 +95,11 @@ pub fn DesktopWindowOptions::new(String, @orbit-runtime.RuntimeOptions, resizabl
 // Type aliases
 
 // Traits
+pub(open) trait DesktopExtension {
+  fn identifier(Self) -> String
+  fn commands(Self) -> Array[DesktopCommand]
+  fn start(Self, DesktopController) -> Result[Unit, String]
+  fn poll(Self, DesktopController) -> Result[Unit, String]
+  fn window_destroyed(Self, String) -> Result[Unit, String]
+  fn shutdown(Self) -> Result[Unit, String]
+}

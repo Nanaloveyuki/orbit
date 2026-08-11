@@ -55,7 +55,8 @@ pub struct DesktopOptions {
   plugin_declarations : Array[@plugin.PluginDeclaration]
   plugin_development_directory : String?
   event_router : @event.EventRouter?
-  builtin_file_capabilities : Bool
+  extensions : Array[&DesktopExtension]
+  close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
 }
 
 ///|
@@ -84,7 +85,8 @@ pub fn DesktopOptions::new(
   plugin_declarations? : Array[@plugin.PluginDeclaration] = [],
   plugin_development_directory? : String? = None,
   event_router? : @event.EventRouter? = None,
-  builtin_file_capabilities? : Bool = false,
+  extensions? : Array[&DesktopExtension] = [],
+  close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -122,25 +124,9 @@ pub fn DesktopOptions::new(
     plugin_declarations,
     plugin_development_directory,
     event_router,
-    builtin_file_capabilities,
+    extensions,
+    close_request_handler,
   }
-}
-
-///|
-/// Enables Orbit's optional picker and handle-bound file capability bridge.
-/// Applications that own their filesystem integration should leave it disabled.
-pub fn DesktopOptions::with_builtin_file_capabilities(
-  self : DesktopOptions,
-  enabled? : Bool = true,
-) -> DesktopOptions {
-  { ..self, builtin_file_capabilities: enabled }
-}
-
-///|
-pub fn DesktopOptions::builtin_file_capabilities_enabled(
-  self : DesktopOptions,
-) -> Bool {
-  self.builtin_file_capabilities
 }
 
 ///|
@@ -221,7 +207,8 @@ struct DesktopApp {
   options : DesktopOptions
   windows : Array[MountedWindow]
   plugins : @plugin.PluginRuntime
-  files : @file.FileCapabilityRegistry
+  started_extensions : Array[&DesktopExtension]
+  mut active : @orby.ActiveApp?
   async_exit : AsyncExit?
   async_ipc : AsyncIpcDispatcher?
   mut pending_runtime_failure : String?
@@ -235,6 +222,7 @@ priv struct MountedWindow {
   window : @orby.Window
   runtime : &@runtime.WebViewRuntime
   page_event_subscription : @event.EventSubscription?
+  extension_window_destroyed : Ref[Bool]
 }
 
 ///|
@@ -299,13 +287,16 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     Some(dispatcher) => dispatcher.cancel_all()
     None => ()
   }
-  for mounted in self.windows {
-    self.files.revoke_window(mounted.label)
-    self.unsubscribe_page_events(mounted)
-  }
   match self.plugins.shutdown() {
     Err(_) => self.teardown_failure = Some("plugin shutdown failed")
     Ok(_) => ()
+  }
+  for mounted in self.windows {
+    self.notify_window_destroyed(mounted)
+  }
+  self.shutdown_extensions()
+  for mounted in self.windows {
+    self.unsubscribe_page_events(mounted)
   }
   for mounted in self.windows {
     mounted.runtime.set_message_handler(None) catch {
@@ -319,7 +310,6 @@ fn DesktopApp::teardown(self : DesktopApp) -> Unit {
     mounted.window.destroy()
   }
   self.windows.clear()
-  self.files.clear()
 }
 
 ///|
@@ -407,8 +397,8 @@ fn DesktopApp::dispatch_ipc_message(
             @ipc.InvocationClientMessage::Cancel(id) =>
               dispatcher.cancel(invocation_scope, id)
             @ipc.InvocationClientMessage::Invoke(request) =>
-              if is_dialog_command(request.command()) ||
-                is_window_print_command(request.command()) {
+              if is_window_print_command(request.command()) ||
+                self.is_ui_synchronous_extension_command(request.command()) {
                 self.deliver_ipc_response(
                   label,
                   runtime,
@@ -472,6 +462,271 @@ fn DesktopApp::mounted_window(
 ///|
 fn DesktopApp::has_live_windows(self : DesktopApp) -> Bool {
   self.windows.any(mounted => !mounted.window.is_destroyed())
+}
+
+///|
+fn DesktopApp::controller(self : DesktopApp) -> DesktopController {
+  {
+    show_window: label => {
+      match self.mounted_for_label(label) {
+        Some(mounted) if !mounted.window.is_destroyed() => {
+          mounted.window.set_visible(true)
+          Ok(())
+        }
+        _ => Err(WindowUnavailable(label))
+      }
+    },
+    hide_window: label => {
+      match self.mounted_for_label(label) {
+        Some(mounted) if !mounted.window.is_destroyed() => {
+          mounted.window.set_visible(false)
+          Ok(())
+        }
+        _ => Err(WindowUnavailable(label))
+      }
+    },
+    focus_window: label => {
+      match self.mounted_for_label(label) {
+        Some(mounted) if !mounted.window.is_destroyed() => {
+          mounted.window.focus()
+          Ok(())
+        }
+        _ => Err(WindowUnavailable(label))
+      }
+    },
+    exit_application: () => {
+      match self.active {
+        Some(active) => {
+          active.exit()
+          Ok(())
+        }
+        None => Err(HostUnavailable)
+      }
+    },
+  }
+}
+
+///|
+fn DesktopApp::mounted_for_label(
+  self : DesktopApp,
+  label : String,
+) -> MountedWindow? {
+  for mounted in self.windows {
+    if mounted.label == label {
+      return Some(mounted)
+    }
+  }
+  None
+}
+
+///|
+fn DesktopApp::runtime_for_label(
+  self : DesktopApp,
+  label : String,
+) -> &@runtime.WebViewRuntime? {
+  match self.mounted_for_label(label) {
+    Some(mounted) if !mounted.window.is_destroyed() => Some(mounted.runtime)
+    _ => None
+  }
+}
+
+///|
+fn DesktopApp::ui_context(
+  self : DesktopApp,
+  label : String,
+) -> DesktopUiContext? {
+  match self.mounted_for_label(label) {
+    Some(mounted) if !mounted.window.is_destroyed() =>
+      Some({
+        label_: label,
+        show_dialog: options => {
+          Ok(mounted.runtime.show_file_dialog(options)) catch {
+            error => Err(error)
+          }
+        },
+      })
+    _ => None
+  }
+}
+
+///|
+fn DesktopApp::validate_extensions(self : DesktopApp) -> Result[Unit, String] {
+  let identifiers : Map[String, Bool] = Map([])
+  let commands : Map[String, Bool] = Map([])
+  for extension in self.options.extensions {
+    let identifier = extension.identifier()
+    if identifier.trim().is_empty() {
+      return Err("desktop extension identifier must not be empty")
+    }
+    if identifiers.contains(identifier) {
+      return Err("duplicate desktop extension: \{identifier}")
+    }
+    identifiers[identifier] = true
+    for command in extension.commands() {
+      let name = command.name().value()
+      if name == "orbit.window.print" {
+        return Err(
+          "desktop extension command conflicts with built-in print command",
+        )
+      }
+      if commands.contains(name) {
+        return Err("duplicate desktop extension command: \{name}")
+      }
+      commands[name] = true
+      match self.options.ipc_registry {
+        Some(registry) if registry.contains(command.name()) =>
+          return Err("desktop extension command is already registered: \{name}")
+        _ => ()
+      }
+    }
+  }
+  if !commands.is_empty() {
+    match (self.options.ipc_registry, self.options.ipc_policy) {
+      (Some(_), Some(_)) => ()
+      _ =>
+        return Err(
+          "desktop extension commands require an IPC registry and command policy",
+        )
+    }
+  }
+  Ok(())
+}
+
+///|
+fn DesktopApp::start_extensions(self : DesktopApp) -> Result[Unit, String] {
+  for extension in self.options.extensions {
+    match extension.start(self.controller()) {
+      Ok(_) => self.started_extensions.push(extension)
+      Err(reason) =>
+        return Err(
+          "desktop extension \{extension.identifier()} failed to start: \{reason}",
+        )
+    }
+  }
+  Ok(())
+}
+
+///|
+fn DesktopApp::shutdown_extensions(self : DesktopApp) -> Unit {
+  for extension in self.started_extensions.rev() {
+    match extension.shutdown() {
+      Err(reason) if self.teardown_failure is None =>
+        self.teardown_failure = Some(
+          "desktop extension \{extension.identifier()} shutdown failed: \{reason}",
+        )
+      _ => ()
+    }
+  }
+  self.started_extensions.clear()
+}
+
+///|
+fn DesktopApp::notify_window_destroyed(
+  self : DesktopApp,
+  mounted : MountedWindow,
+) -> Unit {
+  if mounted.extension_window_destroyed.val {
+    return
+  }
+  mounted.extension_window_destroyed.val = true
+  for extension in self.started_extensions {
+    match extension.window_destroyed(mounted.label) {
+      Err(reason) if self.teardown_failure is None =>
+        self.teardown_failure = Some(
+          "desktop extension \{extension.identifier()} window cleanup failed: \{reason}",
+        )
+      _ => ()
+    }
+  }
+}
+
+///|
+fn DesktopApp::register_extension_commands(
+  self : DesktopApp,
+) -> Result[Unit, String] {
+  match self.options.ipc_registry {
+    None => Ok(())
+    Some(registry) => {
+      for extension in self.options.extensions {
+        for command in extension.commands() {
+          match command.handler {
+            Ui(handler) =>
+              registry.register_context_json(command.name(), fn(
+                context,
+                payload,
+              ) {
+                let label = match context.principal() {
+                  Window(label) => label
+                  _ =>
+                    return Err(
+                      @ipc.CommandFailure::new(
+                        code="desktop_ui_unavailable",
+                        message="desktop UI commands require a local window",
+                      ),
+                    )
+                }
+                let ui = match self.ui_context(label) {
+                  Some(ui) => ui
+                  None =>
+                    return Err(
+                      @ipc.CommandFailure::new(
+                        code="desktop_ui_unavailable",
+                        message="the local window is unavailable",
+                      ),
+                    )
+                }
+                handler(ui, payload)
+              }) catch {
+                _ => return Err("desktop extension command registration failed")
+              }
+            Async(handler) =>
+              registry.register_async_context_json(command.name(), async fn(
+                context,
+                payload,
+              ) {
+                let label = match context.principal() {
+                  Window(label) => label
+                  _ =>
+                    return Err(
+                      @ipc.CommandFailure::new(
+                        code="desktop_window_unavailable",
+                        message="desktop commands require a local window",
+                      ),
+                    )
+                }
+                if self.mounted_for_label(label) is None {
+                  return Err(
+                    @ipc.CommandFailure::new(
+                      code="desktop_window_unavailable",
+                      message="the local window is unavailable",
+                    ),
+                  )
+                }
+                handler(
+                  { label_: label, cancellation_: context.cancellation() },
+                  payload,
+                )
+              }) catch {
+                _ => return Err("desktop extension command registration failed")
+              }
+          }
+        }
+      }
+      Ok(())
+    }
+  }
+}
+
+///|
+fn DesktopApp::is_ui_synchronous_extension_command(
+  self : DesktopApp,
+  name : @ipc.CommandName,
+) -> Bool {
+  self.options.extensions.any(extension => {
+    extension
+    .commands()
+    .any(command => command.name() == name && command.is_ui_synchronous())
+  })
 }
 
 ///|
@@ -583,6 +838,7 @@ fn DesktopApp::mount_window(
     window,
     runtime,
     page_event_subscription,
+    extension_window_destroyed: Ref(false),
   }
 }
 
@@ -614,6 +870,14 @@ fn DesktopApp::record_runtime_event(
 
 ///|
 pub impl @orby.App for DesktopApp with fn started(self, active) {
+  self.active = Some(active)
+  match self.validate_extensions() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(reason)
+    }
+    Ok(_) => ()
+  }
   for options in self.options.windows {
     let mounted = self.mount_window(active, options) catch {
       error => {
@@ -627,21 +891,19 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
     }
     self.windows.push(mounted)
   }
-  if self.options.builtin_file_capabilities {
-    match self.register_file_dialog_commands() {
-      Err(reason) => {
-        self.teardown()
-        raise StartupFailed(reason)
-      }
-      Ok(_) => ()
+  match self.start_extensions() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(self.teardown_failure.unwrap_or(reason))
     }
-    match self.register_file_access_commands() {
-      Err(reason) => {
-        self.teardown()
-        raise StartupFailed(reason)
-      }
-      Ok(_) => ()
+    Ok(_) => ()
+  }
+  match self.register_extension_commands() {
+    Err(reason) => {
+      self.teardown()
+      raise StartupFailed(self.teardown_failure.unwrap_or(reason))
     }
+    Ok(_) => ()
   }
   match self.register_window_commands() {
     Err(reason) => {
@@ -690,7 +952,15 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
         }
       }
     CloseRequested => {
-      self.files.revoke_window(mounted.label)
+      let action = match self.options.close_request_handler {
+        Some(handler) => handler(mounted.label, self.controller())
+        None => Destroy
+      }
+      if action == Hide {
+        mounted.window.set_visible(false)
+        return
+      }
+      self.notify_window_destroyed(mounted)
       self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
@@ -701,7 +971,7 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
       mounted.window.destroy()
     }
     Destroyed => {
-      self.files.revoke_window(mounted.label)
+      self.notify_window_destroyed(mounted)
       self.unsubscribe_page_events(mounted)
       mounted.runtime.set_message_handler(None) catch {
         _ => ()
@@ -721,6 +991,17 @@ pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) 
 ///|
 pub impl @orby.App for DesktopApp with fn about_to_wait(self, active) {
   if !self.shutting_down {
+    for extension in self.started_extensions {
+      match extension.poll(self.controller()) {
+        Err(reason) => {
+          self.pending_runtime_failure = Some(
+            "desktop extension \{extension.identifier()} poll failed: \{reason}",
+          )
+          break
+        }
+        Ok(_) => ()
+      }
+    }
     match self.plugins.poll_events() {
       Err(error) =>
         self.pending_runtime_failure = Some(plugin_start_reason(error))
@@ -761,7 +1042,8 @@ pub fn run(
     options,
     windows: [],
     plugins: @plugin.PluginRuntime::new(),
-    files: @file.FileCapabilityRegistry::new(),
+    started_extensions: [],
+    active: None,
     async_exit: None,
     async_ipc: None,
     pending_runtime_failure: None,
@@ -802,7 +1084,8 @@ pub fn run_async(
     options,
     windows: [],
     plugins,
-    files: @file.FileCapabilityRegistry::new(),
+    started_extensions: [],
+    active: None,
     async_exit: Some(async_exit),
     async_ipc: Some(async_ipc),
     pending_runtime_failure: None,
