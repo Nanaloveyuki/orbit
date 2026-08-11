@@ -1,0 +1,24 @@
+# Changelog
+
+This project follows semantic versioning after `1.0.0`. Before that milestone,
+each prerelease may contain breaking API or configuration changes. Every release
+notes those changes and the required application migration.
+
+## 0.1.0-alpha.3 - Unreleased
+
+- Declared Windows x64 as Orbit's first-class desktop target.
+- Added the Windows tray, desktop extension lifecycle, and per-window WebView
+  suspension to the public alpha release line.
+- Made runtime suspension preparation fallible: state persistence can reject a
+  suspend operation without destroying the active WebView.
+- Added the `windows-lifecycle` lifecycle and tray reference implementation plus a
+  Windows GUI acceptance checklist.
+
+## Compatibility Policy
+
+- `0.x` releases may remove or change public MoonBit APIs, CLI behavior, and
+  configuration schemas.
+- A release must document incompatible changes, migration steps, supported
+  platforms, and validation performed.
+- Beta releases will freeze the documented core API surface except for critical
+  fixes and explicitly deprecated replacements.

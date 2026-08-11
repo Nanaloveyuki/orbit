@@ -57,7 +57,7 @@ pub struct DesktopOptions {
   event_router : @event.EventRouter?
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
-  runtime_suspend_handler : ((String) -> Unit)?
+  runtime_suspend_handler : ((String) -> Result[Unit, String])?
 }
 
 ///|
@@ -88,7 +88,7 @@ pub fn DesktopOptions::new(
   event_router? : @event.EventRouter? = None,
   extensions? : Array[&DesktopExtension] = [],
   close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)? = None,
-  runtime_suspend_handler? : ((String) -> Unit)? = None,
+  runtime_suspend_handler? : ((String) -> Result[Unit, String])? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -705,6 +705,21 @@ fn DesktopApp::notify_window_suspended(
 }
 
 ///|
+fn prepare_runtime_suspension(
+  handler : ((String) -> Result[Unit, String])?,
+  label : String,
+) -> Result[Unit, String] {
+  match handler {
+    Some(handler) =>
+      match handler(label) {
+        Ok(_) => Ok(())
+        Err(reason) => Err("runtime suspension preparation failed: \{reason}")
+      }
+    None => Ok(())
+  }
+}
+
+///|
 fn DesktopApp::suspend_window_runtime(
   self : DesktopApp,
   mounted : MountedWindow,
@@ -713,9 +728,13 @@ fn DesktopApp::suspend_window_runtime(
     Some(runtime) => runtime
     None => return Ok(())
   }
-  match self.options.runtime_suspend_handler {
-    Some(handler) => handler(mounted.label)
-    None => ()
+  match
+    prepare_runtime_suspension(
+      self.options.runtime_suspend_handler,
+      mounted.label,
+    ) {
+    Err(reason) => return Err(reason)
+    Ok(_) => ()
   }
   match self.notify_window_suspended(mounted) {
     Err(reason) => return Err(reason)

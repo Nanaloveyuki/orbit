@@ -1,0 +1,63 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/examples/windows-lifecycle"
+
+import {
+  "Nanaloveyuki/orbit/orbit-core",
+  "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-plugin",
+  "Nanaloveyuki/orbit/orbit-runtime",
+}
+
+// Values
+pub let app_identifier : String
+
+pub let app_name : String
+
+pub let app_product_name : String?
+
+pub let app_publisher : String?
+
+pub let app_version : String
+
+pub let configuration_fingerprint : String
+
+pub let configuration_json : String
+
+pub fn configured_ipc_policy() -> @orbit-ipc.CommandPolicy raise @orbit-ipc.IpcError
+
+pub fn configured_plugins() -> Array[@orbit-plugin.PluginDeclaration]
+
+pub fn configured_windows() -> Array[@orbit-core.DesktopWindowOptions]
+
+pub let entry_url : String
+
+pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn handle_resource_0(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response_0(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub let resource_scheme : String
+
+pub let window_height : Int
+
+pub let window_label : String
+
+pub let window_resizable : Bool
+
+pub let window_title : String
+
+pub let window_visible : Bool
+
+pub let window_width : Int
+
+// Errors
+
+// Types and methods
+type ApplicationState
+
+// Type aliases
+
+// Traits

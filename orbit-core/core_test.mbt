@@ -189,7 +189,7 @@ test "desktop options retain the runtime suspension handler" {
   )
   let options = DesktopOptions::new(
     windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
-    runtime_suspend_handler=Some(_label => ()),
+    runtime_suspend_handler=Some(_label => Ok(())),
   )
   match options.runtime_suspend_handler {
     Some(_) => ()

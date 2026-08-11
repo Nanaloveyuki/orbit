@@ -7,8 +7,8 @@ Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管�
 以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
 IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
 
-当前版本为 `0.1.0-alpha.2`。Windows 和 Linux 已进入持续集成验证；API 与配置仍可能在
-正式版前调整。
+当前开发版本为 `0.1.0-alpha.3`（未发布）。Windows x64 是当前唯一的一等支持目标；Linux
+保持持续构建、打包验证的实验性支持。API 与配置仍可能在正式版前调整。
 
 ## 已实现
 
@@ -86,7 +86,7 @@ v2 配置、受 capability 保护的 IPC 示例、前端资源和 npm scripts。
 向现有模块添加 Orbit：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.2
+moon add Nanaloveyuki/orbit@0.1.0-alpha.3
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit run
@@ -161,9 +161,11 @@ let options = @core.DesktopOptions::new(
 )
 ```
 
-`runtime_suspend_handler` 在 UI thread 上、运行时释放之前调用。Orbit 不会同步导出任意 DOM
-状态；应用应使用正常 IPC 将主要状态保存到 MoonBit，或使用持久化的浏览器存储。挂起期间
-UI-bound extension command 不可用，`orbit-desktop-file` 会撤销该窗口的文件 capability。
+`runtime_suspend_handler` 在 UI thread 上、运行时释放之前调用，返回 `Ok(())` 才会继续释放
+runtime；返回 `Err(reason)` 会保留当前窗口与 WebView，并由 `suspend_window` 返回
+`RuntimeOperationFailed`。Orbit 不会同步导出任意 DOM 状态；应用应使用正常 IPC 将主要状态
+保存到 MoonBit，或使用持久化的浏览器存储。挂起期间 UI-bound extension command 不可用，
+`orbit-desktop-file` 会撤销该窗口的文件 capability。
 
 ```json
 {
@@ -273,7 +275,11 @@ Orbit 参考了 Tauri 的分层经验，但不是 Tauri API 的 MoonBit 移植�
 - [入门与应用结构](docs/getting-started.md)
 - [配置文件](docs/configuration.md)
 - [IPC、HTTP 与插件](docs/ipc-and-plugins.md)
+- [平台支持与已知限制](docs/platform-support.md)
+- [Windows GUI 验收](docs/windows-gui-smoke.md)
+- [Windows 生命周期与托盘示例](examples/windows-lifecycle/)
 - [打包与验证](docs/packaging.md)
+- [安全报告](SECURITY.md)
 - [参与开发](CONTRIBUTING.md)
 - [维护者发布流程](docs/releasing.md)
 

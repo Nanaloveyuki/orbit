@@ -81,9 +81,9 @@ pub struct DesktopOptions {
   event_router : @orbit-event.EventRouter?
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
-  runtime_suspend_handler : ((String) -> Unit)?
+  runtime_suspend_handler : ((String) -> Result[Unit, String])?
 }
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?, runtime_suspend_handler? : ((String) -> Unit)?) -> Self raise CoreError
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?, runtime_suspend_handler? : ((String) -> Result[Unit, String])?) -> Self raise CoreError
 
 pub struct DesktopUiContext {
   // private fields
