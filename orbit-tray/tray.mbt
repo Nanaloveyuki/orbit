@@ -2,6 +2,7 @@
 pub(all) suberror TrayError {
   InvalidIdentifier(String)
   DuplicateMenuCommand(String)
+  MenuTooLarge
   EmptyIcon
   Unavailable
 } derive(Debug)
@@ -149,6 +150,9 @@ pub fn TrayItem::new(
 ) -> TrayItem raise TrayError {
   let commands : Map[String, Bool] = Map([])
   validate_menu_entries(menu, commands)
+  if commands.length() > 65536 {
+    raise MenuTooLarge
+  }
   { id, icon, tooltip, visible, menu }
 }
 

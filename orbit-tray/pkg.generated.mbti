@@ -11,6 +11,7 @@ import {
 pub(all) suberror TrayError {
   InvalidIdentifier(String)
   DuplicateMenuCommand(String)
+  MenuTooLarge
   EmptyIcon
   Unavailable
 } derive(@debug.Debug)
