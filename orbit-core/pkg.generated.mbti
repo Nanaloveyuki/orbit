@@ -27,6 +27,7 @@ pub(all) suberror CoreError {
 pub(all) suberror DesktopControllerError {
   WindowUnavailable(String)
   HostUnavailable
+  RuntimeOperationFailed(String)
 } derive(@debug.Debug)
 
 // Types and methods
@@ -42,7 +43,11 @@ pub fn DesktopAsyncContext::label(Self) -> String
 pub enum DesktopCloseAction {
   Destroy
   Hide
+  Suspend
 } derive(Eq, @debug.Debug)
+pub fn DesktopCloseAction::destroy() -> Self
+pub fn DesktopCloseAction::hide() -> Self
+pub fn DesktopCloseAction::suspend() -> Self
 
 pub struct DesktopCommand {
   // private fields
@@ -58,6 +63,7 @@ pub fn DesktopController::exit(Self) -> Unit raise DesktopControllerError
 pub fn DesktopController::focus_window(Self, String) -> Unit raise DesktopControllerError
 pub fn DesktopController::hide_window(Self, String) -> Unit raise DesktopControllerError
 pub fn DesktopController::show_window(Self, String) -> Unit raise DesktopControllerError
+pub fn DesktopController::suspend_window(Self, String) -> Unit raise DesktopControllerError
 
 pub enum DesktopIpcPrincipal {
   Window
@@ -75,8 +81,9 @@ pub struct DesktopOptions {
   event_router : @orbit-event.EventRouter?
   extensions : Array[&DesktopExtension]
   close_request_handler : ((String, DesktopController) -> DesktopCloseAction)?
+  runtime_suspend_handler : ((String) -> Unit)?
 }
-pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?) -> Self raise CoreError
+pub fn DesktopOptions::new(windows~ : Array[DesktopWindowOptions], ipc_registry? : @orbit-ipc.CommandRegistry?, ipc_policy? : @orbit-ipc.CommandPolicy?, plugin_declarations? : Array[@orbit-plugin.PluginDeclaration], plugin_development_directory? : String?, event_router? : @orbit-event.EventRouter?, extensions? : Array[&DesktopExtension], close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)?, runtime_suspend_handler? : ((String) -> Unit)?) -> Self raise CoreError
 
 pub struct DesktopUiContext {
   // private fields
@@ -100,6 +107,7 @@ pub(open) trait DesktopExtension {
   fn commands(Self) -> Array[DesktopCommand]
   fn start(Self, DesktopController) -> Result[Unit, String]
   fn poll(Self, DesktopController) -> Result[Unit, String]
+  fn window_suspended(Self, String) -> Result[Unit, String]
   fn window_destroyed(Self, String) -> Result[Unit, String]
   fn shutdown(Self) -> Result[Unit, String]
 }

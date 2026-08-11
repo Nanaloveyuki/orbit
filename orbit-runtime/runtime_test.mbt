@@ -104,6 +104,13 @@ impl WebViewRuntime for FakeRuntime with fn set_bounds(self, _bounds) {
 }
 
 ///|
+impl WebViewRuntime for FakeRuntime with fn set_visible(self, _visible) {
+  if self.destroyed {
+    raise InvalidState("set visibility after destroy")
+  }
+}
+
+///|
 impl WebViewRuntime for FakeRuntime with fn destroy(self) {
   self.handler = None
   self.destroyed = true

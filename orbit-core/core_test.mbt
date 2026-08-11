@@ -134,6 +134,14 @@ impl DesktopExtension for TestDesktopExtension with fn poll(_self, _controller) 
 }
 
 ///|
+impl DesktopExtension for TestDesktopExtension with fn window_suspended(
+  _self,
+  _label,
+) {
+  Ok(())
+}
+
+///|
 impl DesktopExtension for TestDesktopExtension with fn window_destroyed(
   _self,
   _label,
@@ -170,6 +178,24 @@ test "desktop options retain ordered extensions and close policy" {
     None => ()
     Some(_) => abort("expected the default close policy")
   }
+}
+
+///|
+test "desktop options retain the runtime suspension handler" {
+  let runtime_options = @runtime.RuntimeOptions::new(
+    label="main",
+    bounds=@runtime.RuntimeBounds::new(width=800, height=600),
+    initial_content=Html("<main></main>"),
+  )
+  let options = DesktopOptions::new(
+    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+    runtime_suspend_handler=Some(_label => ()),
+  )
+  match options.runtime_suspend_handler {
+    Some(_) => ()
+    None => abort("expected the runtime suspension handler")
+  }
+  assert_eq(DesktopCloseAction::suspend(), DesktopCloseAction::suspend())
 }
 
 ///|

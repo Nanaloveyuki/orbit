@@ -566,6 +566,18 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn set_bounds(
 }
 
 ///|
+pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn set_visible(
+  self,
+  visible,
+) {
+  self.require_live()
+  match self.view.set_visible(visible) {
+    Ok(_) => ()
+    Err(error) => raise runtime_error("set visibility", error)
+  }
+}
+
+///|
 pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn destroy(self) {
   if !self.destroyed {
     self.destroyed = true
