@@ -30,7 +30,15 @@ pub struct WindowsTrayExtension {
 pub fn WindowsTrayExtension::new(
   items : Array[@tray.TrayItem],
   callback : TrayCallback,
-) -> WindowsTrayExtension {
+) -> WindowsTrayExtension raise @tray.TrayError {
+  let identifiers : Map[String, Bool] = Map([])
+  for item in items {
+    let id = item.id().value()
+    if identifiers.contains(id) {
+      raise InvalidIdentifier("duplicate Windows tray item: \{id}")
+    }
+    identifiers[id] = true
+  }
   {
     configured_items: items,
     items: Ref([]),
@@ -206,13 +214,7 @@ impl DesktopExtension for WindowsTrayExtension with fn commands(_self) {
 
 ///|
 impl DesktopExtension for WindowsTrayExtension with fn start(self, controller) {
-  let identifiers : Map[String, Bool] = Map([])
   for item in self.configured_items {
-    let id = item.id().value()
-    if identifiers.contains(id) {
-      return Err("duplicate Windows tray item: \{id}")
-    }
-    identifiers[id] = true
     let mounted = match create_native_item(item) {
       Ok(mounted) => mounted
       Err(reason) => {

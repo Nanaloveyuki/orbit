@@ -17,7 +17,7 @@ pub struct WindowsTrayExtension {
   // private fields
 }
 pub fn WindowsTrayExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
-pub fn WindowsTrayExtension::new(Array[@orbit-tray.TrayItem], (@orbit-core.DesktopController, @orbit-tray.TrayController, @orbit-tray.TrayItemId, @orbit-tray.TrayEvent) -> Unit) -> Self
+pub fn WindowsTrayExtension::new(Array[@orbit-tray.TrayItem], (@orbit-core.DesktopController, @orbit-tray.TrayController, @orbit-tray.TrayItemId, @orbit-tray.TrayEvent) -> Unit) -> Self raise @orbit-tray.TrayError
 
 // Type aliases
 
