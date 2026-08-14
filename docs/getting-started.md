@@ -87,7 +87,7 @@ identifier 和 MoonBit module 会从目录名生成开发默认值；发布前�
 向已有 MoonBit 模块手工安装：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.5
+moon add Nanaloveyuki/orbit@0.1.0-alpha.6
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate --config orbit.conf.json
 npx orbit run --config orbit.conf.json

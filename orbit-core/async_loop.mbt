@@ -35,7 +35,12 @@ using @external_loop {trait ExternalEventLoop}
 
 ///|
 impl ExternalEventLoop for AsyncDesktopLoop with fn poll(self, timeout?) {
-  self.app_loop.poll(timeout?) catch {
+  try {
+    match self.app_loop.poll(timeout?) {
+      @orby.ExternalPoll::Continue => ()
+      @orby.ExternalPoll::Exited(_code) => ()
+    }
+  } catch {
     error => self.failure.val = Some(error)
   }
 }
