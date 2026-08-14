@@ -32,6 +32,25 @@ let options = @core.DesktopOptions::new(
 Persisting or uploading a snapshot is application policy: inspect its records,
 apply any product-specific redaction, and use your own storage or transport.
 
+## Offline Support Bundle
+
+`history.support_bundle()` returns a versioned, JSON-serializable snapshot for
+support collection. Its fields are fixed to the bundle schema version, history
+capacity, dropped event count, and ordered lifecycle events. Each event contains
+only its reviewed level, event code, optional window label, and optional
+configuration fingerprint.
+
+The bundle does not contain BitLogger timestamps, targets, messages, arbitrary
+fields, raw errors, paths, handles, IPC payloads, manifests, commands, or
+application state. Applications must not place secrets or user identifiers in
+window labels or configuration fingerprints. The application chooses whether
+and where to serialize a bundle:
+
+~~~moonbit
+let bundle = history.support_bundle()
+let json = bundle.to_json().stringify()
+~~~
+
 ## Event Contract
 
 Orbit emits startup, runtime ready/failure/destroy, runtime suspend/resume,
@@ -50,3 +69,14 @@ fingerprint when package metadata is available, a best-effort WebView runtime
 probe, and the result of `moon check --target native`. Compiler output is not
 mixed into JSON output. A missing runtime is reported as `unknown`; it does not
 make the command fail by itself.
+
+Use `--output <file>` with `--json` to explicitly write the same environment
+report to a file:
+
+~~~sh
+orbit diagnose --json --output orbit-environment.json
+~~~
+
+The CLI cannot access an application's in-memory `DiagnosticHistory`; collect
+the application support bundle separately. It never writes a report unless an
+output path is explicitly supplied.

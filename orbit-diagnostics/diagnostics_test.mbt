@@ -34,4 +34,34 @@ test "diagnostic history clears its retained records" {
   history.clear()
   inspect(history.count(), content="0")
   inspect(history.dropped_count(), content="0")
+  inspect(history.support_bundle().events.length(), content="0")
+  inspect(history.support_bundle().dropped_event_count, content="0")
+}
+
+///|
+test "support bundles retain only reviewed lifecycle fields" {
+  let history = DiagnosticHistory::new(capacity=1)
+  history.record(
+    DiagnosticEvent::new(
+      RuntimeReady,
+      window_label=Some("main"),
+      configuration_fingerprint=Some("f00d"),
+    ),
+  )
+  history.record(DiagnosticEvent::new(RuntimeSuspended))
+
+  let bundle = history.support_bundle()
+  inspect(bundle.schema_version, content="1")
+  inspect(bundle.capacity, content="1")
+  inspect(bundle.dropped_event_count, content="1")
+  inspect(bundle.events.length(), content="1")
+  inspect(bundle.events[0].level, content="info")
+  inspect(bundle.events[0].event, content="runtime.suspended")
+  debug_inspect(bundle.events[0].window_label, content="None")
+  debug_inspect(bundle.events[0].configuration_fingerprint, content="None")
+  let encoded = bundle.to_json().stringify()
+  assert_true(!encoded.contains("target"))
+  assert_true(!encoded.contains("message"))
+  assert_true(!encoded.contains("fields"))
+  assert_true(!encoded.contains("timestamp"))
 }

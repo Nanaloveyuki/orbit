@@ -1,5 +1,6 @@
 import {
   "Nanaloveyuki/BitLogger/src" @bitlogger,
+  "moonbitlang/core/json",
 }
 
 supported_targets = "native"

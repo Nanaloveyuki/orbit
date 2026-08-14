@@ -6,6 +6,13 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+## 0.1.0-alpha.5 - 2026-08-14
+
+- Added application-controlled, versioned lifecycle support bundles that expose
+  only reviewed diagnostic fields.
+- The diagnose command can write the same explicit JSON environment report to
+  stdout and a requested local file.
+
 ## 0.1.0-alpha.4 - 2026-08-11
 
 - Added opt-in, bounded in-memory lifecycle diagnostics backed by BitLogger
