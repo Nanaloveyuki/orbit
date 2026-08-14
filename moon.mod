@@ -1,6 +1,6 @@
 name = "Nanaloveyuki/orbit"
 
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 
 description = "Composable desktop application foundations for MoonBit."
 
@@ -19,9 +19,9 @@ import {
   "Nanaloveyuki/ajni@0.2.2",
   "Nanaloveyuki/BitLogger@0.8.0",
   "Nanaloveyuki/parsec@0.1.3",
-  "Nanaloveyuki/moonview@0.1.0-beta.7",
+  "Nanaloveyuki/moonview@0.1.0-beta.8",
   "Nanaloveyuki/sync@0.7.1",
-  "Nanaloveyuki/orby@0.1.0-beta.4",
+  "Nanaloveyuki/orby@0.1.0-beta.5",
   "moonbitlang/async@0.20.4",
   "Nanaloveyuki/dynlib@0.1.0",
   "Nanaloveyuki/orbit-plugin-abi@0.2.2",

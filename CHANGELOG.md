@@ -6,6 +6,13 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+## 0.1.0-alpha.6 - 2026-08-14
+
+- Upgrade the Windows desktop host to `Nanaloveyuki/orby@0.1.0-beta.5` and
+  explicitly handle external event-loop termination.
+- Upgrade embedded WebView support to `Nanaloveyuki/moonview@0.1.0-beta.8`,
+  including terminal browser-process failure handling.
+
 ## 0.1.0-alpha.5 - 2026-08-14
 
 - Added application-controlled, versioned lifecycle support bundles that expose

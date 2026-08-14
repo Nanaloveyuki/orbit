@@ -160,6 +160,7 @@ fn window_reason(error : @orby.WindowError) -> String {
 ///|
 fn init_reason(error : @orby.InitError) -> String {
   match error {
+    AlreadyActive => "another Orby event loop is already active"
     UnsupportedHost(message) => message
     PlatformFailure(message) => message
   }

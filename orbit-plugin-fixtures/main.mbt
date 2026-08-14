@@ -87,7 +87,10 @@ using @external_loop {trait ExternalEventLoop}
 
 ///|
 impl ExternalEventLoop for V2ExternalLoop with fn poll(self, timeout?) {
-  self.app_loop.poll(timeout?)
+  match self.app_loop.poll(timeout?) {
+    @orby.ExternalPoll::Continue => ()
+    @orby.ExternalPoll::Exited(_code) => ()
+  }
 }
 
 ///|
