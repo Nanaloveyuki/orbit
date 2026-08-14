@@ -32,7 +32,7 @@ const webviewInstallModes = new Set([
 ]);
 
 export const compatibilityProfile = Object.freeze({
-  orbit: "0.1.0-alpha.4",
+  orbit: "0.1.0-alpha.5",
   orby: "0.1.0-beta.4",
   moonview: "0.1.0-beta.7",
   plugin_abi: 2,
@@ -71,6 +71,7 @@ export function usage() {
     "  --module <owner/name> MoonBit module name used by init",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
     "  --output <path>       Generated source, bindings, or required v2 migration destination",
+    "                        Diagnose writes its JSON report here when used with --json",
     "  --package <path>      Moon package to build or run (default: config directory)",
     "  --orbit-build <path>  Moon package for the generator (default: auto-discover/fetch)",
     "  --moon <command>      Moon executable (default: moon)",
@@ -240,6 +241,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   if (command === "migrate-config" && !values.output) {
     throw new Error("migrate-config requires --output <path>");
   }
+  if (command === "diagnose" && values.output && !values.json) {
+    throw new Error("diagnose --output requires --json");
+  }
   const output = resolve(
     workspace,
     values.output ?? `${dirname(config)}/${command === "bindings" ? "orbit-bindings.mjs" : "generated_page.mbt"}`,
@@ -310,6 +314,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     initModule: values.module,
     config,
     output,
+    diagnoseOutput: command === "diagnose" && values.output
+      ? resolve(workspace, values.output)
+      : undefined,
     packagePath: resolve(workspace, values.package ?? dirname(config)),
     orbitBuild: values["orbit-build"] ?? defaultOrbitBuild(workspace, orbitVersion),
     orbitBuildProvided: values["orbit-build"] !== undefined,
@@ -458,6 +465,21 @@ function failedDiagnoseReport() {
     webview_runtime: probeWebViewRuntime(),
     check: { status: "failed", exit_code: 1 },
   };
+}
+
+function writeDiagnoseReport(output, source) {
+  mkdirSync(dirname(output), { recursive: true });
+  const temporary = join(
+    dirname(output),
+    "." + basename(output) + "." + process.pid + "." + Date.now() + ".tmp",
+  );
+  try {
+    writeFileSync(temporary, source, { encoding: "utf8", flag: "wx" });
+    renameSync(temporary, output);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
 }
 
 function prepareOrbitBuild(invocation) {
@@ -1756,8 +1778,12 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
   if (invocation.command === "diagnose") {
     try {
       const report = diagnoseReport(invocation);
+      const source = JSON.stringify(report) + "\n";
+      if (invocation.diagnoseOutput) {
+        writeDiagnoseReport(invocation.diagnoseOutput, source);
+      }
       if (invocation.json) {
-        environment.stdout.write(`${JSON.stringify(report)}\n`);
+        environment.stdout.write(source);
       } else {
         environment.stdout.write(`Orbit diagnostics: ${report.check.status}\n`);
         environment.stdout.write(`WebView runtime: ${report.webview_runtime.kind} (${report.webview_runtime.status})\n`);

@@ -129,12 +129,18 @@ pub impl DiagnosticSink for BitLoggerDiagnosticSink with fn record(self, event) 
 
 ///|
 pub struct DiagnosticHistory {
-  sink : @bitlogger.HistorySink
+  priv sink : @bitlogger.HistorySink
+  priv mut support_events : Array[SupportEvent]
+  priv mut support_dropped_event_count : Int
 }
 
 ///|
 pub fn DiagnosticHistory::new(capacity? : Int = 128) -> DiagnosticHistory {
-  { sink: @bitlogger.history_sink(capacity~) }
+  {
+    sink: @bitlogger.history_sink(capacity~),
+    support_events: [],
+    support_dropped_event_count: 0,
+  }
 }
 
 ///|
@@ -162,9 +168,39 @@ pub fn DiagnosticHistory::snapshot(
 ///|
 pub fn DiagnosticHistory::clear(self : DiagnosticHistory) -> Unit {
   self.sink.clear()
+  self.support_events = []
+  self.support_dropped_event_count = 0
+}
+
+///|
+pub fn DiagnosticHistory::support_bundle(
+  self : DiagnosticHistory,
+) -> SupportBundle {
+  {
+    schema_version: 1,
+    capacity: self.capacity(),
+    dropped_event_count: self.support_dropped_event_count,
+    events: self.support_events.map(event => event),
+  }
+}
+
+///|
+fn DiagnosticHistory::append_support_event(
+  self : DiagnosticHistory,
+  event : SupportEvent,
+) -> Unit {
+  if self.support_events.length() >= self.capacity() {
+    self.support_dropped_event_count += 1
+    let retained = self.support_events[1:].to_owned()
+    retained.push(event)
+    self.support_events = retained
+  } else {
+    self.support_events.push(event)
+  }
 }
 
 ///|
 pub impl DiagnosticSink for DiagnosticHistory with fn record(self, event) {
   self.sink.write(event.to_record())
+  self.append_support_event(event.to_support_event())
 }

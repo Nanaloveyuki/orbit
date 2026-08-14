@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -291,6 +291,12 @@ test("run and diagnose map to the expected Moon workflows", () => {
   assert.deepEqual(moonCommands(run).at(-1), ["run", "--target", "native", resolve(cwd, ".")]);
   const diagnose = parseInvocation(["diagnose", "--json"], cwd);
   assert.deepEqual(moonCommands(diagnose), [["check", "--target", "native", resolve(cwd, ".")]]);
+  const exported = parseInvocation(["diagnose", "--json", "--output", "support.json"], cwd);
+  assert.equal(exported.diagnoseOutput, resolve(cwd, "support.json"));
+  assert.throws(
+    () => parseInvocation(["diagnose", "--output", "support.json"], cwd),
+    /diagnose --output requires --json/,
+  );
 });
 
 test("unsupported WebView hosts produce a stable diagnostic fallback", () => {
@@ -326,12 +332,40 @@ test("diagnose emits one JSON report when the native check fails", (context) => 
     "--json",
     "--moon",
     moon,
+    "--output",
+    "support.json",
   ], { cwd: workspace, encoding: "utf8" });
   assert.equal(result.status, 41);
   assert.equal(result.stdout.trim().split(/\r?\n/).length, 1);
   const report = JSON.parse(result.stdout);
   assert.deepEqual(report.check, { status: "failed", exit_code: 41 });
   assert.deepEqual(report.configuration, { status: "unavailable", fingerprint: null });
+  assert.equal(readFileSync(join(workspace, "support.json"), "utf8"), result.stdout);
+});
+
+test("diagnose removes its temporary report when the output cannot be replaced", (context) => {
+  const workspace = mkdtempSync(join(tmpdir(), "orbit-diagnose-output-"));
+  context.after(() => rmSync(workspace, { recursive: true, force: true }));
+  const output = join(workspace, "support-output");
+  mkdirSync(output);
+
+  const result = spawnSync(process.execPath, [
+    resolve("bin/orbit.mjs"),
+    "diagnose",
+    "--json",
+    "--moon",
+    process.execPath,
+    "--output",
+    output,
+  ], { cwd: workspace, encoding: "utf8" });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout.trim().split(/\r?\n/).length, 1);
+  assert.equal(JSON.parse(result.stdout).check.status, "failed");
+  assert.deepEqual(
+    readdirSync(workspace).filter(entry => entry.startsWith(".support-output.")),
+    [],
+  );
 });
 
 test("migrate-config requires a distinct explicit output path", () => {

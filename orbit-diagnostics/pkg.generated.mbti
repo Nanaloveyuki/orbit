@@ -29,7 +29,7 @@ pub fn DiagnosticEvent::to_record(Self) -> @core.Record
 pub fn DiagnosticEvent::with_configuration_fingerprint(Self, String) -> Self
 
 pub struct DiagnosticHistory {
-  sink : @sink_graph.HistorySink
+  // private fields
 }
 pub fn DiagnosticHistory::capacity(Self) -> Int
 pub fn DiagnosticHistory::clear(Self) -> Unit
@@ -37,6 +37,7 @@ pub fn DiagnosticHistory::count(Self) -> Int
 pub fn DiagnosticHistory::dropped_count(Self) -> Int
 pub fn DiagnosticHistory::new(capacity? : Int) -> Self
 pub fn DiagnosticHistory::snapshot(Self) -> Array[@core.Record]
+pub fn DiagnosticHistory::support_bundle(Self) -> SupportBundle
 pub impl DiagnosticSink for DiagnosticHistory
 
 pub(all) enum DiagnosticKind {
@@ -63,6 +64,21 @@ pub(all) enum DiagnosticLevel {
   Warning
   Error
 } derive(Eq, @debug.Debug)
+
+pub(all) struct SupportBundle {
+  schema_version : Int
+  capacity : Int
+  dropped_event_count : Int
+  events : Array[SupportEvent]
+} derive(Eq, ToJson, @debug.Debug)
+pub fn SupportBundle::to_json(Self) -> Json
+
+pub(all) struct SupportEvent {
+  level : String
+  event : String
+  window_label : String?
+  configuration_fingerprint : String?
+} derive(Eq, ToJson, @debug.Debug)
 
 // Type aliases
 
