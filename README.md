@@ -277,6 +277,7 @@ Orbit 参考了 Tauri 的分层经验，但不是 Tauri API 的 MoonBit 移植�
 
 - [入门与应用结构](docs/getting-started.md)
 - [配置文件](docs/configuration.md)
+- [Beta 参考标准](docs/standards/README.md)
 - [IPC、HTTP 与插件](docs/ipc-and-plugins.md)
 - [平台支持与已知限制](docs/platform-support.md)
 - [生产就绪与 Windows 1.0 路线](docs/production-readiness.md)
