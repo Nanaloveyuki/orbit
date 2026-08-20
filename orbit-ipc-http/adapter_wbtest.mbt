@@ -146,7 +146,7 @@ test "HTTP adapter rejects unauthenticated, wrong-method and wrong-media request
 
 ///|
 test "HTTP adapter rejects ambiguous and oversized body framing" {
-  let ambiguous : Map[String, String] = {
+  let ambiguous : @http.Headers = {
     "content-length": "10",
     "transfer-encoding": "chunked",
   }

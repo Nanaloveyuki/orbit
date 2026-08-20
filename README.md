@@ -7,7 +7,7 @@ Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管�
 以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
 IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
 
-当前发布版本为 `0.1.0-alpha.6`。Windows x64 是当前唯一的一等支持目标；Linux
+当前发布版本为 `0.1.0-alpha.7`。Windows x64 是当前唯一的一等支持目标；Linux
 保持持续构建、打包验证的实验性支持。API 与配置仍可能在正式版前调整。
 
 ## 已实现
@@ -87,7 +87,7 @@ v2 配置、受 capability 保护的 IPC 示例、前端资源和 npm scripts。
 向现有模块添加 Orbit：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.6
+moon add Nanaloveyuki/orbit@0.1.0-alpha.7
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit run

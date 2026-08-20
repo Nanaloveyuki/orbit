@@ -1057,12 +1057,8 @@ fn DesktopApp::mount_window(
   ) catch {
     error => raise StartupFailed(window_reason(error))
   }
-  let runtime = self.mount_runtime(options, window) catch {
-    error => {
-      window.destroy()
-      raise error
-    }
-  }
+  errdefer window.destroy()
+  let runtime = self.mount_runtime(options, window)
   {
     label: options.runtime_options.label(),
     options,

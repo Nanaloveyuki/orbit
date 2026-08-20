@@ -16,7 +16,7 @@ OIDC and must not receive an npm write token.
 1. Update `moon.mod` and `orbit-cli/package.json` to the same version.
 2. Merge the version change through the normal validation workflow.
 3. Create and push the matching protected tag, for example
-   `v0.1.0-alpha.6`.
+   `v0.1.0-alpha.7`.
 
 The release workflow verifies the tag, runs MoonBit and Node tests, performs a
 Mooncake dry run, packs the npm artifact, creates a draft GitHub Release,
@@ -27,7 +27,8 @@ as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
 `.moon-version` selects an installer-supported MoonBit channel. CI records the
 resolved compiler and build-tool versions with `moon version --all` before
-validation so every release retains the exact toolchain identity in its logs.
+validation and rejects a compiler other than MoonBit 0.10.9 for this release
+line. The public installer currently exposes this release through `latest`.
 
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the

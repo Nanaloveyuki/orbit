@@ -1,6 +1,6 @@
 # Platform Support
 
-Orbit `0.1.0-alpha.6` is a pre-release desktop framework. Its public support
+Orbit `0.1.0-alpha.7` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
 | Capability | Windows x64 | Linux x64 | macOS |

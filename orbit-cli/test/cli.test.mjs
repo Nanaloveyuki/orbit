@@ -163,7 +163,7 @@ test("init creates a complete application without overwriting a target", (contex
     /"orbit:run": "orbit run"/,
   );
   assert.match(readFileSync(join(target, ".gitignore"), "utf8"), /^\.repos\/$/m);
-  assert.equal(readFileSync(join(target, ".moon-version"), "utf8"), "0.1.20260803\n");
+  assert.equal(readFileSync(join(target, ".moon-version"), "utf8"), "latest\n");
   const workflow = readFileSync(join(target, ".github", "workflows", "windows-release.yml"), "utf8");
   assert.match(workflow, /ORBIT_WINDOWS_SIGN_COMMAND/);
   assert.match(workflow, /Get-AuthenticodeSignature/);
