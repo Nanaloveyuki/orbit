@@ -16,7 +16,7 @@ OIDC and must not receive an npm write token.
 1. Update `moon.mod` and `orbit-cli/package.json` to the same version.
 2. Merge the version change through the normal validation workflow.
 3. Create and push the matching protected tag, for example
-   `v0.1.0-alpha.6`.
+   `v0.1.0-alpha.7`.
 
 The release workflow verifies the tag, runs MoonBit and Node tests, performs a
 Mooncake dry run, packs the npm artifact, creates a draft GitHub Release,

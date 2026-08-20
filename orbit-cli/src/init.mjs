@@ -137,7 +137,7 @@ function applicationFiles({ slug, name, identifier, moduleName, orbitVersion, cl
       "*.WebView2/",
       "",
     ].join("\n")],
-    [".moon-version", "0.1.20260803\n"],
+    [".moon-version", "0.1.20260819\n"],
     ["moon.mod", [
       `name = ${JSON.stringify(moduleName)}`,
       "",

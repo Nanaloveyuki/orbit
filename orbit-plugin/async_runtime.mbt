@@ -106,13 +106,11 @@ async fn PluginLibrary::invoke_async(
     }
     Ok(_) => ()
   }
-  pending.wait() catch {
-    error => {
-      self.pending_invocations.remove(invocation_id)
-      ignore(executor.cancel(invocation_id))
-      raise error
-    }
+  errdefer {
+    self.pending_invocations.remove(invocation_id)
+    ignore(executor.cancel(invocation_id))
   }
+  pending.wait()
 }
 
 ///|

@@ -40,7 +40,7 @@ pub fn AuthenticatedHttpClient::identifier(
 /// Orbit reads or parses attacker-controlled command payloads.
 pub struct HttpRequestMetadata {
   priv path : String
-  priv headers : Map[String, String]
+  priv headers : @http.Headers
   priv remote_address : String
 }
 
@@ -54,7 +54,7 @@ pub fn HttpRequestMetadata::header(
   self : HttpRequestMetadata,
   name : String,
 ) -> String? {
-  self.headers.get(name.trim().to_owned().to_lower())
+  self.headers.get(name)
 }
 
 ///|
@@ -75,7 +75,7 @@ priv struct AdapterResponse {
   status : Int
   reason : String
   body : String
-  headers : Map[String, String]
+  headers : @http.Headers
 }
 
 ///|
@@ -90,7 +90,7 @@ fn adapter_failure(
   reason : String,
   code : String,
   message : String,
-  headers? : Map[String, String] = Map([]),
+  headers? : @http.Headers = Map([]),
 ) -> AdapterResponse {
   {
     status,
@@ -127,7 +127,7 @@ fn is_json_content_type(value : String) -> Bool {
 }
 
 ///|
-fn content_length(headers : Map[String, String]) -> Int? raise {
+fn content_length(headers : @http.Headers) -> Int? raise {
   match headers.get("content-length") {
     None => None
     Some(value) => Some(@string.parse_int(value.trim(), base=10))
@@ -136,7 +136,7 @@ fn content_length(headers : Map[String, String]) -> Int? raise {
 
 ///|
 fn validate_body_headers(
-  headers : Map[String, String],
+  headers : @http.Headers,
   max_request_bytes : Int,
 ) -> Result[Int?, AdapterResponse] {
   if headers.contains("content-length") && headers.contains("transfer-encoding") {
@@ -334,7 +334,7 @@ async fn send_response(
   connection : @http.ServerConnection,
   response : AdapterResponse,
 ) -> Unit {
-  let headers : Map[String, String] = {
+  let headers : @http.Headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
