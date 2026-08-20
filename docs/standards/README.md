@@ -45,8 +45,9 @@ the proposed contract is complete.
 - [Package status](package-status.md)
 - [Runtime lifecycle](runtime-lifecycle.md)
 - [IPC and security](ipc-security.md)
-- Native FFI, extension, platform, and release standards will be added in later
-  batches.
+- [Native FFI](native-ffi.md)
+- [Extensions](extensions.md)
+- Platform and release standards will be added in later batches.
 
 ## Source of truth
 
