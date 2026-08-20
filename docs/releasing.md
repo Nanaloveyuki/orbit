@@ -4,6 +4,9 @@ This document is for Orbit maintainers publishing the Mooncakes module, npm
 CLI, and GitHub Release. Application packaging is documented separately in
 [`packaging.md`](packaging.md).
 
+The proposed framework release checklist is maintained in the
+[beta release and validation standard](standards/release-and-validation.md).
+
 ## Orbit Framework Release
 
 The repository `release` environment must contain `MOONCAKE_USERNAME` and

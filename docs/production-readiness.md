@@ -8,6 +8,10 @@ promises.
 This document records the production contract planned for Windows 1.0. It does
 not expand the current alpha support claim.
 
+The proposed `0.1.0-beta.1` framework boundaries are maintained in the
+[beta reference standards](standards/README.md). The 1.0 gates below remain a
+separate, stricter target.
+
 ## Planned Windows 1.0 Contract
 
 The stable target is Windows 10 22H2 x64 and Windows 11 x64 with the Microsoft

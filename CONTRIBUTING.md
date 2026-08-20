@@ -2,6 +2,8 @@
 
 本文面向修改 Orbit 框架、CLI、runtime adapter 和测试 fixture 的贡献者。应用开发请从
 [`README.md`](README.md) 和[入门指南](docs/getting-started.md)开始。
+beta 契约的参考标准见[标准文档](docs/standards/README.md)；在首个测试应用完成前，
+这些标准不作为发布门禁。
 
 ## 开发环境
 

@@ -47,7 +47,8 @@ the proposed contract is complete.
 - [IPC and security](ipc-security.md)
 - [Native FFI](native-ffi.md)
 - [Extensions](extensions.md)
-- Platform and release standards will be added in later batches.
+- [Platforms](platforms.md)
+- [Release and validation](release-and-validation.md)
 
 ## Source of truth
 

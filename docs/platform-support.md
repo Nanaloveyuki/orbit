@@ -3,6 +3,10 @@
 Orbit `0.1.0-alpha.7` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
+The proposed beta support contract is maintained in the
+[platform standards](standards/platforms.md). This page describes current
+support status; it does not promote experimental targets.
+
 | Capability | Windows x64 | Linux x64 | macOS |
 | --- | --- | --- | --- |
 | Native window and embedded WebView | Supported | Experimental | Not supported |
