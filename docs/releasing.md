@@ -27,7 +27,8 @@ as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
 `.moon-version` selects an installer-supported MoonBit channel. CI records the
 resolved compiler and build-tool versions with `moon version --all` before
-validation so every release retains the exact toolchain identity in its logs.
+validation and rejects a compiler other than MoonBit 0.10.9 for this release
+line. The public installer currently exposes this release through `latest`.
 
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the

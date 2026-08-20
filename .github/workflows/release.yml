@@ -35,6 +35,8 @@ jobs:
         run: node orbit-cli/scripts/verify-release-version.mjs . "$GITHUB_REF_NAME"
       - name: Record MoonBit toolchain
         run: moon version --all
+      - name: Verify MoonBit release
+        run: moon version --all | grep -E '^moonc v0\.10\.9'
       - name: Configure Mooncake credentials
         env:
           MOONCAKE_USERNAME: ${{ secrets.MOONCAKE_USERNAME }}

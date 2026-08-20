@@ -8,8 +8,8 @@ notes those changes and the required application migration.
 
 ## 0.1.0-alpha.7 - 2026-08-20
 
-- Pin the Orbit release and generated application toolchain to MoonBit
-  `0.1.20260819` (`moonc` 0.10.9).
+- Use the installer-supported `latest` channel, verified by CI to resolve to
+  MoonBit `moonc` 0.10.9 for this release.
 - Upgrade the desktop dependency line to `Nanaloveyuki/orby@0.1.0-beta.6`,
   `Nanaloveyuki/moonview@0.1.0-beta.9`, and `Nanaloveyuki/ajni@0.2.3`.
 - Validate the dependency line through the native Orbit test suite and the
