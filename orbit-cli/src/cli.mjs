@@ -696,6 +696,20 @@ export function developmentServerStdio() {
   return ["ignore", "inherit", "inherit"];
 }
 
+export function snapshotDevelopmentOutput(output) {
+  return existsSync(output)
+    ? { existed: true, contents: readFileSync(output) }
+    : { existed: false, contents: null };
+}
+
+export function restoreDevelopmentOutput(output, snapshot) {
+  if (snapshot.existed) {
+    writeFileSync(output, snapshot.contents);
+  } else {
+    rmSync(output, { force: true });
+  }
+}
+
 function waitForDevelopmentUrl(url, timeout) {
   const script = [
     "const [url, timeout] = process.argv.slice(1);",
@@ -739,6 +753,23 @@ function stopDevelopmentServer(server) {
   } else {
     server.kill("SIGTERM");
   }
+}
+
+function installDevelopmentSignalHandlers(cleanup) {
+  const handlers = new Map();
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    const handler = () => {
+      cleanup();
+      process.exitCode = signal === "SIGINT" ? 130 : 143;
+    };
+    handlers.set(signal, handler);
+    process.once(signal, handler);
+  }
+  return () => {
+    for (const [signal, handler] of handlers) {
+      process.removeListener(signal, handler);
+    }
+  };
 }
 
 function packageBuildDirectory(invocation) {
@@ -1933,6 +1964,17 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
   }
 
   let developmentServer;
+  let developmentOutputSnapshot;
+  let developmentCleaned = false;
+  let removeDevelopmentSignalHandlers = () => {};
+  const cleanupDevelopment = () => {
+    if (developmentCleaned) return;
+    developmentCleaned = true;
+    stopDevelopmentServer(developmentServer);
+    if (developmentOutputSnapshot) {
+      restoreDevelopmentOutput(invocation.output, developmentOutputSnapshot);
+    }
+  };
   try {
     if (!prepareOrbitBuild(invocation)) {
       return;
@@ -1943,7 +1985,9 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     const needsViteWorkflow = ["dev", "build", "run", "package"].includes(invocation.command);
     const viteWorkflow = needsViteWorkflow ? loadViteWorkflow(invocation) : null;
     if (viteWorkflow && invocation.command === "dev") {
+      developmentOutputSnapshot = snapshotDevelopmentOutput(invocation.output);
       developmentServer = startDevelopmentServer(invocation, viteWorkflow.dev_command);
+      removeDevelopmentSignalHandlers = installDevelopmentSignalHandlers(cleanupDevelopment);
       waitForDevelopmentUrl(viteWorkflow.dev_url, invocation.devTimeout);
     } else if (viteWorkflow && ["build", "run", "package"].includes(invocation.command)) {
       runWorkflowCommand(invocation, viteWorkflow.build_command);
@@ -1969,7 +2013,8 @@ export async function main(argv, environment = { cwd: process.cwd(), stdout: pro
     process.exitCode = 2;
     return;
   } finally {
-    stopDevelopmentServer(developmentServer);
+    cleanupDevelopment();
+    removeDevelopmentSignalHandlers();
   }
   if (invocation.json) {
     environment.stdout.write(`${JSON.stringify({ code: "ok", command: invocation.command, config: invocation.config })}\n`);

@@ -17,7 +17,12 @@ Vite、Tailwind CSS 4 和 shadcn/ui 实现完整的本地备忘录工作流。
 - MoonBit `0.10.9` 对应工具链；
 - Node.js 20 或更高版本；
 - pnpm 11；
-- Windows x64 上的 MSVC、Windows SDK 和 WebView2 Runtime。
+- Windows x64 上的 MSVC、Windows SDK 和 WebView2 Runtime；
+- Linux x64 上的 C 编译器、GTK3 和 WebKitGTK 4.1 开发包。
+
+Ubuntu/Debian 可安装 `libgtk-3-dev` 与 `libwebkit2gtk-4.1-dev`；Fedora
+对应 `gtk3-devel` 与 `webkit2gtk4.1-devel`；Arch 对应 `gtk3` 与
+`webkit2gtk-4.1`。
 
 ## 运行
 
@@ -45,6 +50,22 @@ pnpm run orbit diagnose --json
 ```
 
 也保留了 `pnpm orbit:dev`、`pnpm orbit:run` 和 `pnpm orbit:build` 这些快捷别名。
+
+### WSLg
+
+本示例已在 Ubuntu 22.04、Fedora 44 和 Arch Linux 的 WSL2/WSLg 环境中完成
+`pnpm check`、`pnpm run orbit build`、`pnpm run orbit run` 和
+`pnpm run orbit dev` 实测。部分 Mesa/D3D12 组合会输出 EGL/Zink 警告；遇到窗口无法
+创建时可临时切换到软件合成：
+
+```sh
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
+export LIBGL_ALWAYS_SOFTWARE=1
+export GALLIUM_DRIVER=llvmpipe
+pnpm run orbit dev
+```
+
+这些变量是 WSLg 图形栈的兼容设置，不是普通 Linux 桌面的默认要求。
 
 ## 独立项目边界
 

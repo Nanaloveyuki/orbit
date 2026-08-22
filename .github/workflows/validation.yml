@@ -81,6 +81,14 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
+      - name: Validate React reference app
+        working-directory: examples/react-memo
+        run: |
+          npm install --global pnpm@11.5.3
+          pnpm install --frozen-lockfile
+          pnpm check
+          pnpm run orbit build
+          grep -F 'pub let entry_url = "orbit://app/index.html"' generated_page.mbt
       - run: xvfb-run -a bash orbit-plugin-fixtures/run-integration.sh
 
   linux-deb:

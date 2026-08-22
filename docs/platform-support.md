@@ -28,6 +28,14 @@ Linux uses GTK3 and WebKitGTK 4.1. Destroying a suspended WebView releases the
 GTK child but does not promise reclamation of every WebKitGTK process-level
 cache. macOS has no Orbit top-level window host.
 
+The React memo reference app has been run through native build, production
+WebView startup, Vite development startup, IPC availability, and clean process
+shutdown on Ubuntu 22.04, Fedora 44, and Arch Linux under WSL2/WSLg. This is
+implementation evidence for the experimental Linux target, not a promotion to
+first-class support. Some WSLg Mesa/D3D12 combinations require WebKit software
+compositing (`WEBKIT_DISABLE_COMPOSITING_MODE=1`,
+`LIBGL_ALWAYS_SOFTWARE=1`, and `GALLIUM_DRIVER=llvmpipe`).
+
 ## Known Limits
 
 - WebView suspension recreates the page; Orbit cannot synchronously capture
