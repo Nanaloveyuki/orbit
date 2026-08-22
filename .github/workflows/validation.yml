@@ -108,9 +108,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y openjdk-17-jdk
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;36.1.0" "cmake;4.1.2" "ndk;29.0.14206865"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          android_sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          "$sdkmanager" "platforms;android-35" "build-tools;36.1.0" "cmake;4.1.2" "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$android_sdk/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
