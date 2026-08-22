@@ -23,6 +23,8 @@ import {
   packageIntegrity,
   parseInvocation,
   probeWebViewRuntime,
+  restoreDevelopmentOutput,
+  snapshotDevelopmentOutput,
   verifyInstaller,
   verifyArchive,
   verifyPackage,
@@ -104,6 +106,25 @@ function createLinuxPackage(directory) {
 
 test("Vite development leaves console input to the native process", () => {
   assert.deepEqual(developmentServerStdio(), ["ignore", "inherit", "inherit"]);
+});
+
+test("Vite development restores the generated source after exit", (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "orbit-dev-output-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const generated = join(directory, "generated_page.mbt");
+  const production = Buffer.from("pub let entry_url = \"orbit://app/index.html\"\n");
+
+  writeFileSync(generated, production);
+  const existing = snapshotDevelopmentOutput(generated);
+  writeFileSync(generated, "pub let entry_url = \"http://127.0.0.1:5173\"\n");
+  restoreDevelopmentOutput(generated, existing);
+  assert.deepEqual(readFileSync(generated), production);
+
+  const temporary = join(directory, "temporary_generated_page.mbt");
+  const missing = snapshotDevelopmentOutput(temporary);
+  writeFileSync(temporary, "development source");
+  restoreDevelopmentOutput(temporary, missing);
+  assert.equal(existsSync(temporary), false);
 });
 
 test("init parses one target and application identity options", () => {
