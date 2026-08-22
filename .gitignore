@@ -9,3 +9,8 @@ orbit-plugin-fixture-order.log
 .mooncakes/
 .repos/
 orbit-cli/node_modules/
+examples/react-memo/android/.gradle/
+examples/react-memo/android/build/
+examples/react-memo/android/app/build/
+examples/react-memo/android/app/.cxx/
+examples/react-memo/android/local.properties

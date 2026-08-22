@@ -22,6 +22,7 @@ IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue
 - Vite 开发/生产流程，以及 JavaScript IPC bindings 生成。
 - 可选、内存限定的桌面生命周期诊断记录与 JSON 环境检查。
 - 图标生成、可校验目录包、Windows NSIS 安装包、Linux `tar.gz`、deb、rpm 和 Arch 包。
+- 可选 Android preview host：单 Activity/WebView、嵌入资源、页面 IPC 与调试 APK。
 
 ## 五分钟运行
 
@@ -53,7 +54,8 @@ moon run orbit-example
 | Windows x64 | MSVC/Windows SDK；首次 native build 会自动下载并校验 WebView2 SDK | 主要开发平台，CI 与安装包流程已验证 |
 | Linux x64 | C 编译器、GTK3、WebKitGTK 4.1 开发包 | Ubuntu/Fedora/Arch 构建与打包流程已验证 |
 | macOS | - | Orbit 顶层窗口宿主尚未实现 |
-| Android/OpenHarmony | - | 相关底层库有独立探索，当前不是 Orbit 应用目标平台 |
+| Android | JDK 17、Android SDK 35、NDK 29、CMake 4.1.2 | 可选 preview；独立 Activity host，不属于桌面 beta |
+| OpenHarmony | - | 相关底层库有独立探索，当前不是 Orbit 应用目标平台 |
 
 Windows 的 WebView2 SDK 默认缓存到
 `%LOCALAPPDATA%\moonview\webview2\1.0.4078.44`；通常不需要手工配置 SDK。
@@ -235,6 +237,17 @@ npx orbit build
 CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 `orbit.conf.json`。
 `diagnose --json` 输出单个版本化 JSON 文档，用于采集本机 WebView 与编译环境状态；完整
 字段与应用内生命周期历史见[诊断](docs/diagnostics.md)。
+
+完整 React 示例还包含 Android Gradle/NDK host：
+
+```sh
+cd examples/react-memo
+pnpm run orbit android build
+pnpm run orbit android dev
+```
+
+Android 当前使用生产嵌入资源，不提供 Vite 热更新。SDK/NDK 前置、设备选择和已知限制见
+[`examples/react-memo/README.md`](examples/react-memo/README.md#android)。
 
 ## CLI 与发布产物
 

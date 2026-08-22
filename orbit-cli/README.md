@@ -35,6 +35,18 @@ npx orbit package \
 npx orbit verify-package --package-dir dist
 ```
 
+Optional Android hosts use the platform-neutral generated source:
+
+```sh
+npx orbit generate --android \
+  --config orbit.conf.json \
+  --output android/generated_page.mbt
+```
+
+The application-owned Gradle project then links that MoonBit package with the
+Ajni Android host. The React memo example contains the complete build/install
+workflow; Android packaging is separate from desktop `orbit package`.
+
 The CLI uses a workspace-local `orbit-build` package when present, then a
 generator materialized by Mooncakes. On a clean first build it reads the pinned
 Orbit version from `moon.mod` and runs `moon fetch` into the project-local

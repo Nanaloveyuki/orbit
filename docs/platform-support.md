@@ -36,6 +36,27 @@ first-class support. Some WSLg Mesa/D3D12 combinations require WebKit software
 compositing (`WEBKIT_DISABLE_COMPOSITING_MODE=1`,
 `LIBGL_ALWAYS_SOFTWARE=1`, and `GALLIUM_DRIVER=llvmpipe`).
 
+## Android Preview
+
+Android is optional platform work and is not part of the desktop beta support
+claim. `orbit-runtime-android` maps the common runtime contract to MoonView's
+Ajni-backed Android WebView, while `orbit-android` owns Activity lifecycle and
+IPC composition without importing Orby.
+
+The React memo reference app has completed a dual-ABI debug APK build and its
+Ajni/MoonView foundation has passed WebView, trusted-origin message, embedded
+asset, lifecycle, and UTF-16 JNI instrumentation on an Android 16 arm64 device.
+The Orbit application instrumentation additionally exercises page load and a
+real `memo.runtime` IPC round trip when device-side test installation is
+available. This evidence keeps Android at preview status; it does not imply
+desktop feature parity.
+
+Current Android scope is one Activity, one visible WebView, embedded resources,
+page IPC, responsive bounds updates, WebView local storage, and APK output for
+`arm64-v8a` and `x86_64`. Remote pages, multiple windows, Vite hot reload, native
+file and print dialogs, tray integration, AAB/release signing, and Play delivery
+are not implemented.
+
 ## Known Limits
 
 - WebView suspension recreates the page; Orbit cannot synchronously capture
@@ -51,3 +72,5 @@ compositing (`WEBKIT_DISABLE_COMPOSITING_MODE=1`,
 - Lifecycle diagnostics are memory-only, opt-in, and intentionally contain only
   reviewed fixed fields. Applications own retention beyond `DiagnosticHistory`
   and any export or upload policy.
+- Android applications require API 24 or newer and use a dedicated Gradle/NDK
+  host. They do not run the desktop Orby event loop inside an Activity.

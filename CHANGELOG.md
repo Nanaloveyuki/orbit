@@ -6,6 +6,14 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+- Add optional `orbit-runtime-android` and `orbit-android` packages for a
+  single-Activity Ajni/MoonView WebView host with embedded resources and Orbit
+  IPC.
+- Add `orbit generate --android` plus a complete dual-ABI Gradle/NDK workflow
+  and instrumentation test to the React memo reference application.
+- Allow the shared page bridge to use the trusted `window.ajni` WebMessage
+  transport while preserving the desktop `window.moonview` contract.
+
 ## 0.1.0-alpha.7 - 2026-08-20
 
 - Use the installer-supported `latest` channel, verified by CI to resolve to

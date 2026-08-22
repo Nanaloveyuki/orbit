@@ -1,0 +1,22 @@
+import {
+  "Nanaloveyuki/ajni/android" @ajni_android,
+  "Nanaloveyuki/ajni/webview" @ajni_webview,
+  "Nanaloveyuki/orbit/orbit-android" @orbit_android,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+options(
+  link: {
+    "native": {
+      "exports": [
+        "dispatch_android_event:ajni_dispatch_event",
+        "dispatch_android_webview_event:ajni_dispatch_webview_event",
+      ],
+    },
+  },
+)

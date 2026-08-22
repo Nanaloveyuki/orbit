@@ -10,4 +10,5 @@ preferred_target = "native"
 
 import {
   "Nanaloveyuki/orbit@0.1.0-alpha.7",
+  "Nanaloveyuki/ajni@0.2.3",
 }

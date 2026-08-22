@@ -53,6 +53,9 @@ decision.
   API.
 - AJNI is an optional Android dependency. It is not an Orbit core package and is
   not a beta blocker for the Windows-first target.
+- `orbit-runtime-android` and `orbit-android` are optional Android preview
+  packages. They reuse the runtime and IPC contracts but do not expand the
+  desktop beta compatibility promise.
 - Linux and macOS status follows the platform standard once that document is
   added; the package being compilable on a target does not make the target
   supported.

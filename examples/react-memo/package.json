@@ -14,6 +14,8 @@
     "orbit:dev": "node scripts/orbit-tool.mjs dev",
     "orbit:run": "node scripts/orbit-tool.mjs run",
     "orbit:build": "node scripts/orbit-tool.mjs build",
+    "orbit:android": "node scripts/orbit-tool.mjs android dev",
+    "orbit:android:test": "node scripts/orbit-tool.mjs android test",
     "orbit:diagnose": "orbit diagnose --json"
   },
   "dependencies": {

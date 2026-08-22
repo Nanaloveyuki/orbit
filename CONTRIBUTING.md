@@ -12,6 +12,7 @@ beta 契约的参考标准见[标准文档](docs/standards/README.md)；在首�
 - 平台 native toolchain；
 - Windows：MSVC/Windows SDK；MoonView 自动准备 WebView2 SDK；
 - Linux：C compiler、GTK3、WebKitGTK 4.1、Xvfb；
+- Android：JDK 17、Android SDK 35、Build Tools 36.1.0、NDK 29、CMake 4.1.2；
 - 插件 fixture 在 Windows 使用 `cl.exe`，不可用时回退 `clang.exe`，Linux 使用 `cc`。
 
 ```sh
@@ -33,6 +34,8 @@ npm install --prefix orbit-cli
 | `orbit-ipc-moonview` | MoonView 页面消息 adapter |
 | `orbit-runtime` | 不依赖具体窗口/WebView 实现的 runtime contract |
 | `orbit-runtime-moonview` | MoonView runtime 实现 |
+| `orbit-runtime-android` | MoonView/Ajni Android WebView runtime 实现 |
+| `orbit-android` | Android Activity 生命周期与 IPC 组合 |
 | `orbit-plugin` | sidecar、动态库和 ABI v1/v2 runtime |
 | `orbit-core` | Orby 窗口生命周期与整体组合 |
 | `orbit-build` | 严格配置、嵌入资源、bindings 和元数据生成器 |

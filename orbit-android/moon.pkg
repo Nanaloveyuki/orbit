@@ -1,0 +1,9 @@
+import {
+  "Nanaloveyuki/ajni/android" @ajni_android,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-ipc-moonview" @ipc_moonview,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+  "Nanaloveyuki/orbit/orbit-runtime-android" @android_runtime,
+}
+
+supported_targets = "native"
