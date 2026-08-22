@@ -71,6 +71,7 @@ export function usage() {
     "  --module <owner/name> MoonBit module name used by init",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
     "  --output <path>       Generated source, bindings, or required v2 migration destination",
+    "  --android             Generate the optional Android runtime source",
     "                        Diagnose writes its JSON report here when used with --json",
     "  --package <path>      Moon package to build or run (default: config directory)",
     "  --orbit-build <path>  Moon package for the generator (default: auto-discover/fetch)",
@@ -209,10 +210,11 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "compression",
       "dev-timeout",
       "json",
+      "android",
     ].includes(key)) {
       throw new Error(`unknown option: ${argument}`);
     }
-    if (["json", "allow-unsigned", "release"].includes(key)) {
+    if (["json", "allow-unsigned", "release", "android"].includes(key)) {
       values[key] = true;
     } else {
       values[key] = optionValue(argv, index, argument);
@@ -233,6 +235,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
         throw new Error(`--${key} is only valid with init`);
       }
     }
+  }
+  if (values.android && command !== "generate") {
+    throw new Error("--android is only valid with generate");
   }
 
   const workspace = resolve(cwd, values.workspace ?? ".");
@@ -356,6 +361,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     makepkg: resolveExecutable(workspace, values.makepkg, "makepkg"),
     devTimeout,
     json: values.json ?? false,
+    android: values.android ?? false,
   };
 }
 
@@ -537,6 +543,7 @@ export function moonCommands(invocation, viteWorkflow = null) {
     "--target",
     "native",
     invocation.orbitBuild,
+    ...(invocation.android ? ["android"] : []),
     invocation.config,
     invocation.output,
   ];

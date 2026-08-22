@@ -91,6 +91,48 @@ jobs:
           grep -F 'pub let entry_url = "orbit://app/index.html"' generated_page.mbt
       - run: xvfb-run -a bash orbit-plugin-fixtures/run-integration.sh
 
+  android-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MOONVIEW_NATIVE_BACKEND: android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+      - name: Install JDK 17 and Android native build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk libgtk-3-dev pkg-config
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
+          android_sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          "$sdkmanager" "platforms;android-35" "build-tools;36.1.0" "cmake;4.1.2" "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$android_sdk/ndk/29.0.14206865" >> "$GITHUB_ENV"
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+          echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
+      - name: Install project dependencies
+        run: |
+          moon -C ../.. update
+          moon -C android update
+          npm install --global pnpm@11.5.3
+          pnpm install --frozen-lockfile
+        working-directory: examples/react-memo
+      - name: Build Android debug APK
+        run: |
+          echo "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046  android/gradle/wrapper/gradle-wrapper.jar" | sha256sum --check
+          chmod +x android/gradlew
+          pnpm run orbit android build
+        working-directory: examples/react-memo
+
   linux-deb:
     runs-on: ubuntu-24.04
     steps:

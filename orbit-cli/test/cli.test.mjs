@@ -283,6 +283,32 @@ test("generate defaults output and package to the configuration directory", () =
   ]]);
 });
 
+test("Android generation selects the platform-neutral orbit-build mode", () => {
+  const cwd = resolve("workspace");
+  const config = resolve(cwd, "orbit.conf.json");
+  const output = resolve(cwd, "android/generated_page.mbt");
+  const invocation = parseInvocation([
+    "generate",
+    "--android",
+    "--output",
+    "android/generated_page.mbt",
+  ], cwd);
+  assert.equal(invocation.android, true);
+  assert.deepEqual(moonCommands(invocation), [[
+    "run",
+    "--target",
+    "native",
+    "orbit-build",
+    "android",
+    config,
+    output,
+  ]]);
+  assert.throws(
+    () => parseInvocation(["build", "--android"], cwd),
+    /--android is only valid with generate/,
+  );
+});
+
 test("build generates before compiling the configured package", () => {
   const cwd = resolve("repo/orbit");
   const invocation = parseInvocation([

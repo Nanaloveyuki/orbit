@@ -1,0 +1,7 @@
+import {
+  "Nanaloveyuki/ajni",
+  "Nanaloveyuki/moonview/android" @moonview_android,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+}
+
+supported_targets = "native"
