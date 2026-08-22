@@ -21,19 +21,15 @@ class OrbitMemoInstrumentedTest {
       assertNotNull("Orbit WebView was not attached", webView)
       waitForPage(scenario, requireNotNull(webView))
 
-      val result = arrayOfNulls<String>(1)
-      val completed = CountDownLatch(1)
       scenario.onActivity {
         webView.evaluateJavascript(
-          "window.__ORBIT__.invoke('memo.runtime', {}, { timeout: 3000 }).then(runtime => JSON.stringify({ runtime, reactMounted: document.body.innerText.includes('Orbit Memo') })).catch(error => 'ERROR:' + error.message)",
-        ) { value ->
-          result[0] = value
-          completed.countDown()
-        }
+          "window.__orbitTestResult = null; Promise.resolve().then(() => window.__ORBIT__.invoke('memo.runtime', {}, { timeout: 3000 })).then(runtime => { window.__orbitTestResult = JSON.stringify({ runtime, reactMounted: document.body.innerText.includes('Orbit Memo') }); }).catch(error => { window.__orbitTestResult = 'ERROR:' + error.message; });",
+          null,
+        )
       }
-      assertTrue("Orbit IPC invocation timed out", completed.await(5, TimeUnit.SECONDS))
-      assertTrue("Orbit IPC did not report the native runtime: ${result[0]}", result[0].orEmpty().contains("\\\"runtime\\\":\\\"Orbit\\\""))
-      assertTrue("Orbit React application did not mount: ${result[0]}", result[0].orEmpty().contains("\\\"reactMounted\\\":true"))
+      val result = waitForJavascriptValue(scenario, webView, "window.__orbitTestResult")
+      assertTrue("Orbit IPC did not report the native runtime: $result", result.contains("\\\"runtime\\\":\\\"Orbit\\\""))
+      assertTrue("Orbit React application did not mount: $result", result.contains("\\\"reactMounted\\\":true"))
     }
   }
 
@@ -59,6 +55,28 @@ class OrbitMemoInstrumentedTest {
       Thread.sleep(50)
     }
     throw AssertionError("Orbit embedded page did not finish loading")
+  }
+
+  private fun waitForJavascriptValue(
+    scenario: ActivityScenario<MainActivity>,
+    webView: WebView,
+    expression: String,
+  ): String {
+    repeat(100) {
+      val completed = CountDownLatch(1)
+      var result: String? = null
+      scenario.onActivity {
+        webView.evaluateJavascript(expression) { value ->
+          result = value
+          completed.countDown()
+        }
+      }
+      if (completed.await(1, TimeUnit.SECONDS) && result != null && result != "null") {
+        return requireNotNull(result)
+      }
+      Thread.sleep(50)
+    }
+    throw AssertionError("JavaScript result did not become available")
   }
 
   private fun findWebView(view: View): WebView? {

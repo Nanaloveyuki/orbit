@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 val configuredNdkPath = providers.environmentVariable("ANDROID_NDK_HOME").orNull
-val ajniRoot = rootProject.layout.projectDirectory.dir("../.mooncakes/Nanaloveyuki/ajni")
+val ajniRoot = rootProject.layout.projectDirectory.dir(".mooncakes/Nanaloveyuki/ajni")
 
 plugins {
   id("com.android.application")

@@ -1,11 +1,11 @@
 file(GLOB_RECURSE candidates
-  "${APP_ROOT}/_build/native/release/build/*/android.c"
+  "${ANDROID_ROOT}/_build/native/release/build/*/orbit-react-memo-android.c"
 )
 
 set(matches "")
 foreach(candidate IN LISTS candidates)
   file(TO_CMAKE_PATH "${candidate}" normalized)
-  if(normalized MATCHES "/android/android\\.c$")
+  if(normalized MATCHES "/orbit-react-memo-android/orbit-react-memo-android\\.c$")
     list(APPEND matches "${candidate}")
   endif()
 endforeach()

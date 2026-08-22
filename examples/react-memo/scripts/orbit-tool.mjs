@@ -54,10 +54,11 @@ if (command === "android") {
     process.exit(2)
   }
 
-  const workspace = resolve(project, "moon.work")
+  const androidRoot = resolve(project, "android")
+  const workspace = resolve(androidRoot, "moon.work")
   const ownsWorkspace = existsSync(localBuilder) && !existsSync(workspace)
   if (ownsWorkspace) {
-    writeFileSync(workspace, 'members = [".", "../.."]\n', { flag: "wx" })
+    writeFileSync(workspace, 'members = [".", "../../.."]\n', { flag: "wx" })
     process.on("exit", () => rmSync(workspace, { force: true }))
   }
 
@@ -88,7 +89,6 @@ if (command === "android") {
     ])
   }
 
-  const androidRoot = resolve(project, "android")
   const wrapper = resolve(androidRoot, process.platform === "win32" ? "gradlew.bat" : "gradlew")
   const gradle = process.env.ORBIT_GRADLE || (existsSync(wrapper) ? wrapper : "gradle")
   const gradleTasks = [":app:assembleDebug"]

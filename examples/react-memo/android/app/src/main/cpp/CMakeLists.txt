@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(orbit_react_memo C)
 
-set(APP_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../../")
-get_filename_component(APP_ROOT "${APP_ROOT}" ABSOLUTE)
-set(AJNI_ROOT "${APP_ROOT}/.mooncakes/Nanaloveyuki/ajni")
+set(ANDROID_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../..")
+get_filename_component(ANDROID_ROOT "${ANDROID_ROOT}" ABSOLUTE)
+set(AJNI_ROOT "${ANDROID_ROOT}/.mooncakes/Nanaloveyuki/ajni")
 if(NOT EXISTS "${AJNI_ROOT}/src/android/ajni_bridge.c")
-  message(FATAL_ERROR "Ajni sources were not found. Run 'moon update' from ${APP_ROOT}.")
+  message(FATAL_ERROR "Ajni sources were not found. Run 'moon update' from ${ANDROID_ROOT}.")
 endif()
 
 if(DEFINED ENV{MOON_HOME})
@@ -40,17 +40,17 @@ endif()
 
 add_custom_target(generate_orbit_android
   COMMAND "${CMAKE_COMMAND}" -E env MOONVIEW_NATIVE_BACKEND=android
-    "${MOON_EXECUTABLE}" build --target native --release android
+    "${MOON_EXECUTABLE}" build --target native --release .
   COMMAND "${CMAKE_COMMAND}"
-    "-DAPP_ROOT=${APP_ROOT}"
+    "-DANDROID_ROOT=${ANDROID_ROOT}"
     "-DOUTPUT=${MOONBIT_APP_SOURCE}"
     -P "${CMAKE_CURRENT_LIST_DIR}/CopyMoonBitSource.cmake"
-  WORKING_DIRECTORY "${APP_ROOT}"
+  WORKING_DIRECTORY "${ANDROID_ROOT}"
   DEPENDS
-    "${APP_ROOT}/android/main.mbt"
-    "${APP_ROOT}/android/generated_page.mbt"
-    "${APP_ROOT}/android/moon.pkg"
-    "${APP_ROOT}/moon.mod"
+    "${ANDROID_ROOT}/main.mbt"
+    "${ANDROID_ROOT}/generated_page.mbt"
+    "${ANDROID_ROOT}/moon.mod"
+    "${ANDROID_ROOT}/moon.pkg"
     "${AJNI_BRIDGE_SOURCE}"
     "${AJNI_WEBVIEW_BRIDGE_SOURCE}"
   BYPRODUCTS "${MOONBIT_APP_SOURCE}"

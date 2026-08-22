@@ -46,16 +46,20 @@ IPC composition without importing Orby.
 The React memo reference app has completed a dual-ABI debug APK build and its
 Ajni/MoonView foundation has passed WebView, trusted-origin message, embedded
 asset, lifecycle, and UTF-16 JNI instrumentation on an Android 16 arm64 device.
-The Orbit application instrumentation additionally exercises page load and a
-real `memo.runtime` IPC round trip when device-side test installation is
-available. This evidence keeps Android at preview status; it does not imply
-desktop feature parity.
+Orbit application instrumentation on the same device also passed React mount
+and a real `memo.runtime` IPC round trip. This evidence keeps Android at preview
+status; it does not imply desktop feature parity.
 
 Current Android scope is one Activity, one visible WebView, embedded resources,
 page IPC, responsive bounds updates, WebView local storage, and APK output for
 `arm64-v8a` and `x86_64`. Remote pages, multiple windows, Vite hot reload, native
 file and print dialogs, tray integration, AAB/release signing, and Play delivery
 are not implemented.
+
+On Linux, source builds against the current monorepo also require `pkg-config`
+and GTK3 development files because the root Orbit module's Orby prebuild runs
+at module resolution time. The Android APK does not link GTK; this prerequisite
+can be removed after the desktop host dependency becomes target-aware.
 
 ## Known Limits
 

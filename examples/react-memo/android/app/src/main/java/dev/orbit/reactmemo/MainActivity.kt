@@ -2,8 +2,11 @@ package dev.orbit.reactmemo
 
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import dev.nanaloveyuki.ajni.host.NativeBridge
 
 class MainActivity : ComponentActivity() {
@@ -18,7 +21,24 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     NativeBridge.initialize(this)
     webViewContainer = FrameLayout(this)
-    setContentView(webViewContainer)
+    val root = FrameLayout(this).apply {
+      addView(
+        webViewContainer,
+        FrameLayout.LayoutParams(
+          ViewGroup.LayoutParams.MATCH_PARENT,
+          ViewGroup.LayoutParams.MATCH_PARENT,
+        ),
+      )
+    }
+    ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
+      val insetTypes = WindowInsetsCompat.Type.systemBars() or
+        WindowInsetsCompat.Type.displayCutout()
+      val insets = windowInsets.getInsets(insetTypes)
+      view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
+      WindowInsetsCompat.CONSUMED
+    }
+    setContentView(root)
+    ViewCompat.requestApplyInsets(root)
     NativeBridge.attachWebViewContainer(webViewContainer)
     webViewContainer.addOnLayoutChangeListener(layoutListener)
     NativeBridge.lifecycle(NativeBridge.LIFECYCLE_CREATED)

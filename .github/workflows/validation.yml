@@ -106,7 +106,7 @@ jobs:
       - name: Install JDK 17 and Android native build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk
+          sudo apt-get install -y openjdk-17-jdk libgtk-3-dev pkg-config
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
           android_sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
@@ -122,7 +122,7 @@ jobs:
       - name: Install project dependencies
         run: |
           moon -C ../.. update
-          moon update
+          moon -C android update
           npm install --global pnpm@11.5.3
           pnpm install --frozen-lockfile
         working-directory: examples/react-memo

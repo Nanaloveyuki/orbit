@@ -80,6 +80,7 @@ Windows PowerShell 示例：
 ```powershell
 $env:ANDROID_SDK_ROOT = "$env:LOCALAPPDATA\Android\Sdk"
 $env:ANDROID_NDK_HOME = "C:\path\to\android-ndk-r29"
+moon -C android update
 pnpm run orbit android build
 pnpm run orbit android dev
 pnpm run orbit android test
@@ -103,7 +104,8 @@ Gradle 且暂时无法下载 wrapper，可设置 `ORBIT_GRADLE=gradle`。
 
 ## 独立项目边界
 
-本目录有自己的 `moon.mod`、`.moon-version`、`package.json` 和 `pnpm-lock.yaml`。
+本目录有自己的 `moon.mod`、`.moon-version`、`package.json` 和 `pnpm-lock.yaml`；`android/`
+另有独立的 `moon.mod`，因此桌面构建不会解析 Android host 包。
 `scripts/orbit-tool.mjs` 在当前 monorepo 中优先使用本地 `orbit-build`，复制到其他位置后
 自动使用 `@nanaloveyuki/orbit-cli`。Android 构建在 monorepo 中会临时创建相对路径
 `moon.work` 以验证未发布的本地 Orbit 包，并在命令退出时删除；不会写入本机绝对路径。
