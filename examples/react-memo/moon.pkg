@@ -1,0 +1,11 @@
+import {
+  "Nanaloveyuki/orbit/orbit-core" @core,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+  "Nanaloveyuki/orbit/orbit-plugin" @plugin,
+  "Nanaloveyuki/orbit/orbit-runtime" @runtime,
+  "Nanaloveyuki/orbit/orbit-runtime-moonview" @moonview_runtime,
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

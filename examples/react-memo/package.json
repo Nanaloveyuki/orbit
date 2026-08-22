@@ -1,0 +1,50 @@
+{
+  "name": "@nanaloveyuki/orbit-react-memo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "orbit": "node scripts/orbit-tool.mjs",
+    "orbit:generate": "node scripts/orbit-tool.mjs generate",
+    "orbit:bindings": "node scripts/orbit-tool.mjs bindings",
+    "orbit:dev": "node scripts/orbit-tool.mjs dev",
+    "orbit:run": "node scripts/orbit-tool.mjs run",
+    "orbit:build": "node scripts/orbit-tool.mjs build",
+    "orbit:diagnose": "orbit diagnose --json"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.541.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.3.1",
+    "tw-animate-css": "^1.3.8"
+  },
+  "devDependencies": {
+    "@nanaloveyuki/orbit-cli": "0.1.0-alpha.7",
+    "@tailwindcss/vite": "^4.1.14",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
+    "jsdom": "^30.0.1",
+    "shadcn": "4.19.0",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.5.3"
+}

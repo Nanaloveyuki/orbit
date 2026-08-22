@@ -1,0 +1,7 @@
+_build/
+.mooncakes/
+.repos/
+node_modules/
+dist/
+coverage/
+*.WebView2/
