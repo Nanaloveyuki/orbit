@@ -62,6 +62,8 @@ if (command === "android") {
     process.on("exit", () => rmSync(workspace, { force: true }))
   }
 
+  process.env.MOONVIEW_NATIVE_BACKEND ||= "android"
+  run("moon", ["-C", androidRoot, "check", "--target", "native", "--deny-warn"])
   run("pnpm", ["build"])
   if (existsSync(localBuilder)) {
     run("moon", [

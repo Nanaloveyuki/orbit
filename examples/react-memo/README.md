@@ -80,7 +80,6 @@ Windows PowerShell 示例：
 ```powershell
 $env:ANDROID_SDK_ROOT = "$env:LOCALAPPDATA\Android\Sdk"
 $env:ANDROID_NDK_HOME = "C:\path\to\android-ndk-r29"
-moon -C android update
 pnpm run orbit android build
 pnpm run orbit android dev
 pnpm run orbit android test
