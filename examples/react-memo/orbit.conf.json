@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "app": {
+    "identifier": "dev.orbit.react-memo",
+    "name": "Orbit Memo",
+    "version": "0.1.0",
+    "product_name": "Orbit Memo",
+    "windows": [
+      {
+        "label": "main",
+        "title": "Orbit Memo",
+        "width": 1180,
+        "height": 760,
+        "entry": "index.html",
+        "visible": true,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "icons": [],
+    "windows": { "webview_install_mode": "embed_bootstrapper" }
+  },
+  "web": {
+    "embedded": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+    }
+  },
+  "build": {
+    "vite": {
+      "dev_command": "pnpm dev --host 127.0.0.1",
+      "dev_url": "http://127.0.0.1:5173",
+      "build_command": "pnpm build",
+      "dist_dir": "dist"
+    }
+  },
+  "capabilities": [
+    {
+      "identifier": "memo-window-commands",
+      "effect": "allow",
+      "principals": [{ "kind": "window", "identifier": "main" }],
+      "scopes": [],
+      "commands": ["memo.runtime"]
+    }
+  ],
+  "plugins": []
+}

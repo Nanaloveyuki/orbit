@@ -12,6 +12,7 @@ import {
   compatibilityProfile,
   createLinuxArchive,
   createNsisScript,
+  developmentServerStdio,
   expandArchiveSigningCommand,
   expandSigningCommand,
   installerDescriptor,
@@ -100,6 +101,10 @@ function createLinuxPackage(directory) {
   writeFileSync(join(directory, "orbit-package.json"), `${JSON.stringify(manifest)}\n`);
   return manifest;
 }
+
+test("Vite development leaves console input to the native process", () => {
+  assert.deepEqual(developmentServerStdio(), ["ignore", "inherit", "inherit"]);
+});
 
 test("init parses one target and application identity options", () => {
   const cwd = resolve("workspace");

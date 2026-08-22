@@ -283,6 +283,7 @@ Orbit 参考了 Tauri 的分层经验，但不是 Tauri API 的 MoonBit 移植�
 - [生产就绪与 Windows 1.0 路线](docs/production-readiness.md)
 - [Windows GUI 验收](docs/windows-gui-smoke.md)
 - [Windows 生命周期与托盘示例](examples/windows-lifecycle/)
+- [React、TypeScript 与 shadcn/ui 备忘录示例](examples/react-memo/)
 - [打包与验证](docs/packaging.md)
 - [安全报告](SECURITY.md)
 - [参与开发](CONTRIBUTING.md)

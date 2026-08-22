@@ -692,6 +692,10 @@ function runWorkflowCommand(invocation, command) {
   }
 }
 
+export function developmentServerStdio() {
+  return ["ignore", "inherit", "inherit"];
+}
+
 function waitForDevelopmentUrl(url, timeout) {
   const script = [
     "const [url, timeout] = process.argv.slice(1);",
@@ -718,7 +722,7 @@ function startDevelopmentServer(invocation, command) {
     cwd: dirname(invocation.config),
     env: commandEnvironment(invocation),
     shell: true,
-    stdio: "inherit",
+    stdio: developmentServerStdio(),
   });
   server.once("error", (error) => {
     process.stderr.write(`orbit: Vite dev server failed: ${error.message}\n`);

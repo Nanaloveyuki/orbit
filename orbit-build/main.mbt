@@ -193,7 +193,7 @@ async fn collect_assets(
 }
 
 ///|
-fn bytes_expression(bytes : Bytes) -> String {
+fn bytes_expression(bytes : Bytes, indent : String) -> String {
   if bytes.length() == 0 {
     return "b\"\""
   }
@@ -202,14 +202,49 @@ fn bytes_expression(bytes : Bytes) -> String {
   for index = 0; index < bytes.length(); index = index + 1 {
     values.push("\{bytes[index]}")
     if values.length() == 8 {
-      lines.push("            \{values.join(", ")},")
+      lines.push("\{indent}  \{values.join(", ")},")
       values.clear()
     }
   }
   if !values.is_empty() {
-    lines.push("            \{values.join(", ")},")
+    lines.push("\{indent}  \{values.join(", ")},")
   }
-  "Bytes::from_array([\n\{lines.join("\n")}\n          ])"
+  "Bytes::from_array([\n\{lines.join("\n")}\n\{indent}])"
+}
+
+///|
+let embedded_asset_chunk_size = 8192
+
+///|
+fn embedded_asset_expression(
+  window_index : Int,
+  asset_index : Int,
+  bytes : Bytes,
+) -> (String, String) {
+  let resource_name = "embedded_asset_\{window_index}_\{asset_index}"
+  if bytes.is_empty() {
+    return (
+      "///|\nfn \{resource_name}() -> Bytes {\n  b\"\"\n}",
+      "\{resource_name}()",
+    )
+  }
+  let declarations = []
+  let chunk_names = []
+  let mut chunk_index = 0
+  for offset = 0
+      offset < bytes.length()
+      offset = offset + embedded_asset_chunk_size {
+    let end = Int::min(offset + embedded_asset_chunk_size, bytes.length())
+    let chunk = bytes.view(start=offset, end~).to_owned()
+    let chunk_name = "\{resource_name}_chunk_\{chunk_index}"
+    let expression = bytes_expression(chunk, "  ")
+    declarations.push("///|\nfn \{chunk_name}() -> Bytes {\n  \{expression}\n}")
+    chunk_names.push(chunk_name)
+    chunk_index = chunk_index + 1
+  }
+  let chunks = chunk_names.map(name => "\{name}()").join(" +\n  ")
+  declarations.push("///|\nfn \{resource_name}() -> Bytes {\n  \{chunks}\n}")
+  (declarations.join("\n\n"), "\{resource_name}()")
 }
 
 ///|
@@ -370,15 +405,22 @@ fn resource_handlers_expression(
       None => []
     }
     let cases = []
-    for asset in assets {
+    let asset_declarations = []
+    for asset_index, asset in assets {
       let uri = Json::string("\{scheme}://app/\{asset.path}").stringify()
       let media = Json::string(asset.media_type).stringify()
+      let (declarations, body) = embedded_asset_expression(
+        index,
+        asset_index,
+        asset.bytes,
+      )
+      asset_declarations.push(declarations)
       cases.push(
-        "    \{uri} =>\n      Some(\n        @runtime.RuntimeResourceResponse::new(\n          status=200,\n          media_type=\{media},\n          body=\{bytes_expression(asset.bytes)},\n        ),\n      )",
+        "    \{uri} =>\n      Some(\n        @runtime.RuntimeResourceResponse::new(\n          status=200,\n          media_type=\{media},\n          body=\{body},\n        ),\n      )",
       )
     }
     handlers.push(
-      "///|\npub fn resource_response_\{index}(uri : String) -> @runtime.RuntimeResourceResponse? {\n  match uri {\n\{cases.join("\n")}\n    _ => None\n  }\n}\n\n///|\npub fn handle_resource_\{index}(\n  request : @runtime.RuntimeResourceRequest,\n) -> @runtime.RuntimeResourceResponse? {\n  resource_response_\{index}(request.uri())\n}",
+      "\{asset_declarations.join("\n\n")}\n\n///|\npub fn resource_response_\{index}(uri : String) -> @runtime.RuntimeResourceResponse? {\n  match uri {\n\{cases.join("\n")}\n    _ => None\n  }\n}\n\n///|\npub fn handle_resource_\{index}(\n  request : @runtime.RuntimeResourceRequest,\n) -> @runtime.RuntimeResourceResponse? {\n  resource_response_\{index}(request.uri())\n}",
     )
   }
   handlers.join("\n\n")
@@ -966,6 +1008,23 @@ test "generated windows keep same-named entry documents in separate resource bun
   assert_true(
     source.contains(
       "commands=[\n        @ipc.CommandName::new(\"one\"),\n        @ipc.CommandName::new(\"two\"),\n      ]",
+    ),
+  )
+}
+
+///|
+test "embedded assets are split across bounded top-level chunks" {
+  let (declarations, body) = embedded_asset_expression(
+    2,
+    3,
+    Bytes::make(embedded_asset_chunk_size + 1, b'\x61'),
+  )
+  assert_eq(body, "embedded_asset_2_3()")
+  assert_true(declarations.contains("fn embedded_asset_2_3_chunk_0()"))
+  assert_true(declarations.contains("fn embedded_asset_2_3_chunk_1()"))
+  assert_true(
+    declarations.contains(
+      "embedded_asset_2_3_chunk_0() +\n  embedded_asset_2_3_chunk_1()",
     ),
   )
 }
