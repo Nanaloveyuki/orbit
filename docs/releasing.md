@@ -28,10 +28,11 @@ only then makes the GitHub Release public. A failure leaves the GitHub Release
 as a draft for inspection. npm prereleases use their first prerelease identifier
 as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
-`.moon-version` selects an installer-supported MoonBit channel. CI records the
-resolved compiler and build-tool versions with `moon version --all` before
-validation and rejects a compiler other than MoonBit 0.10.9 for this release
-line. The public installer currently exposes this release through `latest`.
+`.moon-version` pins the installer-supported MoonBit release used by this
+version line (`0.1.20260819`, with `moonc` 0.10.9). CI records the resolved
+compiler and build-tool versions with `moon version --all` before validation and
+rejects a compiler other than MoonBit 0.10.9 for this release line. Do not use
+the moving `latest` channel for a release branch.
 
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the
