@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <title>Orbit logo</title>
+  <desc>A C-shaped crescent planet with an orbit, a rabbit-ear mooncake, and a small orbit node.</desc>
+
+  <defs>
+    <linearGradient id="orbit-back-gradient" x1="70" y1="331" x2="456" y2="178" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0875A5"/>
+      <stop offset="0.52" stop-color="#0C9CC6"/>
+      <stop offset="1" stop-color="#14789D"/>
+    </linearGradient>
+    <linearGradient id="orbit-front-gradient" x1="82" y1="377" x2="458" y2="276" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#33C9D6"/>
+      <stop offset="0.55" stop-color="#54E4D8"/>
+      <stop offset="1" stop-color="#2FC2D8"/>
+    </linearGradient>
+    <linearGradient id="moon-body-gradient" x1="150" y1="158" x2="299" y2="377" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE7A3"/>
+      <stop offset="0.54" stop-color="#F8D27D"/>
+      <stop offset="1" stop-color="#E8B755"/>
+    </linearGradient>
+    <linearGradient id="moon-highlight-gradient" x1="139" y1="174" x2="215" y2="372" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF2C1"/>
+      <stop offset="1" stop-color="#FFE3A0"/>
+    </linearGradient>
+    <linearGradient id="mooncake-gradient" x1="374" y1="104" x2="419" y2="165" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD36D"/>
+      <stop offset="1" stop-color="#F2B53C"/>
+    </linearGradient>
+    <linearGradient id="node-gradient" x1="62" y1="327" x2="83" y2="348" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#69F2DF"/>
+      <stop offset="1" stop-color="#27C8D7"/>
+    </linearGradient>
+  </defs>
+
+  <g id="orbit-back" data-layer="orbit-back" inkscape:groupmode="layer" inkscape:label="Orbit back arc">
+    <path d="M74 338C53 292 67 231 116 180C169 124 244 106 318 118C387 129 438 172 457 224C470 259 463 297 440 331" stroke="url(#orbit-back-gradient)" stroke-width="18" stroke-linecap="round"/>
+  </g>
+
+  <g id="orbit-front" data-layer="orbit-front" inkscape:groupmode="layer" inkscape:label="Orbit front arc">
+    <path d="M74 338C78 378 128 408 195 422C285 441 380 401 437 326C450 309 458 290 462 269" stroke="url(#orbit-front-gradient)" stroke-width="18" stroke-linecap="round"/>
+  </g>
+
+  <g id="moon-planet" data-layer="moon-planet" inkscape:groupmode="layer" inkscape:label="C-shaped moon planet">
+    <path id="moon-body" d="M313 141C272 123 218 128 175 156C133 184 112 226 113 268C115 321 148 367 195 386C235 402 278 395 319 373C278 348 253 304 253 258C253 211 276 169 313 141Z" fill="url(#moon-body-gradient)" stroke="#0B3158" stroke-width="11" stroke-linejoin="round"/>
+    <path id="moon-highlight" d="M204 145C161 164 133 205 129 251C125 307 153 354 204 379C177 348 164 312 166 270C168 217 185 173 223 148C217 146 210 145 204 145Z" fill="url(#moon-highlight-gradient)"/>
+    <path id="moon-inner-edge" d="M313 145C274 173 251 211 251 258C251 303 275 345 315 370" stroke="#0B3158" stroke-width="11" stroke-linecap="round"/>
+    <path id="moon-inner-gold-edge" d="M315 151C280 180 262 216 262 258C262 297 280 333 313 358" stroke="#D9952D" stroke-width="5" stroke-linecap="round"/>
+    <circle id="moon-crater-large" cx="178" cy="230" r="15" fill="#F0A92E"/>
+    <circle id="moon-crater-small" cx="177" cy="301" r="9" fill="#E9A331"/>
+  </g>
+
+  <g id="moon-rabbit-mooncake" data-layer="moon-rabbit-mooncake" inkscape:groupmode="layer" inkscape:label="Moon rabbit and mooncake">
+    <path id="rabbit-ear-left" d="M376 114C368 96 367 75 375 65C382 56 393 65 397 85L399 113Z" fill="#0B3158"/>
+    <path id="rabbit-ear-right" d="M399 113L401 85C405 65 416 56 424 65C432 75 431 96 423 114Z" fill="#0B3158"/>
+    <path id="rabbit-ear-left-light" d="M379 99C377 87 378 75 382 72C386 71 390 80 392 93L393 102Z" fill="#FFF0C3"/>
+    <path id="rabbit-ear-right-light" d="M402 102L403 93C405 80 409 71 413 72C417 75 418 87 416 99Z" fill="#FFF0C3"/>
+    <circle id="mooncake" cx="398" cy="132" r="34" fill="url(#mooncake-gradient)" stroke="#0B3158" stroke-width="9"/>
+    <path id="mooncake-emboss" d="M398 113C403 113 407 117 406 122C412 121 417 125 417 131C417 137 412 141 406 140C407 146 403 151 398 151C393 151 389 146 390 140C384 141 379 137 379 131C379 125 384 121 390 122C389 117 393 113 398 113Z" fill="#FFF1C1"/>
+    <circle id="mooncake-center" cx="398" cy="132" r="7" fill="#0B3158"/>
+  </g>
+
+  <g id="orbit-node-left" data-layer="orbit-node-left" inkscape:groupmode="layer" inkscape:label="Orbit node">
+    <circle id="orbit-node-shell" cx="74" cy="338" r="22" fill="#0B3158"/>
+    <circle id="orbit-node-core" cx="74" cy="338" r="12" fill="url(#node-gradient)"/>
+    <circle id="orbit-node-glint" cx="70" cy="334" r="4" fill="#E6FFF8"/>
+  </g>
+</svg>

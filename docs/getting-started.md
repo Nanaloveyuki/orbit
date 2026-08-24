@@ -11,17 +11,21 @@
 - 本机 C/C++ 编译和链接工具链；
 - Node.js 20 或更高版本，仅在使用 Orbit CLI 或 Vite 时需要。
 
-Windows 需要可用的 MSVC/Windows SDK。MoonView 会在第一次 native build 时下载官方
+Windows 需要可用的 MSVC/Windows SDK，以及直接运行示例时可被系统 loader 找到的
+Microsoft Edge WebView2 Evergreen Runtime。MoonView 会在第一次 native build 时下载官方
 WebView2 SDK `1.0.4078.44`、校验固定 SHA-256，并缓存到
 `%LOCALAPPDATA%\moonview\webview2\1.0.4078.44`。离线环境可以设置
 `MOONVIEW_WEBVIEW2_SDK_DIR`，或同时设置 `MOONVIEW_WEBVIEW2_INCLUDE` 与
 `MOONVIEW_WEBVIEW2_LOADER_LIB`。
 
-Linux 需要 GTK3 和 WebKitGTK 4.1 开发包。Ubuntu/Debian 示例：
+Linux 需要 C/C++ 编译工具链、`pkg-config`、GTK3 和 WebKitGTK 4.1 开发包。
+Ubuntu/Debian 示例：
 
 ```sh
-sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
+sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 ```
+
+无头 Linux 验证还需要 `xvfb`；普通桌面运行不需要。
 
 ## 运行仓库示例
 
