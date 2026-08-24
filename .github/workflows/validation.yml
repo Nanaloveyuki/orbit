@@ -48,11 +48,11 @@ jobs:
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "$HOME\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - run: moon version --all
-      - name: Verify MoonBit release
+      - name: Verify MoonBit release line
         shell: pwsh
         run: |
-          if (-not (moon version --all | Select-String -Pattern '^moonc v0\.10\.9')) {
-            throw "MoonBit v0.10.9 is required"
+          if (-not (moon version --all | Select-String -Pattern '^moonc v0\.10\.')) {
+            throw "MoonBit 0.10.x is required"
           }
       - run: moon update
       - run: moon check --target native --deny-warn
@@ -70,14 +70,14 @@ jobs:
         with:
           node-version: 24
       - name: Install native dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - run: moon version --all
-      - name: Verify MoonBit release
-        run: moon version --all | grep -E '^moonc v0\.10\.9'
+      - name: Verify MoonBit release line
+        run: moon version --all | grep -E '^moonc v0\.10\.'
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn

@@ -1,33 +1,56 @@
+[简体中文](./docs/README-cn.md) | English
+
 # Orbit
+
+<p align="center">
+  <img src="docs/assets/orbit-logo.svg" alt="Orbit logo" width="160">
+</p>
 
 [![validation](https://github.com/Nanaloveyuki/orbit/actions/workflows/validation.yml/badge.svg)](https://github.com/Nanaloveyuki/orbit/actions/workflows/validation.yml)
 [![npm](https://img.shields.io/npm/v/%40nanaloveyuki%2Forbit-cli?tag=alpha&label=orbit-cli)](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli)
 
-Orbit 是一个用 MoonBit 构建的原生桌面应用框架。它以 Orby 管理窗口和事件循环，
-以 MoonView 嵌入系统 WebView，并在网页前端与 MoonBit 后端之间提供受能力策略约束的
-IPC。应用可以使用原生 HTML/CSS/JavaScript，也可以接入 React、Vue 等 Vite 前端。
+Orbit is a MoonBit-based desktop application framework. It combines native
+windows and event loops, an embedded system WebView, and capability-controlled
+IPC between a web frontend and a MoonBit backend.
 
-当前发布版本为 `0.1.0-alpha.7`。Windows x64 是当前唯一的一等支持目标；Linux
-保持持续构建、打包验证的实验性支持。API 与配置仍可能在正式版前调整。
+Orbit does not require a specific frontend framework. A static HTML/CSS/
+JavaScript application, React, Vue, and other Vite-based frontends can all be
+embedded.
 
-## 已实现
+## Support
 
-- 多窗口桌面生命周期，以及每个窗口独立的嵌入资源根。
-- 构建时嵌入 Web 资源，运行时不依赖源码目录中的前端文件。
-- 同步与异步 MoonBit 命令、超时、取消、结构化错误和 256 KiB 消息限制。
-- 以窗口、远端页面、HTTP 客户端、插件和后台任务为主体的 allow/deny 能力策略。
-- 可选的、默认关闭的认证 HTTP IPC 适配器。
-- HTTPS 远端页面、精确 origin 白名单和嵌入式失败回退页。
-- 原生插件 ABI v1/v2、sidecar schema、权限声明和可观察的安全关闭。
-- Vite 开发/生产流程，以及 JavaScript IPC bindings 生成。
-- 可选、内存限定的桌面生命周期诊断记录与 JSON 环境检查。
-- 图标生成、可校验目录包、Windows NSIS 安装包、Linux `tar.gz`、deb、rpm 和 Arch 包。
-- 可选 Android preview host：单 Activity/WebView、嵌入资源、页面 IPC 与调试 APK。
+- Windows x64 is the primary target.
+- Linux x64 is experimental and requires GTK3 and WebKitGTK 4.1.
+- macOS does not currently have an Orbit top-level window host.
+- Android is an optional preview host with a separate Activity/WebView runtime.
 
-## 五分钟运行
+## Prerequisites
 
-先安装 [MoonBit 工具链](https://www.moonbitlang.com/download/) 和本机原生编译工具链，
-然后执行：
+- [MoonBit](https://www.moonbitlang.com/download/)
+- A native C/C++ compiler and linker
+- Node.js 20 or newer when using the CLI or Vite
+- Windows: MSVC and the Windows SDK
+- Windows runtime: the Microsoft Edge WebView2 Evergreen Runtime when running
+  the example directly with `moon run`
+- Linux: `pkg-config`, GTK3, and WebKitGTK 4.1 development packages
+
+On Ubuntu or Debian, install the Linux WebView dependencies with:
+
+```sh
+sudo apt-get install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+```
+
+Headless Linux validation additionally needs `xvfb`; an interactive desktop run
+does not.
+
+On Windows, the first native build downloads and verifies the WebView2 SDK.
+Set `MOONVIEW_WEBVIEW2_SDK_DIR`, or both
+`MOONVIEW_WEBVIEW2_INCLUDE` and `MOONVIEW_WEBVIEW2_LOADER_LIB`, for an offline
+or preinstalled SDK. The direct `moon run` example uses the installed Evergreen
+Runtime; packaged Windows installers can bootstrap it according to
+`bundle.windows.webview_install_mode`.
+
+## Run the repository example
 
 ```sh
 git clone https://github.com/Nanaloveyuki/orbit.git
@@ -36,70 +59,61 @@ moon update
 moon run orbit-example
 ```
 
-运行后会打开一个由 Orby 创建、MoonView 渲染的原生窗口。页面按钮调用
-`example.ping`，MoonBit 后端返回 JSON，完整路径可在
-[`orbit-example`](orbit-example/) 中查看。
+The example opens a native window and serves an embedded WebView page. The
+page invokes `example.ping` and receives a JSON response from MoonBit.
 
-修改 `orbit-example/assets` 后，先重新生成嵌入资源：
+## Create an application
 
-```sh
-moon run --target native orbit-build orbit-example/orbit.conf.json orbit-example/generated_page.mbt
-moon run orbit-example
-```
-
-### 平台前置
-
-| 平台 | 开发依赖 | 当前状态 |
-| --- | --- | --- |
-| Windows x64 | MSVC/Windows SDK；首次 native build 会自动下载并校验 WebView2 SDK | 主要开发平台，CI 与安装包流程已验证 |
-| Linux x64 | C 编译器、GTK3、WebKitGTK 4.1 开发包 | Ubuntu/Fedora/Arch 构建与打包流程已验证 |
-| macOS | - | Orbit 顶层窗口宿主尚未实现 |
-| Android | JDK 17、Android SDK 35、NDK 29、CMake 4.1.2 | 可选 preview；独立 Activity host，不属于桌面 beta |
-| OpenHarmony | - | 相关底层库有独立探索，当前不是 Orbit 应用目标平台 |
-
-Windows 的 WebView2 SDK 默认缓存到
-`%LOCALAPPDATA%\moonview\webview2\1.0.4078.44`；通常不需要手工配置 SDK。
-目标机器使用系统 Evergreen WebView2 Runtime，安装包可按配置下载或携带安装程序。
-
-Ubuntu/Debian 开发机可安装：
+Use the CLI to create a new application without overwriting an existing path:
 
 ```sh
-sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
-```
-
-## 在应用中使用
-
-新应用可以直接由 npm CLI 创建：
-
-```sh
-npx @nanaloveyuki/orbit-cli@alpha init my-orbit-app \
-  --name "My Orbit App" \
-  --identifier com.example.my-orbit-app \
-  --module example/my-orbit-app
+npx @nanaloveyuki/orbit-cli@alpha init my-orbit-app --name "My Orbit App" --identifier com.example.my-orbit-app --module example/my-orbit-app
 cd my-orbit-app
 moon update
 npm install
 npm run orbit:run
 ```
 
-`init` 原子创建一个不会覆盖现有目录的 vanilla 应用，包含 MoonBit native 入口、schema
-v2 配置、受 capability 保护的 IPC 示例、前端资源和 npm scripts。第一次运行会生成
-`generated_page.mbt`；建议将该文件提交，以便审查嵌入资源与权限变化。
+The generated application includes a native MoonBit entry point, a schema v2
+configuration, embedded frontend resources, capability-protected IPC, and the
+scripts needed for development and production builds.
 
-向现有模块添加 Orbit：
+## Add Orbit to an existing app
 
 ```sh
 moon add Nanaloveyuki/orbit@0.1.0-alpha.7
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
-npx orbit run
+npx orbit dev
 ```
 
-CLI 会优先使用工作区内的 `orbit-build`，其次使用 Mooncakes 已物化的生成器；首次构建
-需要时会按 `moon.mod` 的固定版本 fetch 到项目级 `.repos`。`--orbit-build` 仅用于显式
-覆盖。
+The CLI reads build and development commands from `orbit.conf.json`. It does
+not guess the frontend framework, package manager, development URL, or output
+directory.
 
-MoonBit 后端注册命令，配置文件决定哪个页面可以调用它：
+## Edit an application
+
+1. Edit frontend files under the configured `assets/` directory or the
+   frontend source directory used by Vite.
+2. Register MoonBit commands in a `CommandRegistry`.
+3. Grant those commands to the intended page or window in `ipc_policy`.
+4. Regenerate embedded resources after changing a non-Vite `assets/` directory.
+5. Run the application again and verify the IPC path.
+
+For the repository example:
+
+```sh
+moon run --target native orbit-build orbit-example/orbit.conf.json orbit-example/generated_page.mbt
+moon run orbit-example
+```
+
+The generated `generated_page.mbt` and `orbit-bindings.mjs` files describe the
+current embedded inputs. Review their diff when configuration or permissions
+change.
+
+### Register and call IPC
+
+MoonBit backend:
 
 ```moonbit
 let registry = @ipc.CommandRegistry::new()
@@ -108,200 +122,64 @@ registry.register_json(@ipc.CommandName::new("example.ping"), _payload => {
 })
 ```
 
+Browser frontend:
+
 ```javascript
 const response = await window.__ORBIT__.invoke("example.ping", { value: 1 }, {
   timeout: 5000,
 });
 ```
 
-生成的 `orbit-bindings.mjs` 也可以为当前页面实际获授权的命令提供固定入口。完整安装、
-`moon.pkg`、应用入口和生成步骤见[入门指南](docs/getting-started.md)。
+Commands are available only when the application policy grants them to the
+calling page. Keep filesystem, HTTP, plugin, and remote-page capabilities
+explicitly scoped.
 
-### 原生文件选择
+## Troubleshooting
 
-Windows 本地窗口可以在 capability 明确授予后调用内建的
-`orbit.dialog.open`、`orbit.dialog.open_multiple`、`orbit.dialog.save` 和
-`orbit.dialog.pick_directory`。结果只包含不透明 handle、显示名称和项目类型，绝不包含
-本机路径；HTTP、插件和远端页面不能使用这些命令。
+### `moon update` or dependency download fails
 
-文件 picker 与 `orbit.fs.*` 位于独立的 `orbit-desktop-file` 扩展包。应用必须显式创建并
-注入该扩展；未注入时，即使 IPC policy 授予了对应命令，也不会注册任何文件命令：
+Check the MoonBit version in `.moon-version`, confirm network access, and retry
+with a clean project-level dependency state. Do not edit generated dependency
+files by hand.
 
-```moonbit
-let file_extension = @desktop_file.DesktopFileExtension::new()
-let options = @core.DesktopOptions::new(
-  windows~,
-  ipc_registry=Some(registry),
-  ipc_policy=Some(policy),
-  extensions=[file_extension.as_extension()],
-)
-```
+### Windows native build cannot find WebView2
 
-同样可显式授予 `orbit.window.print`。它只接受 `{}`，只为调用它的本地窗口打开当前
-WebView 文档的原生打印对话框，并返回 `{ "opened": true }`；远端、HTTP、插件和后台
-principal 都不能调用它。
+For native build failures, install the Windows SDK and allow MoonView to
+download its pinned WebView2 SDK, or set `MOONVIEW_WEBVIEW2_SDK_DIR`. If using
+separate paths, set both `MOONVIEW_WEBVIEW2_INCLUDE` and
+`MOONVIEW_WEBVIEW2_LOADER_LIB`. For runtime failures, install the Microsoft
+Edge WebView2 Evergreen Runtime.
 
-### 轻量运行模式
+### Linux cannot create a WebView
 
-关闭窗口时，应用可保留 Orby 顶层窗口和托盘，但释放该窗口的嵌入 WebView。关闭最后一个
-WebView 后，MoonView 会释放 Windows 上对应的 WebView2 controller 与 environment；Linux
-会销毁 GTK WebView child，但不承诺回收 WebKitGTK 的全部进程级缓存。
+Install a native C/C++ toolchain, `pkg-config`, GTK3, and WebKitGTK 4.1
+development packages. For headless validation, also install `xvfb`. For a Vite
+application, run the frontend build separately and confirm that `dist_dir`
+matches the directory in `orbit.conf.json`.
 
-将 close policy 返回为 `Suspend`，或在托盘回调中调用
-`DesktopController::suspend_window(label)`。之后 `show_window(label)` 会在原窗口中创建一个
-新的 WebView，并按原始 `RuntimeOptions` 重新加载页面：
+### Frontend changes are not visible
 
-```moonbit
-let options = @core.DesktopOptions::new(
-  windows~,
-  close_request_handler=Some((_label, _controller) => {
-    @core.DesktopCloseAction::suspend()
-  }),
-  runtime_suspend_handler=Some(label => {
-    // Persist application-owned state previously received through IPC.
-    save_window_state(label)
-  }),
-)
-```
+Development mode loads the configured Vite `dev_url`. Embedded production mode
+loads generated resources, so rerun `orbit generate` or `orbit-build` after
+changing the source assets.
 
-`runtime_suspend_handler` 在 UI thread 上、运行时释放之前调用，返回 `Ok(())` 才会继续释放
-runtime；返回 `Err(reason)` 会保留当前窗口与 WebView，并由 `suspend_window` 返回
-`RuntimeOperationFailed`。Orbit 不会同步导出任意 DOM 状态；应用应使用正常 IPC 将主要状态
-保存到 MoonBit，或使用持久化的浏览器存储。挂起期间 UI-bound extension command 不可用，
-`orbit-desktop-file` 会撤销该窗口的文件 capability。
+### An IPC call is denied or times out
 
-```json
-{
-  "identifier": "main-file-dialogs",
-  "effect": "allow",
-  "principals": [{ "kind": "window", "identifier": "main" }],
-  "scopes": [],
-  "commands": ["orbit.dialog.open", "orbit.dialog.save"]
-}
-```
+Check the command name, the page origin, the principal in `ipc_policy`, and the
+configured timeout. Use `npx orbit diagnose --json` to inspect the local host
+and build environment without exporting IPC payloads.
 
-```javascript
-const selected = await window.__ORBIT__.invoke("orbit.dialog.open", {
-  title: "Open document",
-  filters: [{ name: "Text", extensions: ["txt", "md"] }]
-});
-if (!selected.cancelled) console.log(selected.files);
-```
+## Documentation
 
-在 `@core.run_async` 启动的应用中，显式授予
-`orbit.fs.read_binary` 或 `orbit.fs.read_text` 后，页面可继续将同一 handle
-传给读取命令。读取命令只接受 `{ "id": "..." }`，单次至多 64 KiB；binary
-结果使用 base64，text 结果会验证 UTF-8。路径、目录句柄和保存句柄都不能用于读取。
+- [Documentation index](docs/README.md)
+- [Getting started](docs/getting-started.md)
+- [Configuration](docs/configuration.md)
+- [IPC and plugins](docs/ipc-and-plugins.md)
+- [Platform support](docs/platform-support.md)
+- [Diagnostics](docs/diagnostics.md)
+- [Packaging](docs/packaging.md)
+- [Runnable examples](examples/)
 
-`orbit.fs.write_text` 只接受保存 picker 返回的 `Write` handle 和 UTF-8 `text`；它在
-同目录中完成写入和替换，成功只返回字节数。读取句柄、目录句柄和任意原生路径不能写入。
+## License
 
-目录 picker 返回的 `Directory` handle 可传给 `orbit.fs.read_directory`。Orbit 会在
-picker 返回时取得目录的原生 no-follow handle；枚举最多 128 个非隐藏直接子项，不接受
-路径参数。每个条目为 `{ "name", "kind", "id" }`：能够安全地相对父句柄打开的普通
-文件会有 `Read` id，可传给 `orbit.fs.read_text` 或 `orbit.fs.read_binary`；子目录有新的
-`Directory` id，可再次传给同一命令。symlink、Windows junction 和其他 reparse point
-不会被枚举或跟随。
-同一父目录的同名子 capability 会复用；每个窗口最多保留 256 个目录派生的原生
-capability（文件和目录合计），达到上限时条目仍可显示但不会携带新的 `id`。
-
-目录 capability 支持受限枚举、安全子目录导航和目录派生普通文件的只读访问；写入、创建
-和删除仍不提供。
-
-可选 bridge 的所有文件操作都只接受这些 handle；当前版本不会向页面提供任意路径文件系统
-API。
-
-## React、Vue 与 Vite
-
-Orbit 不绑定前端框架。只要前端能够输出静态目录，就可以嵌入可执行文件；开发模式由
-CLI 启动明确配置的 Vite 命令并等待 `dev_url`：
-
-```json
-{
-  "build": {
-    "vite": {
-      "dev_command": "npm run dev",
-      "dev_url": "http://127.0.0.1:5173",
-      "build_command": "npm run build",
-      "dist_dir": "dist"
-    }
-  }
-}
-```
-
-```sh
-npx orbit dev
-npx orbit build
-```
-
-CLI 不猜测 React、Vue、包管理器或输出目录；所有命令都来自 `orbit.conf.json`。
-`diagnose --json` 输出单个版本化 JSON 文档，用于采集本机 WebView 与编译环境状态；完整
-字段与应用内生命周期历史见[诊断](docs/diagnostics.md)。
-
-完整 React 示例还包含 Android Gradle/NDK host：
-
-```sh
-cd examples/react-memo
-pnpm run orbit android build
-pnpm run orbit android dev
-```
-
-Android 当前使用生产嵌入资源，不提供 Vite 热更新。SDK/NDK 前置、设备选择和已知限制见
-[`examples/react-memo/README.md`](examples/react-memo/README.md#android)。
-
-## CLI 与发布产物
-
-[`@nanaloveyuki/orbit-cli`](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli)
-是零运行时依赖的 Node.js 20+ 工具，覆盖以下常用流程：
-
-```sh
-npx orbit init --help
-npx orbit diagnose --json
-npx orbit bindings
-npx orbit icon --source assets/icon-1024.png --out-dir icons
-npx orbit package --release --out-dir dist
-npx orbit verify-package --package-dir dist
-```
-
-Windows 可以从已校验的目录包生成 NSIS 安装程序；Linux 可以生成可移植 archive 或
-调用发行版原生工具生成 deb、rpm、Arch 包。生产产物要求外部签名命令，本地测试必须
-显式使用 `--allow-unsigned`。详见[打包指南](docs/packaging.md)。
-
-## 生态组成
-
-| 项目 | 职责 |
-| --- | --- |
-| [Orbit on Mooncakes](https://mooncakes.io/docs/Nanaloveyuki/orbit) | 框架、构建器、运行时适配和 IPC 包 |
-| [Orbit CLI on npm](https://www.npmjs.com/package/@nanaloveyuki/orbit-cli) | 生成、开发、构建、图标和分发命令 |
-| [Orby](https://github.com/Nanaloveyuki/orby) | 原生窗口与宿主事件循环 |
-| [MoonView](https://github.com/Nanaloveyuki/moonview) | 系统 WebView 嵌入层 |
-| [orbit-plugin-abi](https://github.com/Nanaloveyuki/orbit-plugin-abi) | 稳定的 C 插件 ABI 与异步 executor |
-| [Ajni](https://github.com/Nanaloveyuki/ajni) | 通用 JNI 与 Android JNI 基础设施 |
-| [sync](https://github.com/Nanaloveyuki/sync) | 原生线程同步原语 |
-| [dynlib](https://github.com/Nanaloveyuki/dynlib) | 动态库加载 |
-| [image](https://github.com/Nanaloveyuki/image) | 图标解码、缩放和多格式输出 |
-| [Parsec](https://github.com/Nanaloveyuki/parsec) | 严格 JSON 解析等解析基础设施 |
-| [moonbitlang/async](https://github.com/moonbitlang/async) | 官方结构化异步运行时 |
-
-Orbit 参考了 Tauri 的分层经验，但不是 Tauri API 的 MoonBit 移植。窗口、WebView、IPC、
-插件与打包边界均按 MoonBit 当前语言能力和原生生态重新设计。
-
-## 文档
-
-- [入门与应用结构](docs/getting-started.md)
-- [配置文件](docs/configuration.md)
-- [Beta 参考标准](docs/standards/README.md)
-- [IPC、HTTP 与插件](docs/ipc-and-plugins.md)
-- [平台支持与已知限制](docs/platform-support.md)
-- [生产就绪与 Windows 1.0 路线](docs/production-readiness.md)
-- [Windows GUI 验收](docs/windows-gui-smoke.md)
-- [Windows 生命周期与托盘示例](examples/windows-lifecycle/)
-- [React、TypeScript 与 shadcn/ui 备忘录示例](examples/react-memo/)
-- [打包与验证](docs/packaging.md)
-- [安全报告](SECURITY.md)
-- [参与开发](CONTRIBUTING.md)
-- [维护者发布流程](docs/releasing.md)
-
-## 许可证
-
-Orbit 使用 [Apache License 2.0](LICENSE)。
+Orbit is licensed under the [Apache License 2.0](LICENSE).
