@@ -112,7 +112,8 @@ gradle -PwaseeAndroidDir=<path-to-wasee-moon>/android :app:assembleDebug --no-da
 WaseeHostSession。Orbit 负责 Activity 生命周期和 USB 权限 UI，Wasee 负责
 Chicory、AndroidUsbHost、AOA 重枚举和 guest 到 madk 的 transport 桥接。
 可选构建还需要 Android platform 36、Build Tools 37.0.0 和 MoonBit 0.10.9；
-Gradle 会先更新 Wasee checkout 的 MoonCake 依赖。
+Gradle 会先更新 Wasee checkout 的 MoonCake 依赖，并临时创建 Orbit Android
+构建所需的 moon.work。
 
 ## 独立项目边界
 
