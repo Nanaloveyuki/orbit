@@ -143,10 +143,10 @@ jobs:
         working-directory: examples/react-memo
       - name: Build Wasee WASI integration
         run: |
-          ./android/gradlew \
+          ./gradlew \
             -PwaseeAndroidDir="$GITHUB_WORKSPACE/wasee-moon/android" \
             :app:assembleDebug --no-daemon
-        working-directory: examples/react-memo
+        working-directory: examples/react-memo/android
 
   linux-deb:
     runs-on: ubuntu-24.04
