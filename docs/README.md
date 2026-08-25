@@ -13,6 +13,7 @@ repository or its release process.
 - [IPC and plugins](ipc-and-plugins.md)
 - [Diagnostics](diagnostics.md)
 - [Platform support](platform-support.md)
+- [Android WASI integration](android-wasi.md)
 - [Packaging an application](packaging.md)
 
 ## Reference

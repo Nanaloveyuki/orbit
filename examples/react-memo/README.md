@@ -101,6 +101,19 @@ Gradle 且暂时无法下载 wrapper，可设置 `ORBIT_GRADLE=gradle`。
 远程页面、多窗口、文件对话框、打印或托盘。`dev` 表示构建、安装和启动循环，不是桌面
 `orbit dev` 的热更新服务器模式。
 
+可选地，Android 示例可以通过 Gradle composite build 接入 wasee-moon 的
+host library。默认构建不启用该源集；需要同时提供 Wasee checkout：
+
+~~~powershell
+gradle -PwaseeAndroidDir=<path-to-wasee-moon>/android :app:assembleDebug --no-daemon
+~~~
+
+该路径会构建 Wasee guest wasm、复制到 Orbit APK 的忽略资源目录，并编译
+WaseeHostSession。Orbit 负责 Activity 生命周期和 USB 权限 UI，Wasee 负责
+Chicory、AndroidUsbHost、AOA 重枚举和 guest 到 madk 的 transport 桥接。
+可选构建还需要 Android platform 36、Build Tools 37.0.0 和 MoonBit 0.10.9；
+Gradle 会先更新 Wasee checkout 的 MoonCake 依赖。
+
 ## 独立项目边界
 
 本目录有自己的 `moon.mod`、`.moon-version`、`package.json` 和 `pnpm-lock.yaml`；`android/`

@@ -100,6 +100,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: Nanaloveyuki/wasee-moon
+          ref: 9942084b60f729238b76689aced258655da525ae
+          path: wasee-moon
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
@@ -112,7 +118,9 @@ jobs:
           sdkmanager="$android_sdk/cmdline-tools/latest/bin/sdkmanager"
           test -x "$sdkmanager"
           yes | "$sdkmanager" --licenses >/dev/null || true
-          "$sdkmanager" "platforms;android-35" "build-tools;36.1.0" "cmake;4.1.2" "ndk;29.0.14206865"
+          "$sdkmanager" "platforms;android-35" "build-tools;36.1.0" \
+            "platforms;android-36" "build-tools;37.0.0" \
+            "cmake;4.1.2" "ndk;29.0.14206865"
           echo "ANDROID_NDK_HOME=$android_sdk/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Install MoonBit
         run: |
@@ -122,6 +130,7 @@ jobs:
       - name: Install project dependencies
         run: |
           moon -C ../.. update
+          moon -C ../../wasee-moon update
           moon -C android update
           npm install --global pnpm@11.5.3
           pnpm install --frozen-lockfile
@@ -131,6 +140,12 @@ jobs:
           echo "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046  android/gradle/wrapper/gradle-wrapper.jar" | sha256sum --check
           chmod +x android/gradlew
           pnpm run orbit android build
+        working-directory: examples/react-memo
+      - name: Build Wasee WASI integration
+        run: |
+          ./android/gradlew \
+            -PwaseeAndroidDir="$GITHUB_WORKSPACE/wasee-moon/android" \
+            :app:assembleDebug --no-daemon
         working-directory: examples/react-memo
 
   linux-deb:

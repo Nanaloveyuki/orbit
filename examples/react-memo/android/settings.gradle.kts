@@ -14,5 +14,15 @@ dependencyResolutionManagement {
   }
 }
 
+val waseeAndroidDir = providers.gradleProperty("waseeAndroidDir").orNull
+if (waseeAndroidDir != null) {
+  includeBuild(file(waseeAndroidDir)) {
+    dependencySubstitution {
+      substitute(module("dev.nanaloveyuki.wasee:host"))
+        .using(project(":host"))
+    }
+  }
+}
+
 rootProject.name = "orbit-react-memo-android"
 include(":app")
