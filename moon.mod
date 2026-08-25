@@ -1,6 +1,6 @@
 name = "Nanaloveyuki/orbit"
 
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 
 description = "Composable desktop application foundations for MoonBit."
 

@@ -6,11 +6,13 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
-- Add optional `orbit-runtime-android` and `orbit-android` packages for a
-  single-Activity Ajni/MoonView WebView host with embedded resources and Orbit
-  IPC.
-- Add `orbit generate --android` plus a complete dual-ABI Gradle/NDK workflow
-  and instrumentation test to the React memo reference application.
+## 0.1.0-alpha.8 - 2026-08-25
+
+- Add the optional Android preview host, including `orbit generate --android`,
+  the dual-ABI Gradle/NDK workflow, and the React memo reference application.
+- Add the optional Android WASI/Wasee integration. The Gradle composite build
+  embeds the Wasee guest and exposes the bounded USB-to-madk host path without
+  changing Orbit's default desktop target or APK.
 - Allow the shared page bridge to use the trusted `window.ajni` WebMessage
   transport while preserving the desktop `window.moonview` contract.
 

@@ -68,7 +68,7 @@ capability 保护的 IPC，以及开发和生产构建脚本。
 ## 接入已有应用
 
 ~~~sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.7
+moon add Nanaloveyuki/orbit@0.1.0-alpha.8
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev
