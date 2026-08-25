@@ -42,6 +42,9 @@ Android is optional platform work and is not part of the desktop beta support
 claim. `orbit-runtime-android` maps the common runtime contract to MoonView's
 Ajni-backed Android WebView, while `orbit-android` owns Activity lifecycle and
 IPC composition without importing Orby.
+An optional Wasee integration hosts core-Wasm/WASI guests on the JVM side; it is
+a separate capability path and does not turn the native Orbit target into a
+Wasm runtime.
 
 The React memo reference app has completed a dual-ABI debug APK build and its
 Ajni/MoonView foundation has passed WebView, trusted-origin message, embedded
@@ -55,6 +58,8 @@ page IPC, responsive bounds updates, WebView local storage, and APK output for
 `arm64-v8a` and `x86_64`. Remote pages, multiple windows, Vite hot reload, native
 file and print dialogs, tray integration, AAB/release signing, and Play delivery
 are not implemented.
+The optional Wasee path adds a separately hosted bounded WASI guest and USB
+capability; it is not part of the default APK.
 
 On Linux, source builds against the current monorepo also require `pkg-config`
 and GTK3 development files because the root Orbit module's Orby prebuild runs

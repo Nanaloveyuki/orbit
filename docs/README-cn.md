@@ -113,6 +113,7 @@ moon run orbit-example
 - [配置](configuration.md)
 - [IPC 与插件](ipc-and-plugins.md)
 - [平台支持](platform-support.md)
+- [Android WASI 集成](android-wasi.md)
 - [诊断](diagnostics.md)
 - [打包](packaging.md)
 - [可运行示例](../examples/)

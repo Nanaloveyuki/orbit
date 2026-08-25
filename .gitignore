@@ -13,5 +13,6 @@ examples/react-memo/android/.gradle/
 examples/react-memo/android/build/
 examples/react-memo/android/app/build/
 examples/react-memo/android/app/.cxx/
+examples/react-memo/android/app/src/main/assets/wasee/
 examples/react-memo/android/local.properties
 examples/react-memo/android/moon.work
