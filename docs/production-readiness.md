@@ -12,6 +12,67 @@ The proposed `0.1.0-beta.1` framework boundaries are maintained in the
 [beta reference standards](standards/README.md). The 1.0 gates below remain a
 separate, stricter target.
 
+## Experimental-Stage Priorities
+
+Orbit remains experimental. Performance and engineering quality take priority
+over expanding the feature surface or promoting APIs to beta. The Windows 1.0
+contract below is a future target, not the current iteration plan or a release
+schedule. Public APIs may still change with explicit migration notes.
+
+Near-term work should focus on reproducible correctness fixes, native resource
+ownership, deterministic cleanup, actionable errors, and reliable build,
+generation, dependency, and release workflows. Add tests for demonstrated
+failure modes and application-used boundaries rather than speculative features
+or compatibility abstractions.
+
+Dedicated IPC latency and startup-time optimization is deferred until the
+MoonBit stable release is available and evaluated with Orbit. That milestone
+does not automatically make Orbit stable. Deadlocks, unbounded waits, resource
+leaks, and data-integrity defects remain actionable now. Later performance work
+should start with reproducible measurements on pinned toolchain and WebView
+versions, separating framework costs from application and host costs.
+
+### Contract Reconciliation
+
+Reconciliation records current behavior and resolves ambiguity; it does not
+freeze every public symbol or require a runtime redesign. Source and focused
+automated checks now cover the following areas; native GUI and application-data
+upgrade acceptance remain separate from those checks:
+
+| Area | Scope | Completion evidence |
+| --- | --- | --- |
+| Window lifecycle | Visibility versus suspension/destruction; preparation failure; close, exit, and crash cleanup | Documented transitions agree with focused failure and cleanup tests |
+| IPC semantics | Terminal responses, timeout/cancel races, duplicate requests, busy errors, and limit units | Protocol documentation agrees with boundary tests, including non-ASCII payloads |
+| Execution and errors | Supported sync/async entry points, UI-thread ownership, cancellation versus side effects, machine-readable errors | Application-facing behavior is explicit and exercised by focused tests |
+| Configuration and artifacts | Schema v2, generated-file ownership, CLI exit/JSON behavior, upgrade effects on stored application data | Existing generation and packaging checks cover the documented behavior; actual migrations have instructions |
+| Compatibility scope | Application-used core versus experimental extensions | Deliberate status and migration notes without freezing all public APIs |
+
+The [IPC guide](ipc-and-plugins.md) now distinguishes page/HTTP request bytes,
+parser Unicode scalars, and response UTF-16 units without changing those existing
+limits. Regression tests cover non-ASCII boundaries, scoped cancellation,
+duplicate IDs, late completion, and failed-resume subscription cleanup.
+
+The generator and CLI compatibility profiles now agree with the declared
+dependency versions. Native validation runs
+`node orbit-cli/scripts/verify-build-compatibility.mjs` against the compiled
+generator; release-version validation checks the CLI profile against `moon.mod`.
+Existing configuration and CLI tests cover explicit v1 migration, schema v2
+validation, generated-file restoration, and package integrity checks.
+
+Remaining experimental boundaries are explicit: cancellation cannot roll back
+side effects or preempt blocking FFI; failed native destruction has no general
+transactional recovery guarantee; controller/extension text errors are not frozen.
+Windows GUI acceptance, real storage upgrades, and install/uninstall behavior
+still need application-level validation. See the
+[lifecycle reference](standards/runtime-lifecycle.md) and
+[packaging guide](packaging.md). No package is promoted to stable by this review.
+
+Use existing applications, including `react-memo`, for application-level
+validation. Android daily use is relevant evidence for exercised Android paths,
+but does not establish Windows lifecycle or installer behavior. Do not require
+a new application or unrelated features merely to demonstrate framework maturity;
+record platform, version, exercised workflows, and remaining gaps separately.
+
 ## Planned Windows 1.0 Contract
 
 The stable target is Windows 10 22H2 x64 and Windows 11 x64 with the Microsoft
