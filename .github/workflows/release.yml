@@ -49,6 +49,7 @@ jobs:
           moon update
           moon check --target native --deny-warn
           moon test --target native --deny-warn
+          node orbit-cli/scripts/verify-build-compatibility.mjs
           npm test --prefix orbit-cli
           node orbit-cli/scripts/mooncake-dry-run.mjs
       - name: Build npm artifact

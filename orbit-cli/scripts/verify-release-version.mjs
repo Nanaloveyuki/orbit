@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
+import { compatibilityProfile } from "../src/cli.mjs";
 
 const repository = resolve(process.argv[2] ?? ".");
 const tag = process.argv[3] ?? process.env.GITHUB_REF_NAME;
@@ -19,6 +20,15 @@ if (npmManifest.repository?.url !== "https://github.com/Nanaloveyuki/orbit.git")
 }
 if (moonVersion !== npmManifest.version) {
   throw new Error(`MoonBit version ${moonVersion} does not match npm version ${npmManifest.version}`);
+}
+if (compatibilityProfile.orbit !== moonVersion) {
+  throw new Error("CLI compatibility profile must match the Orbit module version");
+}
+for (const dependency of ["orby", "moonview"]) {
+  const version = new RegExp(`"Nanaloveyuki/${dependency}@([^"\\s]+)"`).exec(moonManifest)?.[1];
+  if (!version || compatibilityProfile[dependency] !== version) {
+    throw new Error(`CLI compatibility profile must match the ${dependency} dependency`);
+  }
 }
 if (tag !== `v${moonVersion}`) {
   throw new Error(`release tag ${tag} must equal v${moonVersion}`);

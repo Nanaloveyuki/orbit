@@ -57,6 +57,7 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
+      - run: node orbit-cli/scripts/verify-build-compatibility.mjs
       - name: Check native tooltip handling
         shell: pwsh
         run: |
@@ -90,6 +91,7 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
+      - run: node orbit-cli/scripts/verify-build-compatibility.mjs
       - name: Check native file handling with sanitizers
         run: |
           cc -g -fsanitize=address,undefined -fno-omit-frame-pointer \

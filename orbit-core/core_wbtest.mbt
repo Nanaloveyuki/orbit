@@ -16,6 +16,130 @@ test "runtime suspension preparation returns the state persistence error" {
 }
 
 ///|
+priv struct ResumeTestRuntime {
+  fail_visibility : Bool
+  calls : Array[String]
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn capabilities(_) {
+  {
+    navigation: false,
+    script_evaluation: false,
+    message_transport: true,
+    bounds_updates: false,
+    devtools: false,
+    file_dialogs: false,
+  }
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn show_file_dialog(
+  _,
+  _,
+) {
+  raise @runtime.Unsupported("test runtime")
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn open_print_dialog(_) {
+  raise @runtime.Unsupported("test runtime")
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn navigate(_, _) {
+
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn evaluate_script(
+  _,
+  _,
+  _,
+) {
+
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn post_message(self, _) {
+  self.calls.push("message")
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn set_message_handler(
+  self,
+  handler,
+) {
+  if handler is None {
+    self.calls.push("detach")
+  }
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn set_bounds(_, _) {
+
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn set_visible(self, _) {
+  self.calls.push("show")
+  if self.fail_visibility {
+    raise @runtime.Unavailable("visibility failed")
+  }
+}
+
+///|
+impl @runtime.WebViewRuntime for ResumeTestRuntime with fn destroy(self) {
+  self.calls.push("destroy")
+}
+
+///|
+test "failed resume detaches subscriptions before destroying the runtime" {
+  for fail_visibility in [true, false] {
+    let router = @event.EventRouter::new()
+    let fake : ResumeTestRuntime = { fail_visibility, calls: [], }
+    let runtime = fake as &@runtime.WebViewRuntime
+    let mounted : MountedRuntime = {
+      runtime,
+      page_event_subscription: subscribe_page_events(
+        Some(router),
+        "main",
+        Window,
+        runtime,
+      ),
+    }
+    let failed = try {
+      mounted.show_resumed(Some(router))
+      false
+    } catch {
+      @runtime.Unavailable(reason) => {
+        assert_eq(reason, "visibility failed")
+        true
+      }
+      _ => false
+    }
+    assert_eq(failed, fail_visibility)
+    ignore(
+      (router as &@event.EventSink).emit(
+        @event.EventEnvelope::new(
+          name=@event.EventName::new("test.event"),
+          target=Window("main"),
+          payload=Json::null(),
+        ),
+      ),
+    )
+    assert_eq(
+      fake.calls,
+      if fail_visibility {
+        ["show", "detach", "destroy"]
+      } else {
+        ["show", "message"]
+      },
+    )
+  }
+}
+
+///|
 priv struct DiagnosticTestRuntimeFactory {}
 
 ///|

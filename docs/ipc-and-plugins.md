@@ -12,19 +12,37 @@ window.__ORBIT__.invoke(command, payload?, { timeout? })
 ```
 
 调用返回 Promise。失败会抛出 `OrbitIpcError`，包含 `code`、`message` 和可选 `data`。
-请求和响应上限为 256 KiB；JSON 使用严格解析，重复键在进入命令处理器前被拒绝。
+JSON 使用严格解析，重复键在进入命令处理器前被拒绝。当前实验版保留各层既有的限制单位：
+
+- 页面 `invoke` 的完整请求 envelope 最多 262144 个 UTF-8 字节（256 KiB）。
+- 传输无关解析器最多接受 262144 个 Unicode 标量值；单个解码后 JSON 字符串最多
+  131072 个标量值。直接调用注册表仍受这些限制，但不经过页面的字节检查。
+- 注册表对处理器结果或失败序列化后的完整响应检查 `max_response_chars`，默认上限
+  为 262144 个 UTF-16 code unit，即 MoonBit `String.length()`，不是 UTF-8 字节数。
+  超出时返回 `response_too_large`。协议拒绝及替代错误 envelope 不再递归受此限制。
+
+这些限制不等价，也不是处理器执行过程或序列化过程的内存预算。
 
 桌面异步 IPC 每个调用 scope 最多保留 64 个在途请求，全局最多 256 个；超出时返回
 `ipc_busy`，完成或取消后释放名额。远程页面权限使用原生消息来源，不使用导航目标推断。
 Linux 当前缺少可信消息来源元数据，因此不支持远程页面 IPC，本地页面 IPC 不受影响。
 
 每次调用携带 typed principal、transport 和 origin。待处理 ID 按已认证页面主体与 origin
-隔离，重复 ID 被拒绝；超时、完成和取消竞争只允许一次响应交付。没有显式
+隔离；同一 scope 的在途 ID 重复提交返回 `duplicate_invocation`，原任务不被替换。
+调用方不可用重复 ID 区分两次调用。每个已接受任务最多交付一次终止响应；取消消息本身
+没有应答，迟到结果被丢弃。没有显式
 `timeout_ms` 的 protocol-v1 请求默认 30 秒。
 
 `CommandRegistry` 支持同步和异步 JSON 处理器。异步处理器要求 `orbit-core.run_async`。
-页面 timeout 会取消结构化子任务，CPU 密集型处理器可以通过
-`InvocationContext.cancellation()` 协作检查取消。
+页面 timeout 会发送尽力而为的取消消息；桌面异步调度器取消对应结构化子任务。
+窗口销毁、成功进入挂起清理或运行时失败会取消该窗口所有 origin 的在途任务，不影响
+其他窗口。取消与超时不撤销已经发生的写入或其他副作用。
+
+`run_async` 的 MoonBit 回调仍在 UI 线程执行，不会自动把同步处理器移到 worker。
+处理器必须让出执行权，计时器与取消才能被处理；阻塞 FFI 和不让出的 CPU 循环无法被
+强制抢占。`InvocationContext.cancellation()` 是协作信号，不是线程中断。
+直接调用注册表的 `dispatch_async` 不启用计时器；自行接入异步传输时使用
+`orbit-ipc-async.dispatch_with_deadline` 或 `dispatch_source_with_deadline`。
 
 原生文件对话框是例外：`orbit.dialog.*` 在页面消息到达时同步由窗口 UI 线程执行，避免
 将系统 modal UI 发送到 async worker。页面可取消前的超时不会关闭已显示的系统对话框；
@@ -41,6 +59,9 @@ principal；认证回调返回不透明的 `AuthenticatedHttpClient`，再由普
 适配器本身不监听端口。宿主负责创建 `moonbitlang/async/http.Server`，选择绑定地址、
 TLS 或可信反向代理边界、连接限制和关闭时机，然后传给 `HttpAdapter::serve`。认证返回
 `None` 时，适配器会在读取 body 前返回 HTTP 401。
+
+HTTP 请求体按实际 UTF-8 字节计数，`max_request_bytes` 默认 262144，超出返回
+HTTP 413 / `request_too_large`；响应的 `max_response_chars` 仍按上述 UTF-16 单位计数。
 
 Orbit 默认不开启 HTTP，也不会默认授权任何 HTTP principal。明文 bearer credential
 只能用于 loopback 或其他明确可信的传输边界。

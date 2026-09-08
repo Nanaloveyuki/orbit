@@ -6,6 +6,17 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+- Cancel window-owned asynchronous IPC when its runtime is suspended, closed,
+  destroyed, or fails; reject new work after dispatcher shutdown.
+- Detach page-event subscriptions and message handlers when resumed runtime
+  visibility fails.
+- Correct the compiled generator and CLI compatibility profiles to match the
+  current Orbit, Orby, and MoonView dependency versions, and check their agreement
+  during validation and release. Rebuild packages with the matching CLI; older
+  package profiles still require their matching verifier.
+- Clarify existing IPC byte, Unicode scalar, and UTF-16 response limits, cooperative
+  cancellation, and experimental lifecycle and application-data boundaries.
+
 ## 0.1.0-alpha.8 - 2026-08-25
 
 - Add the optional Android preview host, including `orbit generate --android`,

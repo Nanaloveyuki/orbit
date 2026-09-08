@@ -243,6 +243,27 @@ priv struct MountedRuntime {
 }
 
 ///|
+fn MountedRuntime::show_resumed(
+  self : MountedRuntime,
+  router : @event.EventRouter?,
+) -> Unit raise @runtime.RuntimeError {
+  errdefer {
+    match (router, self.page_event_subscription) {
+      (Some(router), Some(subscription)) =>
+        router.unsubscribe_additional(subscription)
+      _ => ()
+    }
+    self.runtime.set_message_handler(None) catch {
+      _ => ()
+    }
+    self.runtime.destroy() catch {
+      _ => ()
+    }
+  }
+  self.runtime.set_visible(true)
+}
+
+///|
 fn deliver_page_event(
   runtime : &@runtime.WebViewRuntime,
   event : @event.EventEnvelope,
@@ -388,6 +409,9 @@ fn DesktopApp::dispatch_ipc_message(
   runtime : &@runtime.WebViewRuntime,
   page_message : @runtime.RuntimePageMessage,
 ) -> Unit {
+  if self.shutting_down {
+    return
+  }
   let message = page_message.body()
   self.emit_event(
     "orbit://ipc/request",
@@ -454,6 +478,7 @@ fn DesktopApp::dispatch_ipc_message(
               } else {
                 dispatcher.schedule(
                   invocation_scope,
+                  window_label=label,
                   registry,
                   policy,
                   context,
@@ -713,6 +738,10 @@ fn DesktopApp::notify_window_destroyed(
   self : DesktopApp,
   mounted : MountedWindow,
 ) -> Unit {
+  match self.async_ipc {
+    Some(dispatcher) => dispatcher.cancel_window(mounted.label)
+    None => ()
+  }
   if mounted.extension_window_destroyed.val {
     return
   }
@@ -794,6 +823,10 @@ fn DesktopApp::suspend_window_runtime(
       return Err(reason)
     }
     Ok(_) => ()
+  }
+  match self.async_ipc {
+    Some(dispatcher) => dispatcher.cancel_window(mounted.label)
+    None => ()
   }
   self.unsubscribe_page_events(mounted)
   runtime.set_message_handler(None) catch {
@@ -1017,11 +1050,8 @@ fn DesktopApp::resume_window_runtime(
       return Err(core_reason(error))
     }
   }
-  runtime.runtime.set_visible(true) catch {
+  runtime.show_resumed(self.options.event_router) catch {
     error => {
-      runtime.runtime.destroy() catch {
-        _ => ()
-      }
       self.record_diagnostic(
         @diagnostics.RuntimeResumeFailed,
         @diagnostics.Error,
@@ -1075,6 +1105,14 @@ fn DesktopApp::record_runtime_event(
   label : String,
   event : @runtime.RuntimeLifecycleEvent,
 ) -> Unit {
+  match event {
+    Destroyed | Failed(_) =>
+      match self.async_ipc {
+        Some(dispatcher) => dispatcher.cancel_window(label)
+        None => ()
+      }
+    Ready => ()
+  }
   let payload = match event {
     Ready => Json::string("ready")
     Destroyed => Json::string("destroyed")

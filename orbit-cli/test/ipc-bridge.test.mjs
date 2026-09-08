@@ -9,7 +9,7 @@ const script = source.split(/\r?\n/)
   .map(line => line.trimStart().slice(2)).join("\n")
   .replace(/const invocationEnabled =\s*;/, "const invocationEnabled =true;");
 
-function androidBridge() {
+function androidBridge(timers = { setTimeout, clearTimeout }) {
   let receive;
   const sent = [];
   const window = {
@@ -17,7 +17,7 @@ function androidBridge() {
     addEventListener: (_, listener) => { receive = listener; },
   };
   window.top = window;
-  vm.runInNewContext(script, { window, TextEncoder, setTimeout, clearTimeout });
+  vm.runInNewContext(script, { window, TextEncoder, Date: { now: () => 0 }, ...timers });
   return { api: window.__ORBIT__, sent, receive: event => receive(event) };
 }
 
@@ -40,4 +40,29 @@ test("a forged frame response cannot settle an Android invocation", async () => 
   bridge.receive({ data: response("forged"), isTrusted: true, source: {} });
   bridge.receive({ data: response("native"), isTrusted: true, source: null });
   assert.equal(await result, "native");
+});
+
+test("page requests enforce UTF8 bytes including the envelope", async () => {
+  const bridge = androidBridge();
+  const empty = JSON.stringify({ version: 1, type: "invoke", id: "orbit-0-1", command: "echo", payload: "", timeout_ms: 30000 });
+  const payload = "x".repeat(262144 - new TextEncoder().encode(empty).byteLength);
+  const accepted = bridge.api.invoke("echo", payload);
+  assert.equal(new TextEncoder().encode(JSON.stringify(bridge.sent[0])).byteLength, 262144);
+  bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent[0].id, ok: true, result: 1 }), isTrusted: true, source: null });
+  assert.equal(await accepted, 1);
+  await assert.rejects(bridge.api.invoke("echo", payload + "x"), { code: "message_too_large" });
+  await assert.rejects(bridge.api.invoke("echo", "\u4E2D".repeat(100000)), { code: "message_too_large" });
+  assert.equal(bridge.sent.length, 1);
+});
+
+test("page timeout sends cancellation and late completion cannot settle again", async () => {
+  let expire;
+  const bridge = androidBridge({ setTimeout: callback => { expire = callback; return 1; }, clearTimeout: () => {} });
+  const pending = bridge.api.invoke("echo", null, { timeout: 10 });
+  const rejected = assert.rejects(pending, { code: "timeout" });
+  expire();
+  await rejected;
+  assert.deepEqual(bridge.sent[1], { version: 1, type: "cancel", id: bridge.sent[0].id });
+  bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent[0].id, ok: true, result: "late" }), isTrusted: true, source: null });
+  await assert.rejects(pending, { code: "timeout" });
 });

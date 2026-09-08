@@ -1,5 +1,6 @@
 ///|
 priv struct PendingInvocation {
+  window_label : String
   scope : String
   cancellation : @ipc.InvocationCancellation
   mut task : @async.Task[Unit]?
@@ -81,6 +82,7 @@ fn AsyncIpcDispatcher::cancel(
 
 ///|
 fn AsyncIpcDispatcher::cancel_all(self : AsyncIpcDispatcher) -> Unit {
+  self.group = None
   for _, pending in self.pending {
     pending.completed = true
     pending.cancellation.cancel()
@@ -93,9 +95,38 @@ fn AsyncIpcDispatcher::cancel_all(self : AsyncIpcDispatcher) -> Unit {
 }
 
 ///|
+fn AsyncIpcDispatcher::cancel_window(
+  self : AsyncIpcDispatcher,
+  label : String,
+) -> Unit {
+  // Snapshot keys before removing entries; remote origins share one window owner.
+  let keys : Array[String] = []
+  for key, pending in self.pending {
+    if pending.window_label == label {
+      keys.push(key)
+    }
+  }
+  for key in keys {
+    match self.pending.get(key) {
+      Some(pending) => {
+        pending.completed = true
+        pending.cancellation.cancel()
+        self.pending.remove(key)
+        match pending.task {
+          Some(task) => task.cancel()
+          None => ()
+        }
+      }
+      None => ()
+    }
+  }
+}
+
+///|
 fn AsyncIpcDispatcher::schedule(
   self : AsyncIpcDispatcher,
   scope : String,
+  window_label~ : String,
   registry : @ipc.CommandRegistry,
   policy : @ipc.CommandPolicy,
   context : @ipc.InvocationContext,
@@ -136,6 +167,7 @@ fn AsyncIpcDispatcher::schedule(
     }
   }
   let pending = {
+    window_label,
     scope,
     cancellation: context.cancellation(),
     task: None,
