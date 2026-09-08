@@ -6,6 +6,30 @@
 
 ## Ownership model
 
+### Current experimental behavior
+
+The rules below remain targets, not a blanket claim about arbitrary native
+backends. The desktop async dispatcher cancels all pending work owned by a
+window before its runtime is suspended or closed, and on runtime failure or
+destruction. Other windows retain their own pending work. Application state
+preparation failure returns before this cleanup begins. A failed resume detaches
+the newly registered page-event subscription and message handler before trying
+to destroy the new runtime.
+
+Cancellation suppresses response delivery to the old runtime; it does not undo
+completed handler side effects. Native destruction is still best-effort on
+failure paths. A custom backend that fails destruction after partially releasing
+resources is not promised transactional recovery. If suspension cleanup itself
+fails, callers must not assume the old runtime still has its previous handlers
+or subscriptions. The preparation-failure guarantee is narrower than that case.
+
+`run_async` keeps MoonBit callbacks on the UI thread; it does not offload blocking
+FFI or CPU loops. Host deadlines require cooperative scheduling. Core lifecycle
+failures expose `CoreError` categories, while controller and extension results
+still carry textual detail; that detail is not a frozen machine-readable API.
+
+### Proposed ownership rules
+
 - The desktop host and WebView runtime MUST have one explicit owner for each
   native resource.
 - UI-bound window and WebView operations MUST run on the host UI thread.
