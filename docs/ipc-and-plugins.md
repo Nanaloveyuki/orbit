@@ -14,6 +14,10 @@ window.__ORBIT__.invoke(command, payload?, { timeout? })
 调用返回 Promise。失败会抛出 `OrbitIpcError`，包含 `code`、`message` 和可选 `data`。
 请求和响应上限为 256 KiB；JSON 使用严格解析，重复键在进入命令处理器前被拒绝。
 
+桌面异步 IPC 每个调用 scope 最多保留 64 个在途请求，全局最多 256 个；超出时返回
+`ipc_busy`，完成或取消后释放名额。远程页面权限使用原生消息来源，不使用导航目标推断。
+Linux 当前缺少可信消息来源元数据，因此不支持远程页面 IPC，本地页面 IPC 不受影响。
+
 每次调用携带 typed principal、transport 和 origin。待处理 ID 按已认证页面主体与 origin
 隔离，重复 ID 被拒绝；超时、完成和取消竞争只允许一次响应交付。没有显式
 `timeout_ms` 的 protocol-v1 请求默认 30 秒。

@@ -189,7 +189,7 @@ async fn read_binary_capability(
     Ok(bytes) => bytes
     Err(failure) => return Err(failure)
   }
-  Ok({ data: @base64.encode(bytes), size: bytes.length() })
+  Ok({ data: @base64.encode(bytes), size: bytes.length(), })
 }
 
 ///|
@@ -206,23 +206,34 @@ async fn read_text_capability(
     _ =>
       return Err(file_read_failure("invalid_utf8", "file is not valid UTF-8"))
   }
-  Ok({ text, size: bytes.length() })
+  Ok({ text, size: bytes.length(), })
 }
 
 ///|
+let next_temporary_write_id : Ref[UInt64] = Ref(0UL)
+
+///|
 fn temporary_write_path(target : String, handle : String) -> String {
+  let sequence = next_temporary_write_id.val
+  next_temporary_write_id.val = sequence + 1UL
   let token = handle
     .replace_all(old="/", new="_")
     .replace_all(old="+", new="-")
     .replace_all(old="=", new="")
-  "\{target}.orbit-tmp-\{token}"
+  "\{target}.orbit-tmp-\{token}-\{sequence}"
 }
 
 ///|
 async fn remove_temporary_write(path : String) -> Unit {
-  @fs.remove(path) catch {
-    _ => ()
-  }
+  @async.protect_from_cancel(() => @fs.remove(path) catch { _ => () })
+}
+
+///|
+async fn write_temporary_file(path : String, bytes : Bytes) -> Unit {
+  let file = @fs.open(path, mode=WriteOnly, create_mode=CreateNew, sync=Full)
+  errdefer remove_temporary_write(path)
+  defer file.close()
+  file.write(bytes)
 }
 
 ///|
@@ -247,11 +258,9 @@ async fn write_text_capability(
     return Err(file_read_failure("cancelled", "file write was cancelled"))
   }
   let temporary = temporary_write_path(path, request.id)
-  @fs.write_file(temporary, bytes, create_mode=CreateNew, sync=Full) catch {
-    _ => {
-      remove_temporary_write(temporary)
+  write_temporary_file(temporary, bytes) catch {
+    _ =>
       return Err(file_read_failure("file_write_failed", "could not write file"))
-    }
   }
   if context.is_cancelled() {
     remove_temporary_write(temporary)
@@ -265,7 +274,7 @@ async fn write_text_capability(
       )
     }
   }
-  Ok({ size: bytes.length() })
+  Ok({ size: bytes.length(), })
 }
 
 ///|

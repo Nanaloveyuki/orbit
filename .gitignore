@@ -4,6 +4,9 @@ _build/
 tmp/
 orbit-plugin-fixtures/orbit-plugin-fixture*.dll
 orbit-plugin-fixtures/orbit-plugin-fixture*.lib
+orbit-plugin-fixtures/orbit-plugin-fixture*.exp
+/fixture.obj
+/fixture_v2.obj
 orbit-plugin-fixtures/orbit-plugin-fixture*.so
 orbit-plugin-fixture-order.log
 .mooncakes/

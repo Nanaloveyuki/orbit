@@ -118,7 +118,7 @@ pub fn CommandFailure::new(
   message~ : String,
   data? : Json,
 ) -> CommandFailure {
-  { code, message, data }
+  { code, message, data, }
 }
 
 ///|
@@ -252,7 +252,7 @@ pub fn decode_client_message(
   if timeout_ms < 1 || timeout_ms > 300_000 {
     raise malformed("field timeout_ms must be between 1 and 300000")
   }
-  Invoke({ id, command, payload, timeout_ms })
+  Invoke({ id, command, payload, timeout_ms, })
 }
 
 ///|
@@ -265,18 +265,27 @@ pub fn decode_request(source : StringView) -> InvocationRequest raise IpcError {
 
 ///|
 fn extract_request_id(source : StringView) -> InvocationId? {
-  let value = @json.parse(source) catch { _ => return None }
-  match value {
-    Object(object) =>
-      match object.get("id") {
-        Some(String(value)) => {
-          let id = InvocationId::new(value) catch { _ => return None }
-          Some(id)
-        }
-        _ => None
-      }
-    _ => None
+  // Error reporting must not bypass the limits that rejected the request.
+  let value = match
+    @strict_json.parse_with_limits(source.to_owned(), ipc_json_limits()) {
+    Ok(value) => value
+    Err(_) => return None
   }
+  match value {
+    Object(members~) =>
+      for entry in members {
+        let (name, value) = entry
+        if name == "id" {
+          match value {
+            Text(value~) =>
+              return Some(InvocationId::new(value) catch { _ => return None })
+            _ => return None
+          }
+        }
+      }
+    _ => ()
+  }
+  None
 }
 
 ///|

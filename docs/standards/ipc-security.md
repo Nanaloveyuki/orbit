@@ -74,6 +74,18 @@ The embedded page adapter MUST bind messages to the actual window label, page
 origin, and MoonView transport. Navigation or origin changes MUST NOT silently
 retain an authorization that no longer matches the page.
 
+The adapter uses MoonView's callback-local `page_message_source()` metadata,
+not the pending navigation URL. Remote IPC without attested source metadata is
+rejected. WebView2 and WKWebView provide this metadata; the current WebKitGTK
+bridge does not, so Linux remote-page IPC is unavailable. Local-page IPC remains
+available on Linux.
+
+The desktop async dispatcher permits at most 64 pending invocations per scope
+and 256 in total. Additional requests receive `ipc_busy`; completion and
+cancellation release capacity. Android host replies must be browser-generated
+message events with no source window; frame messages and synthetic events are
+not accepted as host replies.
+
 ### HTTP
 
 The HTTP adapter MUST be opt-in and MUST require an authentication callback. The

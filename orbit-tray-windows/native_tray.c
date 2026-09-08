@@ -50,8 +50,8 @@ static void orbit_tray_push(UINT slot, uint8_t kind, uint16_t command) {
 static void orbit_tray_fill_tip(WCHAR tip[128], moonbit_bytes_t bytes) {
   int32_t length = Moonbit_array_length(bytes);
   if (length <= 0) { tip[0] = L'\0'; return; }
-  MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, (const char *)bytes, length, tip, 127);
-  tip[127] = L'\0';
+  int written = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, (const char *)bytes, length, tip, 127);
+  tip[written > 0 ? written : 0] = L'\0';
 }
 
 static BOOL orbit_tray_notify(orbit_tray_item_t *item, DWORD action, const WCHAR *tip) {

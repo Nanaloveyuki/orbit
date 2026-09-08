@@ -68,6 +68,9 @@ can be removed after the desktop host dependency becomes target-aware.
 
 ## Known Limits
 
+- Linux remote-page IPC is unavailable until WebKitGTK exposes attested message
+  provenance through MoonView. Local embedded-page IPC is unaffected.
+
 - WebView suspension recreates the page; Orbit cannot synchronously capture
   arbitrary DOM state. Persist application state through IPC or browser storage
   before returning success from the suspension preparation callback.

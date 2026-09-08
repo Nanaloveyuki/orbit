@@ -507,6 +507,7 @@ static moonbit_bytes_t orbit_read_file_bytes_windows(
   origin.QuadPart = 0;
   if (!SetFilePointerEx((HANDLE)file->handle, origin, NULL, FILE_BEGIN)) {
     *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+    moonbit_decref(bytes);
     return moonbit_make_bytes(0, 0);
   }
   size_t offset = 0;
@@ -516,6 +517,7 @@ static moonbit_bytes_t orbit_read_file_bytes_windows(
     if (!ReadFile((HANDLE)file->handle, bytes + offset, requested, &read, NULL) ||
         read == 0) {
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+      moonbit_decref(bytes);
       return moonbit_make_bytes(0, 0);
     }
     offset += read;
@@ -742,7 +744,8 @@ static orbit_read_file_handle_t *orbit_directory_open_posix_read_file(
   char terminated[ORBIT_DIRECTORY_MAX_NAME_BYTES + 1];
   memcpy(terminated, name, (size_t)length);
   terminated[length] = '\0';
-  int fd = openat(parent->fd, terminated, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+  /* Inspect the opened object without waiting for a FIFO writer. */
+  int fd = openat(parent->fd, terminated, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
   if (fd < 0) {
     *status = ORBIT_DIRECTORY_STATUS_OPEN_FAILED;
     return NULL;
@@ -782,7 +785,11 @@ static moonbit_bytes_t orbit_read_file_bytes_posix(
       (off_t)offset
     );
     if (read <= 0) {
+      if (read < 0 && errno == EINTR) {
+        continue;
+      }
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
+      moonbit_decref(bytes);
       return moonbit_make_bytes(0, 0);
     }
     offset += (size_t)read;
@@ -856,7 +863,7 @@ static moonbit_bytes_t orbit_directory_entries_posix(
       *status = ORBIT_DIRECTORY_STATUS_READ_FAILED;
       return moonbit_make_bytes(0, 0);
     }
-    if (S_ISLNK(information.st_mode)) {
+    if (!S_ISDIR(information.st_mode) && !S_ISREG(information.st_mode)) {
       continue;
     }
     if (output.count >= max_entries) {

@@ -4,6 +4,32 @@
 > requirements for Orbit and its core dependencies. They are not a claim that all
 > native paths have completed a beta audit.
 
+## Focused regression tests
+
+Focused native regression tests can be run independently of a desktop window.
+From the repository root on Linux, with MoonBit installed in `$HOME/.moon`:
+
+```sh
+cc -g -fsanitize=address,undefined -fno-omit-frame-pointer \
+  -I "$HOME/.moon/include" orbit-file/tests/secure_directory_test.c \
+  "$HOME/.moon/lib/runtime/runtime.c" -lm -o /tmp/orbit-secure-directory-test
+ASAN_OPTIONS=detect_leaks=1 /tmp/orbit-secure-directory-test
+```
+
+The test covers FIFO rejection, special-file filtering, EOF and read errors,
+interrupted reads, and allocation balance. On Windows, in an MSVC developer
+PowerShell with `_build` available:
+
+```powershell
+cl /nologo /I "$env:USERPROFILE/.moon/include" `
+  orbit-tray-windows/tests/tooltip_test.c `
+  "$env:USERPROFILE/.moon/lib/runtime/runtime.c" `
+  /Fo_build/ /Fe_build/tooltip-test.exe /link user32.lib shell32.lib gdi32.lib
+./_build/tooltip-test.exe
+```
+
+The tooltip test checks shorter replacements, invalid UTF-8 and termination.
+
 ## Boundary ownership
 
 - Every native allocation, callback context, handle, and asynchronous operation

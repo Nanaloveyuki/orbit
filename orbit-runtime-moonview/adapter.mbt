@@ -155,6 +155,23 @@ fn allows_navigation(
 }
 
 ///|
+fn authenticated_page_message(
+  provider : @orbit_runtime.RuntimeResourceProvider?,
+  navigation : @orbit_runtime.RemoteNavigation?,
+  body : String,
+  source : String?,
+) -> @orbit_runtime.RuntimePageMessage? {
+  let origin = source.bind(url => page_origin(provider, navigation, url))
+  if navigation is Some(_) && origin is None {
+    return None
+  }
+  if provider is Some(_) && source is Some(_) && origin is None {
+    return None
+  }
+  Some(@orbit_runtime.RuntimePageMessage::new(body~, origin~))
+}
+
+///|
 fn navigation_decision(
   provider : @orbit_runtime.RuntimeResourceProvider?,
   remote_navigation : @orbit_runtime.RemoteNavigation?,
@@ -310,7 +327,7 @@ pub struct MoonViewRuntimeFactory {
 
 ///|
 pub fn MoonViewRuntimeFactory::new() -> MoonViewRuntimeFactory {
-  { marker: () }
+  { marker: (), }
 }
 
 ///|
@@ -351,10 +368,6 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     Url(_) => ""
     Html(value) => value
   }
-  let initial_origin = page_origin(
-    resource_provider, remote_navigation, initial_url,
-  )
-  let current_origin = Ref(initial_origin)
   let fallback_active = Ref(false)
   let bounds = options.bounds
   let moonview_options = @moonview.WebViewOptions::new(
@@ -369,17 +382,9 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
     initialization_script=options.initialization_script,
     visible=options.visible,
     on_navigation=url => {
-      let decision = navigation_decision(
+      navigation_decision(
         resource_provider, remote_navigation, external_navigation_handler, url,
       )
-      match decision {
-        Allow =>
-          current_origin.val = page_origin(
-            resource_provider, remote_navigation, url,
-          )
-        Deny => current_origin.val = None
-      }
-      decision
     },
     on_event=event => {
       match event {
@@ -389,27 +394,26 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
             lifecycle_handler,
             Failed(runtime_error("create", error)),
           )
-        PageMessage(message) =>
+        PageMessage(message) => {
+          let source = view_slot.val.bind(view => view.page_message_source())
+          let message = match
+            authenticated_page_message(
+              resource_provider, remote_navigation, message, source,
+            ) {
+            Some(message) => message
+            None => return
+          }
           match message_handler.val {
-            Some(handler) =>
-              handler(
-                @orbit_runtime.RuntimePageMessage::new(
-                  body=message,
-                  origin=current_origin.val,
-                ),
-              )
+            Some(handler) => handler(message)
             None => ()
           }
-        SourceChanged(url) => {
-          current_origin.val = page_origin(
-            resource_provider, remote_navigation, url,
-          )
+        }
+        SourceChanged(url) =>
           match remote_navigation {
             Some(navigation) if url_has_origin(url, navigation.fallback_url()) =>
               fallback_active.val = false
             _ => ()
           }
-        }
         NavigationFailed(_url, _error) =>
           navigate_fallback(view_slot.val, remote_navigation, fallback_active)
         ProtocolRequest(request) =>

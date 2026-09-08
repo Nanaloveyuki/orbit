@@ -1,5 +1,6 @@
 ///|
 priv struct PendingInvocation {
+  scope : String
   cancellation : @ipc.InvocationCancellation
   mut task : @async.Task[Unit]?
   mut completed : Bool
@@ -13,7 +14,7 @@ priv struct AsyncIpcDispatcher {
 
 ///|
 fn AsyncIpcDispatcher::new() -> AsyncIpcDispatcher {
-  { group: None, pending: Map([]) }
+  { group: None, pending: Map([]), }
 }
 
 ///|
@@ -111,6 +112,18 @@ fn AsyncIpcDispatcher::schedule(
     )
     return
   }
+  let mut scope_count = 0
+  for _, pending in self.pending {
+    if pending.scope == scope {
+      scope_count += 1
+    }
+  }
+  if self.pending.length() >= 256 || scope_count >= 64 {
+    deliver(
+      invocation_failure(id, "ipc_busy", "too many pending IPC invocations"),
+    )
+    return
+  }
   let group = match self.group {
     Some(group) => group
     None => {
@@ -123,6 +136,7 @@ fn AsyncIpcDispatcher::schedule(
     }
   }
   let pending = {
+    scope,
     cancellation: context.cancellation(),
     task: None,
     completed: false,

@@ -57,6 +57,15 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
+      - name: Check native tooltip handling
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath
+          & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          cl /nologo /I "$HOME/.moon/include" orbit-tray-windows/tests/tooltip_test.c "$HOME/.moon/lib/runtime/runtime.c" /Fo_build/ /Fe_build/tooltip-test.exe /link user32.lib shell32.lib gdi32.lib
+          if ($LASTEXITCODE -ne 0) { throw "tooltip test compilation failed" }
+          ./_build/tooltip-test.exe
+          if ($LASTEXITCODE -ne 0) { throw "tooltip test failed" }
       - shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File orbit-plugin-fixtures/run-integration.ps1
 
@@ -81,6 +90,12 @@ jobs:
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
+      - name: Check native file handling with sanitizers
+        run: |
+          cc -g -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -I "$HOME/.moon/include" orbit-file/tests/secure_directory_test.c \
+            "$HOME/.moon/lib/runtime/runtime.c" -lm -o /tmp/orbit-secure-directory-test
+          ASAN_OPTIONS=detect_leaks=1 /tmp/orbit-secure-directory-test
       - name: Validate React reference app
         working-directory: examples/react-memo
         run: |
