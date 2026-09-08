@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -29,6 +30,23 @@ test("npm publication identifies the canonical GitHub repository", () => {
     url: "https://github.com/Nanaloveyuki/orbit.git",
     directory: "orbit-cli",
   });
+});
+
+test("release verification rejects dependency profile drift", context => {
+  const directory = mkdtempSync(resolve(tmpdir(), "orbit-profile-test-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  mkdirSync(resolve(directory, "orbit-cli"));
+  writeFileSync(resolve(directory, "orbit-cli/package.json"), JSON.stringify(npmManifest));
+  const manifest = readFileSync(resolve(repository, "moon.mod"), "utf8");
+  for (const dependency of ["orby", "moonview"]) {
+    writeFileSync(resolve(directory, "moon.mod"), manifest.replace(
+      new RegExp(`"Nanaloveyuki/${dependency}@[^"\\s]+"`),
+      `"Nanaloveyuki/${dependency}@0.0.0-test"`,
+    ));
+    const result = spawnSync(process.execPath, [script, directory, `v${version}`], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, new RegExp(`must match the ${dependency} dependency`));
+  }
 });
 
 test("release publishes the npm artifact through an explicit relative path", () => {
