@@ -105,7 +105,9 @@ pub fn InvocationCancellation::is_cancelled(
 ///
 /// The context is constructed by an adapter and passed unchanged through
 /// command authorization and execution. Its response limit applies to the
-/// serialized protocol response, not only to a handler's JSON value.
+/// serialized handler response in UTF-16 code units (`String.length()`), not
+/// only to the handler's JSON value or to its UTF-8 byte encoding. Protocol
+/// rejection and replacement error envelopes are not recursively limited.
 pub struct InvocationContext {
   priv transport : InvocationTransport
   priv principal : InvocationPrincipal

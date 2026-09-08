@@ -283,6 +283,65 @@ test "context response limits reject oversized serialized responses" {
 }
 
 ///|
+async test "response limit uses UTF16 units for sync and async handlers" {
+  let registry = CommandRegistry::new()
+  registry.register_json(CommandName::new("sync.echo"), payload => Ok(payload))
+  registry.register_async_json(CommandName::new("async.echo"), async fn(
+    payload,
+  ) {
+    @async.pause()
+    Ok(payload)
+  })
+  let policy = CommandPolicy::new()
+  policy.add_grant(
+    CommandGrant::new(
+      identifier="unicode",
+      effect=CapabilityEffect::allow(),
+      principals=[PrincipalSelector::window("main")],
+      commands=[CommandName::new("sync.echo"), CommandName::new("async.echo")],
+    ),
+  )
+  let id = InvocationId::new("unicode")
+  let overhead = encode_response(Success(id, Json::string(""))).length()
+  let payload = "\u{1F600}".repeat(110)
+  let limit = overhead + payload.length()
+  for command in ["sync.echo", "async.echo"] {
+    let source = "{\"version\":1,\"id\":\"unicode\",\"command\":\"\{command}\",\"payload\":\"\{payload}\"}"
+    let accepted = registry.dispatch_with_context_async(
+      source,
+      policy,
+      InvocationContext::window("main").with_response_limit(limit),
+    )
+    assert_true(accepted.contains("\"ok\":true"))
+    assert_eq(accepted.length(), limit)
+    let rejected = registry.dispatch_with_context_async(
+      source,
+      policy,
+      InvocationContext::window("main").with_response_limit(limit - 1),
+    )
+    assert_true(rejected.contains("response_too_large"))
+    if command == "sync.echo" {
+      assert_eq(
+        registry.dispatch_with_context(
+          source,
+          policy,
+          InvocationContext::window("main").with_response_limit(limit),
+        ),
+        accepted,
+      )
+      assert_eq(
+        registry.dispatch_with_context(
+          source,
+          policy,
+          InvocationContext::window("main").with_response_limit(limit - 1),
+        ),
+        rejected,
+      )
+    }
+  }
+}
+
+///|
 test "remote pages are distinct MoonView principals with origin scopes" {
   let registry = CommandRegistry::new()
   registry.register_json(CommandName::new("remote.echo"), payload => Ok(payload))

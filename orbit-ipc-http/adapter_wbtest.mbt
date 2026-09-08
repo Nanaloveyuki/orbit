@@ -160,3 +160,25 @@ test "HTTP adapter rejects ambiguous and oversized body framing" {
     is Err({ status: 400, .. }),
   )
 }
+
+///|
+async test "HTTP body limits count bytes across chunked Unicode input" {
+  let source = "\u{4E2D}".repeat(86)
+  assert_eq(source.length(), 86)
+  for limit in [258, 257] {
+    let reader = @io.MemoryReader(writer => {
+      writer.write(source[:40])
+      @async.pause()
+      writer.write(source[40:])
+    })
+    defer reader.close()
+    match read_body_limited(reader, limit) {
+      Ok(body) => {
+        assert_eq(limit, 258)
+        assert_eq(body, source)
+      }
+      Err(TooLarge) => assert_eq(limit, 257)
+      Err(InvalidUtf8) => abort("valid Unicode body rejected")
+    }
+  }
+}
