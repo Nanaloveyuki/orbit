@@ -13,12 +13,20 @@ npx orbit verify-package --package-dir dist
 ```
 
 分发产物必须使用 `--release`。`orbit-package.json` 记录应用身份、配置指纹、平台与架构、
-Orbit/MoonView/plugin ABI 兼容上限，以及所有 payload 文件的 SHA-256 清单。
+Orbit/Orby/MoonView 版本、plugin ABI 等兼容性 profile，以及所有 payload 文件的 SHA-256 清单。
 `verify-package` 会拒绝丢失、修改和未声明文件。
+
+当前 profile 使用精确匹配，不是版本上限或 semver 范围。升级 Orbit 或相关依赖后，
+应使用配套 CLI 重新生成和打包；旧产物的验证应使用与其 profile 配套的 CLI。
 
 前端资源已经嵌入可执行文件。插件目录和显式 `--runtime-dir` 会复制到目录包中。
 
 ## Windows NSIS
+
+安装目录由 `app.identifier` 决定，为 `$LOCALAPPDATA/<identifier>`；卸载会递归删除
+该安装目录。需要跨卸载保留的数据必须由应用存放在安装目录之外并自行管理。
+修改应用 identifier、WebView profile 路径或页面 origin 时，不应假定已有浏览器存储
+会自动迁移。配置迁移命令只迁移配置，不迁移用户数据；这些升级路径仍需应用实测。
 
 本地无签名测试：
 
