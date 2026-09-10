@@ -130,6 +130,17 @@ Gradle 会先更新 Wasee checkout 的 MoonCake 依赖，并临时创建 Orbit A
 CommonJS；Node 会沿父目录查找该字段，把它设为 `module` 会导致原生依赖安装失败。Vite
 配置使用显式 ESM 的 `vite.config.mts`，不会影响 React 源码。
 
+## 第三方源码许可
+
+`src/components/ui/` 的基础组件及 `src/lib/utils.ts` 的 `cn` 工具来自
+[shadcn/ui](https://github.com/shadcn-ui/ui)，包含生成和适配的代码，保留上游 MIT
+许可证，不以本仓库的 Apache-2.0 许可证替代。
+完整版权与许可声明见 [THIRD-PARTY-NOTICES.txt](public/THIRD-PARTY-NOTICES.txt)。
+
+Vite 构建会将该文件复制到 `dist/`，Orbit 生产资源生成会随前端资源嵌入声明。
+复制组件、独立维护此示例或分发构建产物时，应一并保留相应声明。
+这份声明覆盖上述引入源码，不替代其他依赖各自的许可证。
+
 ## 目录结构
 
 ```text
