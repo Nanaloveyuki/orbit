@@ -649,7 +649,7 @@ fn webview_install_mode(config : @utils.OrbitConfig) -> String {
 
 ///|
 fn package_compatibility_json() -> String {
-  "{\"orbit\":\"0.1.0-alpha.9\",\"orby\":\"0.1.0-beta.6\",\"moonview\":\"0.1.0-beta.10\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
+  "{\"orbit\":\"0.1.0-alpha.10\",\"orby\":\"0.1.0-beta.6\",\"moonview\":\"0.1.0-beta.10\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
 }
 
 ///|
@@ -1138,7 +1138,7 @@ test "icon generation targets deterministic desktop icon sizes" {
 ///|
 test "package metadata declares the compiled compatibility profile" {
   let profile = package_compatibility_json()
-  assert_true(profile.contains("\"orbit\":\"0.1.0-alpha.9\""))
+  assert_true(profile.contains("\"orbit\":\"0.1.0-alpha.10\""))
   assert_true(profile.contains("\"orby\":\"0.1.0-beta.6\""))
   assert_true(profile.contains("\"moonview\":\"0.1.0-beta.10\""))
   assert_true(profile.contains("\"plugin_abi\":2"))

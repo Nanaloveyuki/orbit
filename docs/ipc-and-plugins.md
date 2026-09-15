@@ -91,7 +91,9 @@ client.dispose();
 - 当前可选的 `orbit.contract.json` 会同时生成 MoonBit 编解码/注册函数和 TypeScript
   类型；支持 string `enum`、固定 discriminator 的 `tagged_union`、对象、数组、字典和
   nullable。契约文件是当前阶段的输入格式，后续版本可能改为从更强的公开类型声明反向
-  生成，因此应用不应把生成文件当作手写源文件。
+    生成，因此应用不应把生成文件当作手写源文件。
+    `schema_version` 使用对象形式：`orbit` 必须匹配当前 Orbit 发布版本，`contract`
+    是契约编译器版本；不兼容的契约或生成器变化递增 `contract`，纯新增兼容字段保持不变。
 - tagged union 的 `variants` 每项应是包含 discriminator 字段的完整对象；例如
   `tag: "kind"`、`variants: { "started": { ... "kind": { "enum": ["started"] } } }`。
   变体会生成带 payload 的 MoonBit enum 和 TypeScript 交叉类型，收到未知 discriminator
