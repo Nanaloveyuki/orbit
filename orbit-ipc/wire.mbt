@@ -182,7 +182,7 @@ fn ipc_json_limits() -> @strict_json.JsonLimits {
 ///|
 fn strict_json_message(error : @strict_json.JsonError) -> String {
   match error {
-    Syntax(error~) => "invalid JSON at character \{error.offset()}"
+    Syntax(_) => "invalid JSON syntax"
     DuplicateKey(key~, duplicate_offset~, ..) =>
       "duplicate JSON key \{key} at character \{duplicate_offset}"
     Limit(kind~, offset~, limit~) => {
