@@ -1,6 +1,6 @@
 name = "Nanaloveyuki/orbit"
 
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 
 description = "Composable desktop application foundations for MoonBit."
 
@@ -27,3 +27,4 @@ import {
   "Nanaloveyuki/orbit-plugin-abi@0.2.2",
   "Nanaloveyuki/image@0.1.1",
 }
+

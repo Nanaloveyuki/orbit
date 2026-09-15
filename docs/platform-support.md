@@ -1,6 +1,6 @@
 # Platform Support
 
-Orbit `0.1.0-alpha.11` is a pre-release desktop framework. Its public support
+Orbit `0.1.0-alpha.12` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
 The proposed beta support contract is maintained in the
@@ -86,4 +86,5 @@ can be removed after the desktop host dependency becomes target-aware.
   and any export or upload policy.
 - Android applications require API 24 or newer and use a dedicated Gradle/NDK
   host. They do not run the desktop Orby event loop inside an Activity.
+
 

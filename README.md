@@ -81,7 +81,7 @@ scripts needed for development and production builds.
 ## Add Orbit to an existing app
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.11
+moon add Nanaloveyuki/orbit@0.1.0-alpha.12
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev
@@ -183,4 +183,5 @@ and build environment without exporting IPC payloads.
 ## License
 
 Orbit is licensed under the [Apache License 2.0](LICENSE).
+
 
