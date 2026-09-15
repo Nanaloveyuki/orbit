@@ -10,15 +10,15 @@ const script = source.split(/\r?\n/)
   .replace(/const invocationEnabled =\s*;/, "const invocationEnabled =true;");
 
 function androidBridge(timers = { setTimeout, clearTimeout }) {
-  let receive;
+  const handlers = new Map();
   const sent = [];
   const window = {
     ajni: { postMessage: message => sent.push(JSON.parse(message)) },
-    addEventListener: (_, listener) => { receive = listener; },
+    addEventListener: (name, listener) => { handlers.set(name, listener); },
   };
   window.top = window;
   vm.runInNewContext(script, { window, TextEncoder, Date: { now: () => 0 }, ...timers });
-  return { api: window.__ORBIT__, sent, receive: event => receive(event) };
+  return { api: window.__ORBIT__, sent, receive: event => handlers.get("message")(event), dispatch: name => handlers.get(name)?.() };
 }
 
 test("Android bridge rejects frame and synthetic events but accepts native messages", () => {
@@ -65,4 +65,80 @@ test("page timeout sends cancellation and late completion cannot settle again", 
   assert.deepEqual(bridge.sent[1], { version: 1, type: "cancel", id: bridge.sent[0].id });
   bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent[0].id, ok: true, result: "late" }), isTrusted: true, source: null });
   await assert.rejects(pending, { code: "timeout" });
+});
+
+test("AbortSignal cancels once, removes its listener, and ignores late completion", async () => {
+  const bridge = androidBridge();
+  const controller = new AbortController();
+  let removed = 0;
+  const remove = controller.signal.removeEventListener.bind(controller.signal);
+  controller.signal.removeEventListener = (...args) => { removed++; remove(...args); };
+  const pending = bridge.api.invoke("echo", null, { signal: controller.signal });
+  const rejected = assert.rejects(pending, { code: "cancelled" });
+  controller.abort();
+  controller.abort();
+  await rejected;
+  assert.equal(removed, 1);
+  assert.equal(bridge.sent.length, 2);
+  assert.deepEqual(bridge.sent[1], { version: 1, type: "cancel", id: bridge.sent[0].id });
+  bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent[0].id, ok: true, result: 1 }), isTrusted: true, source: null });
+  assert.equal(removed, 1);
+});
+
+test("pre-aborted and invalid options never send a request", async () => {
+  const bridge = androidBridge();
+  await assert.rejects(bridge.api.invoke("echo", null, { signal: AbortSignal.abort() }), { code: "cancelled" });
+  await assert.rejects(bridge.api.invoke("echo", null, null), { code: "invalid_options" });
+  await assert.rejects(bridge.api.invoke("echo", null, { signal: {} }), { code: "invalid_signal" });
+  assert.equal(bridge.sent.length, 0);
+});
+
+test("successful calls remove abort listeners without sending cancellation", async () => {
+  const bridge = androidBridge();
+  const controller = new AbortController();
+  const pending = bridge.api.invoke("echo", null, { signal: controller.signal });
+  bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent[0].id, ok: true, result: 3 }), isTrusted: true, source: null });
+  assert.equal(await pending, 3);
+  controller.abort();
+  assert.equal(bridge.sent.length, 1);
+});
+
+test("pagehide cancels pending requests and clears subscriptions; pageshow reactivates", async () => {
+  const bridge = androidBridge();
+  let events = 0;
+  bridge.api.listen("changed", () => events++);
+  const pending = bridge.api.invoke("echo");
+  const rejected = assert.rejects(pending, { code: "page_unloaded" });
+  bridge.dispatch("pagehide");
+  await rejected;
+  await assert.rejects(bridge.api.invoke("echo"), { code: "page_unloaded" });
+  bridge.receive({ data: JSON.stringify({ version: 1, type: "event", event: "changed", payload: 1 }), isTrusted: true, source: null });
+  assert.equal(events, 0);
+  bridge.dispatch("pageshow");
+  const next = bridge.api.invoke("echo");
+  bridge.receive({ data: JSON.stringify({ version: 1, id: bridge.sent.at(-1).id, ok: true, result: 5 }), isTrusted: true, source: null });
+  assert.equal(await next, 5);
+});
+
+test("non-object messages do not break the bridge", () => {
+  const bridge = androidBridge();
+  for (const data of ["null", "false", "7", "[]", "\"text\""]) {
+    assert.doesNotThrow(() => bridge.receive({ data, isTrusted: true, source: null }));
+  }
+});
+
+test("desktop transport preserves its legacy handler and supports cancellation", async () => {
+  const sent = [];
+  const legacy = [];
+  const window = { moonview: { postMessage: message => sent.push(JSON.parse(message)), onmessage: event => legacy.push(event.data) }, addEventListener() {} };
+  window.top = window;
+  vm.runInNewContext(script, { window, TextEncoder, setTimeout, clearTimeout, Date });
+  window.moonview.onmessage({ data: "not-json" });
+  assert.deepEqual(legacy, ["not-json"]);
+  const controller = new AbortController();
+  const pending = window.__ORBIT__.invoke("echo", null, { signal: controller.signal });
+  const rejected = assert.rejects(pending, { code: "cancelled" });
+  controller.abort();
+  await rejected;
+  assert.deepEqual(sent[1], { version: 1, type: "cancel", id: sent[0].id });
 });

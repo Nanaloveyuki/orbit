@@ -35,6 +35,23 @@ npx orbit package \
 npx orbit verify-package --package-dir dist
 ```
 
+Generate an importable frontend client and TypeScript declarations:
+
+```sh
+npx orbit bindings --config orbit.conf.json
+```
+
+This writes `orbit-bindings.mjs` and `orbit-bindings.d.mts`. The client exports
+`invoke`, `commands`, `listen`, `once`, `isAvailable`, `OrbitIpcError`, and
+`createClient`. Client instances own subscriptions and pending calls and expose
+`dispose()`. Calls and subscriptions accept an `AbortSignal`. No frontend
+framework or runtime npm dependency is required.
+
+Generated command names are page-call candidates, not authorization decisions.
+Request and response values default to `unknown`; application-supplied client
+types are not inferred from MoonBit or validated at runtime. The host continues
+to enforce permissions and deserialize typed command requests.
+
 Optional Android hosts use the platform-neutral generated source:
 
 ```sh

@@ -103,6 +103,7 @@ jobs:
         run: |
           npm install --global pnpm@11.5.3
           pnpm install --frozen-lockfile
+          node ../../orbit-cli/scripts/check-bindings-types.mjs
           pnpm check
           pnpm run orbit build
           grep -F 'pub let entry_url = "orbit://app/index.html"' generated_page.mbt

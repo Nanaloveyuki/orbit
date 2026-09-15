@@ -6,8 +6,8 @@ fn[T] fail(message : String) -> T {
 ///|
 fn example_registry() -> @ipc.CommandRegistry raise @ipc.IpcError {
   let registry = @ipc.CommandRegistry::new()
-  registry.register_json(@ipc.CommandName::new("example.ping"), _payload => {
-    Ok({ "message": "IPC round trip completed." })
+  register_example_ping(registry, _request => {
+    Ok({ message: "IPC round trip completed.", })
   })
   registry
 }

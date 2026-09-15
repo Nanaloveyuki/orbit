@@ -8,7 +8,7 @@ Orbit 的 MoonView、HTTP、插件和后台调用最终进入同一个传输无�
 Orbit 注入：
 
 ```javascript
-window.__ORBIT__.invoke(command, payload?, { timeout? })
+window.__ORBIT__.invoke(command, payload?, { timeout?, signal? })
 ```
 
 调用返回 Promise。失败会抛出 `OrbitIpcError`，包含 `code`、`message` 和可选 `data`。
@@ -34,7 +34,7 @@ Linux 当前缺少可信消息来源元数据，因此不支持远程页面 IPC�
 `timeout_ms` 的 protocol-v1 请求默认 30 秒。
 
 `CommandRegistry` 支持同步和异步 JSON 处理器。异步处理器要求 `orbit-core.run_async`。
-页面 timeout 会发送尽力而为的取消消息；桌面异步调度器取消对应结构化子任务。
+页面 timeout 或 `AbortSignal` 会发送尽力而为的取消消息；桌面异步调度器取消对应结构化子任务。
 窗口销毁、成功进入挂起清理或运行时失败会取消该窗口所有 origin 的在途任务，不影响
 其他窗口。取消与超时不撤销已经发生的写入或其他副作用。
 
@@ -48,6 +48,72 @@ Linux 当前缺少可信消息来源元数据，因此不支持远程页面 IPC�
 将系统 modal UI 发送到 async worker。页面可取消前的超时不会关闭已显示的系统对话框；
 用户取消会产生正常的 `{ "cancelled": true }` 结果。完整 capability 配置和 payload
 格式见[配置文件](configuration.md#原生文件对话框)。
+
+## 前端 bindings
+
+```sh
+npx orbit bindings --config orbit.conf.json
+```
+
+生成 `orbit-bindings.mjs` 和同名 `orbit-bindings.d.mts`。输出为 `.js` 时，声明文件为
+`.d.ts`，该 JavaScript 文件仍是 ES module。两个文件均由 `orbit-build` 维护。
+生成文件可以直接被 Vite 导入，不需要运行时 npm 依赖，也不要求 React 或 Vue。
+
+```typescript
+import { createClient, type CommandDefinition } from "./orbit-bindings.mjs";
+
+interface Commands {
+  "example.ping": CommandDefinition<{ value: number }, { message: string }>;
+}
+interface Events {
+  "app.changed": { revision: number };
+}
+const client = createClient<Commands, Events>();
+const controller = new AbortController();
+const result = await client.commands["example.ping"]({ value: 1 }, {
+  timeout: 5000,
+  signal: controller.signal,
+});
+const unlisten = client.listen("app.changed", event => {
+  console.log(event.payload.revision);
+}, { signal: controller.signal });
+unlisten();
+client.dispose();
+```
+
+类型边界：
+
+- 默认生成命令名，payload 和结果为 `unknown`。配置中的 grant 不是数据 schema，
+  Orbit 不会据此猜测请求或响应类型。
+- `createClient<Commands, Events>` 的业务类型由应用声明，不是从 MoonBit 源码自动推导。
+  声明只提供编译期检查，不执行 JSON 校验。后端仍应使用类型化 `register` /
+  `register_async`，前端处理不可信结果时应使用应用自己的解码器或字段校验。
+- 当前可选的 `orbit.contract.json` 会同时生成 MoonBit 编解码/注册函数和 TypeScript
+  类型；支持 string `enum`、固定 discriminator 的 `tagged_union`、对象、数组、字典和
+  nullable。契约文件是当前阶段的输入格式，后续版本可能改为从更强的公开类型声明反向
+  生成，因此应用不应把生成文件当作手写源文件。
+- tagged union 的 `variants` 每项应是包含 discriminator 字段的完整对象；例如
+  `tag: "kind"`、`variants: { "started": { ... "kind": { "enum": ["started"] } } }`。
+  变体会生成带 payload 的 MoonBit enum 和 TypeScript 交叉类型，收到未知 discriminator
+  时会以 `invalid_event` 或 `invalid_response` 拒绝。
+- 类型化 client 的命令必须出现在生成列表里；导出的原始 `invoke` 保留动态命令调用能力，
+  返回 `Promise<unknown>`。命令列表包含页面 allow grant 中的候选命令，不能用来判定
+  当前页面权限；origin、principal 和 deny 仍由宿主在每次请求时判断。
+
+生命周期：
+
+- `createClient()` 在调用时读取当前 bridge；导入模块不会要求原生宿主存在。
+  `isAvailable()` 只检查调用桥是否存在，不保证某个命令获授权。
+- `createClient({ bridge })` 可以注入测试替身，不需要覆盖全局变量；Orbit 不自动选择 HTTP。
+- `listen` 返回幂等清理函数，`once` 在第一次事件执行前解除订阅；监听可绑定 `AbortSignal`。
+- `dispose()` 取消该 client 的在途调用并移除其订阅，不影响其他 client；销毁后调用返回
+  `client_disposed`。组件卸载时应清理 client 或自己的 signal/订阅。
+- `pagehide` 使该页面的在途调用以 `page_unloaded` 失败并发送取消消息，同时清除事件监听。
+  浏览器历史缓存恢复后，页面可以重新调用，但应用需在 `pageshow` 重新订阅并查询当前状态。
+  此清理不承诺在进程崩溃或强制终止时执行，也不是异步保存屏障。
+- 取消返回 `cancelled`，超时返回 `timeout`。生成 client 会把宿主错误转换为可导入的
+  `OrbitIpcError` 并保留 `code`、`message`、`data`。旧宿主若忽略 signal，client 仍会停止
+  等待，但无法承诺旧宿主停止任务。
 
 ## HTTP 适配器
 

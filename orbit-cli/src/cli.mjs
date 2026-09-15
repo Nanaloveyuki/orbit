@@ -32,7 +32,7 @@ const webviewInstallModes = new Set([
 ]);
 
 export const compatibilityProfile = Object.freeze({
-  orbit: "0.1.0-alpha.8",
+  orbit: "0.1.0-alpha.9",
   orby: "0.1.0-beta.6",
   moonview: "0.1.0-beta.10",
   plugin_abi: 2,
@@ -71,6 +71,7 @@ export function usage() {
     "  --module <owner/name> MoonBit module name used by init",
     "  --config <path>       Configuration file (default: orbit.conf.json)",
     "  --output <path>       Generated source, bindings, or required v2 migration destination",
+    "  --contract <path>     Bindings contract (default: orbit.contract.json beside config)",
     "  --android             Generate the optional Android runtime source",
     "                        Diagnose writes its JSON report here when used with --json",
     "  --package <path>      Moon package to build or run (default: config directory)",
@@ -181,6 +182,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
       "identifier",
       "module",
       "output",
+      "contract",
       "package",
       "orbit-build",
       "moon",
@@ -238,6 +240,9 @@ export function parseInvocation(argv, cwd = process.cwd()) {
   }
   if (values.android && command !== "generate") {
     throw new Error("--android is only valid with generate");
+  }
+  if (values.contract && command !== "bindings") {
+    throw new Error("--contract is only valid with bindings");
   }
 
   const workspace = resolve(cwd, values.workspace ?? ".");
@@ -319,6 +324,7 @@ export function parseInvocation(argv, cwd = process.cwd()) {
     initModule: values.module,
     config,
     output,
+    contract: values.contract ? resolve(workspace, values.contract) : undefined,
     diagnoseOutput: command === "diagnose" && values.output
       ? resolve(workspace, values.output)
       : undefined,
@@ -567,6 +573,7 @@ export function moonCommands(invocation, viteWorkflow = null) {
       "bindings",
       invocation.config,
       invocation.output,
+      ...(invocation.contract ? [invocation.contract] : []),
     ]];
   }
   if (invocation.command === "icon") {

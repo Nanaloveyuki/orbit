@@ -1,3 +1,5 @@
+import { invoke, isAvailable, OrbitIpcError, type InvokeOptions } from "../../orbit-bindings.mjs"
+
 export interface OrbitRuntimeInfo {
   application: string
   version: string
@@ -5,19 +7,15 @@ export interface OrbitRuntimeInfo {
   storage: string
 }
 
-interface OrbitBridge {
-  invoke(command: string, payload?: unknown, options?: { timeout?: number }): Promise<unknown>
-}
-
-declare global {
-  interface Window {
-    __ORBIT__?: OrbitBridge
+export async function getOrbitRuntime(options: InvokeOptions = {}): Promise<OrbitRuntimeInfo | null> {
+  if (!isAvailable()) return null
+  const result = await invoke("memo.runtime", {}, { timeout: 3000, ...options })
+  if (!result || typeof result !== "object" ||
+      !("application" in result) || typeof result.application !== "string" ||
+      !("version" in result) || typeof result.version !== "string" ||
+      !("runtime" in result) || typeof result.runtime !== "string" ||
+      !("storage" in result) || typeof result.storage !== "string") {
+    throw new OrbitIpcError("invalid_response", "Invalid memo.runtime response")
   }
-}
-
-export async function getOrbitRuntime(): Promise<OrbitRuntimeInfo | null> {
-  if (!window.__ORBIT__) return null
-  const result = await window.__ORBIT__.invoke("memo.runtime", {}, { timeout: 3000 })
-  if (!result || typeof result !== "object") return null
-  return result as OrbitRuntimeInfo
+  return { application: result.application, version: result.version, runtime: result.runtime, storage: result.storage }
 }

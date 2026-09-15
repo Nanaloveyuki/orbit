@@ -2,6 +2,7 @@ import {
   "moonbitlang/async",
   "Nanaloveyuki/orbit/orbit-core" @core,
   "Nanaloveyuki/orbit/orbit-desktop-file" @desktop_file,
+  "Nanaloveyuki/orbit/orbit-event" @event,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/orbit/orbit-plugin" @plugin,
   "Nanaloveyuki/orbit/orbit-runtime" @runtime,
