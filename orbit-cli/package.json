@@ -1,6 +1,6 @@
 {
   "name": "@nanaloveyuki/orbit-cli",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-alpha.11",
   "private": false,
   "description": "Development command-line interface for Orbit applications.",
   "repository": {
@@ -27,3 +27,4 @@
   },
   "license": "Apache-2.0"
 }
+

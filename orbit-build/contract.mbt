@@ -11,7 +11,7 @@ priv struct ContractType {
 }
 
 ///|
-const CONTRACT_ORBIT_VERSION : String = "0.1.0-alpha.10"
+const CONTRACT_ORBIT_VERSION : String = "0.1.0-alpha.11"
 
 ///|
 priv struct ContractCompiler {
@@ -694,3 +694,4 @@ fn ContractCompiler::object_type(
     "  let result : Map[String, Json] = Map([])\n\{encode_fields.join("\n")}\n  Json::object(result)",
   )
 }
+

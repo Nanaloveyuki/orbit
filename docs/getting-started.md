@@ -91,7 +91,7 @@ identifier 和 MoonBit module 会从目录名生成开发默认值；发布前�
 向已有 MoonBit 模块手工安装：
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.10
+moon add Nanaloveyuki/orbit@0.1.0-alpha.11
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate --config orbit.conf.json
 npx orbit run --config orbit.conf.json
@@ -200,3 +200,4 @@ Authenticode 签名后再创建 GitHub Release。应用维护者必须配置自�
 - 配置字段与权限声明：[`configuration.md`](configuration.md)
 - IPC、HTTP 和插件：[`ipc-and-plugins.md`](ipc-and-plugins.md)
 - 安装包和发布产物：[`packaging.md`](packaging.md)
+

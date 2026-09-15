@@ -1,6 +1,6 @@
 # Production Readiness
 
-Orbit `0.1.0-alpha.10` is pre-release software. Its current Windows x64
+Orbit `0.1.0-alpha.11` is pre-release software. Its current Windows x64
 support and signed packaging workflow are suitable for integration testing and
 early application delivery, but they are not yet Orbit 1.0 compatibility
 promises.
@@ -146,3 +146,4 @@ Before a stable Windows 1.0 release:
 Pre-beta alpha releases may make incompatible corrections when a documented
 migration is provided. Orbit will not retain API aliases solely to preserve an
 alpha interface that is unsuitable for the stable contract.
+
