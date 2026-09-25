@@ -6,7 +6,10 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
-## 0.1.0-alpha.13 - 2026-09-25
+## 0.1.0-alpha.14 - 2026-09-25
+
+- `0.1.0-alpha.13` was uploaded to Mooncake during release verification and
+  is not the published release. Use `0.1.0-alpha.14`.
 
 - Build with the installer `latest` channel resolved to MoonBit `moon`
   0.1.20260920 and `moonc` v0.10.14 (2026-09-18).

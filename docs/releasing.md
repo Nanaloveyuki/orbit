@@ -19,7 +19,7 @@ OIDC and must not receive an npm write token.
 1. Update `moon.mod` and `orbit-cli/package.json` to the same version.
 2. Merge the version change through the normal validation workflow.
 3. Create and push the matching protected tag, for example
-   `v0.1.0-alpha.13`.
+   `v0.1.0-alpha.14`.
 
 The release workflow verifies the tag, runs MoonBit and Node tests, performs a
 Mooncake dry run, packs the npm artifact, creates a draft GitHub Release,
@@ -29,7 +29,7 @@ as a draft for inspection. npm prereleases use their first prerelease identifier
 as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
 `.moon-version` selects the installer-supported `latest` channel. For
-`0.1.0-alpha.13` that channel resolves to `moon` 0.1.20260920 and `moonc`
+`0.1.0-alpha.14` that channel resolves to `moon` 0.1.20260920 and `moonc`
 v0.10.14 (2026-09-18). The dated installer artifact `20260920` is not
 downloadable, so the repository keeps the `latest` channel. CI records the
 resolved compiler and build-tool versions with `moon version --all` before
