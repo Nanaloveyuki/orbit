@@ -5,6 +5,9 @@ pub(all) suberror ResourceError {
 } derive(Debug)
 
 ///|
+pub extend ResourceError with Debug::{to_repr}
+
+///|
 pub struct EmbeddedResource {
   path : String
   media_type : String
@@ -79,7 +82,7 @@ pub struct ResourceTable {
 
 ///|
 pub fn ResourceTable::new() -> ResourceTable {
-  { resources: Map([]) }
+  { resources: Map([]), }
 }
 
 ///|

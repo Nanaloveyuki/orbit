@@ -286,10 +286,7 @@ async fn read_directory_capability(
   if context.is_cancelled() {
     return Err(file_read_failure("cancelled", "directory read was cancelled"))
   }
-  @async.sleep(0) catch {
-    _ =>
-      return Err(file_read_failure("cancelled", "directory read was cancelled"))
-  }
+  @async.sleep(0)
   if request.id.is_empty() {
     return Err(
       file_read_failure("invalid_handle", "file handle must not be empty"),

@@ -25,8 +25,10 @@ async test "authenticated HTTP and window adapters share command policy behavior
       commands=[@ipc.CommandName::new("shared.echo")],
     ),
   )
-  let authenticated = AuthenticatedHttpClient::new("sync-client")
-  let adapter = HttpAdapter::new(registry, policy, metadata => {
+  let authenticated = @orbit-ipc-http.AuthenticatedHttpClient::new(
+    "sync-client",
+  )
+  let adapter = @orbit-ipc-http.HttpAdapter::new(registry, policy, metadata => {
     if metadata.header("authorization") == Some("Bearer integration-secret") {
       Some(authenticated)
     } else {

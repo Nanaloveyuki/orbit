@@ -11,6 +11,9 @@ pub(all) suberror HttpAdapterError {
 } derive(Debug)
 
 ///|
+pub extend HttpAdapterError with Debug::{to_repr}
+
+///|
 /// A principal identity produced by a host-owned authentication mechanism.
 /// HTTP headers never become an Orbit principal without this value.
 pub struct AuthenticatedHttpClient {
@@ -301,7 +304,7 @@ fn HttpAdapter::prepare(
         ),
       )
   }
-  Ok({ client, origin: request.headers.get("origin") })
+  Ok({ client, origin: request.headers.get("origin"), })
 }
 
 ///|
@@ -326,7 +329,7 @@ async fn HttpAdapter::dispatch_source(
     context,
     source,
   )
-  { status: 200, reason: "OK", body: response, headers: Map([]) }
+  { status: 200, reason: "OK", body: response, headers: Map([]), }
 }
 
 ///|

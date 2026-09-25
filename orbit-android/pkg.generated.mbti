@@ -14,6 +14,7 @@ pub fn run(AndroidAppOptions) -> Unit
 pub(all) suberror AndroidAppError {
   InvalidOptions(String)
 } derive(@debug.Debug)
+pub fn AndroidAppError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub struct AndroidAppOptions {

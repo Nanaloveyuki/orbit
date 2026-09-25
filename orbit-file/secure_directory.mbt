@@ -5,10 +5,22 @@ pub(all) enum DirectoryEntryKind {
 } derive(Eq, Debug)
 
 ///|
+pub extend DirectoryEntryKind with Eq::{not_equal, equal}
+
+///|
+pub extend DirectoryEntryKind with Debug::{to_repr}
+
+///|
 pub(all) struct DirectoryEntry {
   name : String
   kind : DirectoryEntryKind
 } derive(Eq, Debug)
+
+///|
+pub extend DirectoryEntry with Eq::{not_equal, equal}
+
+///|
+pub extend DirectoryEntry with Debug::{to_repr}
 
 ///|
 pub(all) suberror DirectoryHandleError {
@@ -17,6 +29,12 @@ pub(all) suberror DirectoryHandleError {
   ReadFailed
   TooLarge
 } derive(Eq, Debug)
+
+///|
+pub extend DirectoryHandleError with Eq::{not_equal, equal}
+
+///|
+pub extend DirectoryHandleError with Debug::{to_repr}
 
 ///|
 priv type NativeDirectory
@@ -127,7 +145,7 @@ fn decode_directory_entries(
     if name.is_empty() {
       return Err(ReadFailed)
     }
-    entries.push({ name, kind })
+    entries.push({ name, kind, })
     offset += name_length
   }
   if offset != bytes.length() {

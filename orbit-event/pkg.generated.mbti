@@ -12,13 +12,17 @@ import {
 pub(all) suberror EventError {
   InvalidName(String)
 } derive(@debug.Debug)
+pub fn EventError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct EventDeliveryFailure {
   code : String
   message : String
 } derive(Eq, @debug.Debug)
+pub fn EventDeliveryFailure::equal(Self, Self) -> Bool
 pub fn EventDeliveryFailure::new(code~ : String, message~ : String) -> Self
+pub fn EventDeliveryFailure::not_equal(Self, Self) -> Bool
+pub fn EventDeliveryFailure::to_repr(Self) -> @debug.Repr
 
 pub(all) struct EventEnvelope {
   name : EventName
@@ -26,17 +30,24 @@ pub(all) struct EventEnvelope {
   target : EventTarget
   payload : Json
 } derive(Eq, @debug.Debug)
+pub fn EventEnvelope::equal(Self, Self) -> Bool
 pub fn EventEnvelope::new(name~ : EventName, payload~ : Json, source? : EventTarget, target? : EventTarget) -> Self
+pub fn EventEnvelope::not_equal(Self, Self) -> Bool
+pub fn EventEnvelope::to_repr(Self) -> @debug.Repr
 
 pub struct EventName {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn EventName::equal(Self, Self) -> Bool
 pub fn EventName::new(String) -> Self raise EventError
+pub fn EventName::not_equal(Self, Self) -> Bool
+pub fn EventName::to_repr(Self) -> @debug.Repr
 pub fn EventName::value(Self) -> String
 
 pub struct EventRouter {
   // private fields
 }
+pub fn EventRouter::emit(Self, EventEnvelope) -> Result[Unit, EventDeliveryFailure]
 pub fn EventRouter::new() -> Self
 pub fn EventRouter::subscribe(Self, EventTarget, (EventEnvelope) -> Result[Unit, EventDeliveryFailure]) -> Result[Unit, EventDeliveryFailure]
 pub fn EventRouter::subscribe_additional(Self, EventTarget, (EventEnvelope) -> Result[Unit, EventDeliveryFailure]) -> EventSubscription
@@ -55,6 +66,11 @@ pub(all) enum EventTarget {
   Runtime(String)
   Ipc(String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn EventTarget::equal(Self, Self) -> Bool
+pub fn EventTarget::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EventTarget::not_equal(Self, Self) -> Bool
+pub fn EventTarget::to_json(Self) -> Json
+pub fn EventTarget::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

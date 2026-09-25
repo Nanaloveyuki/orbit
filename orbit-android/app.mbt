@@ -4,6 +4,9 @@ pub(all) suberror AndroidAppError {
 } derive(Debug)
 
 ///|
+pub extend AndroidAppError with Debug::{to_repr}
+
+///|
 pub struct AndroidAppOptions {
   runtime_options : @runtime.RuntimeOptions
   ipc_registry : @ipc.CommandRegistry?
@@ -28,7 +31,7 @@ pub fn AndroidAppOptions::new(
   if trusted_origin.is_empty() {
     raise InvalidOptions("Android trusted origin must not be empty")
   }
-  { runtime_options, ipc_registry, ipc_policy, trusted_origin }
+  { runtime_options, ipc_registry, ipc_policy, trusted_origin, }
 }
 
 ///|

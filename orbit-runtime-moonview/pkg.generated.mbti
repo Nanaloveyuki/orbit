@@ -11,11 +11,22 @@ import {
 
 // Types and methods
 type MoonViewRuntime
+pub fn MoonViewRuntime::capabilities(Self) -> @orbit-runtime.RuntimeCapabilities
+pub fn MoonViewRuntime::destroy(Self) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::evaluate_script(Self, String, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::navigate(Self, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::open_print_dialog(Self) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::post_message(Self, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::set_bounds(Self, @orbit-runtime.RuntimeBounds) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::set_message_handler(Self, ((@orbit-runtime.RuntimePageMessage) -> Unit)?) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::set_visible(Self, Bool) -> Unit raise @orbit-runtime.RuntimeError
+pub fn MoonViewRuntime::show_file_dialog(Self, @orbit-runtime.RuntimeFileDialogOptions) -> @orbit-runtime.RuntimeFileDialogResult raise @orbit-runtime.RuntimeError
 pub impl @orbit-runtime.WebViewRuntime for MoonViewRuntime
 
 pub struct MoonViewRuntimeFactory {
   // private fields
 }
+pub fn MoonViewRuntimeFactory::create(Self, @orbit-runtime.RuntimeHost, @orbit-runtime.RuntimeOptions) -> &@orbit-runtime.WebViewRuntime raise @orbit-runtime.RuntimeError
 pub fn MoonViewRuntimeFactory::new() -> Self
 pub impl @orbit-runtime.RuntimeFactory for MoonViewRuntimeFactory
 

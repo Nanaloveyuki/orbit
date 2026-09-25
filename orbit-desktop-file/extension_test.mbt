@@ -1,6 +1,6 @@
 ///|
 test "file extension declares the complete capability bridge" {
-  let extension = DesktopFileExtension::new()
+  let extension = @orbit-desktop-file.DesktopFileExtension::new()
   let commands = extension.as_extension().commands()
   assert_eq(commands.length(), 8)
   assert_eq(commands[0].name().value(), "orbit.dialog.open")

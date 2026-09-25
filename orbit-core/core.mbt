@@ -6,6 +6,9 @@ pub(all) suberror CoreError {
 } derive(Debug)
 
 ///|
+pub extend CoreError with Debug::{to_repr}
+
+///|
 pub fn ipc_initialization_script(initialization_script : String) -> String {
   @ipc_moonview.initialization_script(initialization_script)
 }
@@ -23,6 +26,12 @@ pub enum DesktopIpcPrincipal {
   Window
   RemotePage
 } derive(Eq, Debug)
+
+///|
+pub extend DesktopIpcPrincipal with Eq::{not_equal, equal}
+
+///|
+pub extend DesktopIpcPrincipal with Debug::{to_repr}
 
 ///|
 pub fn DesktopIpcPrincipal::window() -> DesktopIpcPrincipal {
@@ -44,7 +53,7 @@ pub fn DesktopWindowOptions::new(
   if window_title.is_empty() {
     raise InitializationFailed("window title must not be empty")
   }
-  { window_title, runtime_options, resizable, ipc_principal }
+  { window_title, runtime_options, resizable, ipc_principal, }
 }
 
 ///|
@@ -914,7 +923,7 @@ fn DesktopApp::register_extension_commands(
                   )
                 }
                 handler(
-                  { label_: label, cancellation_: context.cancellation() },
+                  { label_: label, cancellation_: context.cancellation(), },
                   payload,
                 )
               }) catch {
@@ -1020,7 +1029,7 @@ fn DesktopApp::mount_runtime(
     options.ipc_principal,
     runtime,
   )
-  { runtime, page_event_subscription }
+  { runtime, page_event_subscription, }
 }
 
 ///|
@@ -1238,6 +1247,15 @@ pub impl @orby.App for DesktopApp with fn started(self, active) {
 }
 
 ///|
+pub extend DesktopApp with @orby.App::{
+  proxy_message,
+  exiting,
+  started,
+  window_event,
+  about_to_wait,
+}
+
+///|
 pub impl @orby.App for DesktopApp with fn window_event(self, active, id, event) {
   let mounted = match self.mounted_window(id) {
     Some(mounted) => mounted
@@ -1451,7 +1469,7 @@ pub fn run_async(
   let wakeup_callback = app_loop.wakeup_callback_for_foreign_thread()
   let loop_control = app_loop
   let loop_failure : Ref[@orby.AppError?] = Ref(None)
-  let external_loop = { app_loop, failure: loop_failure }
+  let external_loop = { app_loop, failure: loop_failure, }
   @async.set_external_event_loop(external_loop)
   @async.run_async_main(() => {
     @async.with_task_group() <| group => {

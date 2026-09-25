@@ -1,6 +1,6 @@
 ///|
 test "file capabilities remain bound to the selecting window" {
-  let registry = FileCapabilityRegistry::new()
+  let registry = @orbit-file.FileCapabilityRegistry::new()
   let capability = registry
     .mint("main", "C:\\secret\\report.txt", Read)
     .unwrap_or_else(() => fail("expected random handle"))

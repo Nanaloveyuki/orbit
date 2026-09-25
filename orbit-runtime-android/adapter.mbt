@@ -234,6 +234,9 @@ pub impl @runtime.RuntimeFactory for AndroidRuntimeFactory with fn create(
 }
 
 ///|
+pub extend AndroidRuntimeFactory with @runtime.RuntimeFactory::{create}
+
+///|
 fn AndroidRuntime::require_live(
   self : AndroidRuntime,
 ) -> Unit raise @runtime.RuntimeError {
@@ -252,6 +255,20 @@ pub impl @runtime.WebViewRuntime for AndroidRuntime with fn capabilities(_self) 
     devtools: false,
     file_dialogs: false,
   }
+}
+
+///|
+pub extend AndroidRuntime with @runtime.WebViewRuntime::{
+  set_bounds,
+  set_visible,
+  show_file_dialog,
+  navigate,
+  evaluate_script,
+  post_message,
+  set_message_handler,
+  destroy,
+  capabilities,
+  open_print_dialog,
 }
 
 ///|

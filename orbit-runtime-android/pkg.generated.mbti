@@ -11,11 +11,22 @@ import {
 
 // Types and methods
 type AndroidRuntime
+pub fn AndroidRuntime::capabilities(Self) -> @orbit-runtime.RuntimeCapabilities
+pub fn AndroidRuntime::destroy(Self) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::evaluate_script(Self, String, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::navigate(Self, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::open_print_dialog(Self) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::post_message(Self, String) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::set_bounds(Self, @orbit-runtime.RuntimeBounds) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::set_message_handler(Self, ((@orbit-runtime.RuntimePageMessage) -> Unit)?) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::set_visible(Self, Bool) -> Unit raise @orbit-runtime.RuntimeError
+pub fn AndroidRuntime::show_file_dialog(Self, @orbit-runtime.RuntimeFileDialogOptions) -> @orbit-runtime.RuntimeFileDialogResult raise @orbit-runtime.RuntimeError
 pub impl @orbit-runtime.WebViewRuntime for AndroidRuntime
 
 pub struct AndroidRuntimeFactory {
   // private fields
 }
+pub fn AndroidRuntimeFactory::create(Self, @orbit-runtime.RuntimeHost, @orbit-runtime.RuntimeOptions) -> &@orbit-runtime.WebViewRuntime raise @orbit-runtime.RuntimeError
 pub fn AndroidRuntimeFactory::new(trusted_origin? : String) -> Self
 pub impl @orbit-runtime.RuntimeFactory for AndroidRuntimeFactory
 

@@ -6,7 +6,7 @@ test "desktop options require a title" {
     initial_content=Html("<main></main>"),
   )
   let rejected = try {
-    ignore(DesktopWindowOptions::new("", options))
+    ignore(@orbit-core.DesktopWindowOptions::new("", options))
     false
   } catch {
     InitializationFailed(_) => true
@@ -24,8 +24,8 @@ test "desktop options require an IPC policy with an IPC registry" {
   )
   let rejected = try {
     ignore(
-      DesktopOptions::new(
-        windows=[DesktopWindowOptions::new("Orbit", options)],
+      @orbit-core.DesktopOptions::new(
+        windows=[@orbit-core.DesktopWindowOptions::new("Orbit", options)],
         ipc_registry=Some(@ipc.CommandRegistry::new()),
       ),
     )
@@ -51,9 +51,9 @@ test "desktop options reject duplicate window labels" {
   )
   let rejected = try {
     ignore(
-      DesktopOptions::new(windows=[
-        DesktopWindowOptions::new("First", first),
-        DesktopWindowOptions::new("Second", second),
+      @orbit-core.DesktopOptions::new(windows=[
+        @orbit-core.DesktopWindowOptions::new("First", first),
+        @orbit-core.DesktopWindowOptions::new("Second", second),
       ]),
     )
     false
@@ -72,15 +72,15 @@ test "desktop options use the plugin directory from the environment" {
     bounds=@runtime.RuntimeBounds::new(width=800, height=600),
     initial_content=Html("<main></main>"),
   )
-  let from_environment = DesktopOptions::new(windows=[
-    DesktopWindowOptions::new("Orbit", runtime_options),
+  let from_environment = @orbit-core.DesktopOptions::new(windows=[
+    @orbit-core.DesktopWindowOptions::new("Orbit", runtime_options),
   ])
   assert_eq(
     from_environment.plugin_development_directory,
     Some("environment-plugins"),
   )
-  let configured = DesktopOptions::new(
-    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+  let configured = @orbit-core.DesktopOptions::new(
+    windows=[@orbit-core.DesktopWindowOptions::new("Orbit", runtime_options)],
     plugin_development_directory=Some("configured-plugins"),
   )
   assert_eq(configured.plugin_development_directory, Some("configured-plugins"))
@@ -97,8 +97,8 @@ test "desktop options reject an empty plugin directory from the environment" {
   )
   let rejected = try {
     ignore(
-      DesktopOptions::new(windows=[
-        DesktopWindowOptions::new("Orbit", runtime_options),
+      @orbit-core.DesktopOptions::new(windows=[
+        @orbit-core.DesktopWindowOptions::new("Orbit", runtime_options),
       ]),
     )
     false
@@ -114,27 +114,37 @@ test "desktop options reject an empty plugin directory from the environment" {
 priv struct TestDesktopExtension {}
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn identifier(_self) {
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn identifier(
+  _self,
+) {
   "test.extension"
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn commands(_self) {
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn commands(
+  _self,
+) {
   []
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn start(_self, _controller) {
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn start(
+  _self,
+  _controller,
+) {
   Ok(())
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn poll(_self, _controller) {
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn poll(
+  _self,
+  _controller,
+) {
   Ok(())
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn window_suspended(
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn window_suspended(
   _self,
   _label,
 ) {
@@ -142,7 +152,7 @@ impl DesktopExtension for TestDesktopExtension with fn window_suspended(
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn window_destroyed(
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn window_destroyed(
   _self,
   _label,
 ) {
@@ -150,15 +160,17 @@ impl DesktopExtension for TestDesktopExtension with fn window_destroyed(
 }
 
 ///|
-impl DesktopExtension for TestDesktopExtension with fn shutdown(_self) {
+impl @orbit-core.DesktopExtension for TestDesktopExtension with fn shutdown(
+  _self,
+) {
   Ok(())
 }
 
 ///|
 fn TestDesktopExtension::as_extension(
   self : TestDesktopExtension,
-) -> &DesktopExtension {
-  self as &DesktopExtension
+) -> &@orbit-core.DesktopExtension {
+  self as &@orbit-core.DesktopExtension
 }
 
 ///|
@@ -168,9 +180,9 @@ test "desktop options retain ordered extensions and close policy" {
     bounds=@runtime.RuntimeBounds::new(width=800, height=600),
     initial_content=Html("<main></main>"),
   )
-  let extension = TestDesktopExtension::{  }
-  let options = DesktopOptions::new(
-    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+  let extension = TestDesktopExtension::{ }
+  let options = @orbit-core.DesktopOptions::new(
+    windows=[@orbit-core.DesktopWindowOptions::new("Orbit", runtime_options)],
     extensions=[extension.as_extension()],
   )
   assert_eq(options.extensions.length(), 1)
@@ -187,15 +199,18 @@ test "desktop options retain the runtime suspension handler" {
     bounds=@runtime.RuntimeBounds::new(width=800, height=600),
     initial_content=Html("<main></main>"),
   )
-  let options = DesktopOptions::new(
-    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+  let options = @orbit-core.DesktopOptions::new(
+    windows=[@orbit-core.DesktopWindowOptions::new("Orbit", runtime_options)],
     runtime_suspend_handler=Some(_label => Ok(())),
   )
   match options.runtime_suspend_handler {
     Some(_) => ()
     None => abort("expected the runtime suspension handler")
   }
-  assert_eq(DesktopCloseAction::suspend(), DesktopCloseAction::suspend())
+  assert_eq(
+    @orbit-core.DesktopCloseAction::suspend(),
+    @orbit-core.DesktopCloseAction::suspend(),
+  )
 }
 
 ///|
@@ -206,8 +221,8 @@ test "desktop options retain optional diagnostics" {
     initial_content=Html("<main></main>"),
   )
   let history = @diagnostics.DiagnosticHistory::new()
-  let options = DesktopOptions::new(
-    windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
+  let options = @orbit-core.DesktopOptions::new(
+    windows=[@orbit-core.DesktopWindowOptions::new("Orbit", runtime_options)],
     diagnostic_sink=Some(history as &@diagnostics.DiagnosticSink),
     diagnostic_configuration_fingerprint=Some("f00d"),
   )
@@ -225,8 +240,8 @@ test "desktop options leave diagnostics disabled by default" {
     bounds=@runtime.RuntimeBounds::new(width=800, height=600),
     initial_content=Html("<main></main>"),
   )
-  let options = DesktopOptions::new(windows=[
-    DesktopWindowOptions::new("Orbit", runtime_options),
+  let options = @orbit-core.DesktopOptions::new(windows=[
+    @orbit-core.DesktopWindowOptions::new("Orbit", runtime_options),
   ])
   assert_eq(options.diagnostic_configuration_fingerprint, None)
   match options.diagnostic_sink {
@@ -238,7 +253,7 @@ test "desktop options leave diagnostics disabled by default" {
 ///|
 test "desktop commands reject invalid names at construction" {
   let rejected = try {
-    ignore(DesktopCommand::ui("", (_, _) => Ok(Json::null())))
+    ignore(@orbit-core.DesktopCommand::ui("", (_, _) => Ok(Json::null())))
     false
   } catch {
     InitializationFailed(_) => true

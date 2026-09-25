@@ -4,9 +4,18 @@ pub(all) suberror EventError {
 } derive(Debug)
 
 ///|
+pub extend EventError with Debug::{to_repr}
+
+///|
 pub struct EventName {
   priv value : String
 } derive(Eq, Debug)
+
+///|
+pub extend EventName with Eq::{not_equal, equal}
+
+///|
+pub extend EventName with Debug::{to_repr}
 
 ///|
 fn valid_name_char(char : Char) -> Bool {
@@ -42,6 +51,18 @@ pub(all) enum EventTarget {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend EventTarget with Eq::{not_equal, equal}
+
+///|
+pub extend EventTarget with Debug::{to_repr}
+
+///|
+pub extend EventTarget with ToJson::{to_json}
+
+///|
+pub extend EventTarget with FromJson::{from_json}
+
+///|
 pub(all) struct EventEnvelope {
   name : EventName
   source : EventTarget
@@ -50,13 +71,19 @@ pub(all) struct EventEnvelope {
 } derive(Eq, Debug)
 
 ///|
+pub extend EventEnvelope with Eq::{not_equal, equal}
+
+///|
+pub extend EventEnvelope with Debug::{to_repr}
+
+///|
 pub fn EventEnvelope::new(
   name~ : EventName,
   payload~ : Json,
   source? : EventTarget = Application,
   target? : EventTarget = Any,
 ) -> EventEnvelope {
-  { name, source, target, payload }
+  { name, source, target, payload, }
 }
 
 ///|
@@ -66,11 +93,17 @@ pub(all) struct EventDeliveryFailure {
 } derive(Eq, Debug)
 
 ///|
+pub extend EventDeliveryFailure with Eq::{not_equal, equal}
+
+///|
+pub extend EventDeliveryFailure with Debug::{to_repr}
+
+///|
 pub fn EventDeliveryFailure::new(
   code~ : String,
   message~ : String,
 ) -> EventDeliveryFailure {
-  { code, message }
+  { code, message, }
 }
 
 ///|
@@ -172,7 +205,7 @@ pub fn EventRouter::subscribe_additional(
   self.next_subscription_identifier += 1
   let handlers = self.additional_handlers.get_or_init(target, () => Map([]))
   handlers[identifier] = handler
-  { router_identifier: self.identifier, target, identifier }
+  { router_identifier: self.identifier, target, identifier, }
 }
 
 ///|
@@ -236,3 +269,6 @@ pub impl EventSink for EventRouter with fn emit(self, event) {
     self.deliver("any", event)
   }
 }
+
+///|
+pub extend EventRouter with EventSink::{emit}

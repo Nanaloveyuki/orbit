@@ -24,15 +24,22 @@ pub(all) suberror CoreError {
   StartupFailed(String)
   RuntimeFailed(String)
 } derive(@debug.Debug)
+pub fn CoreError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror DesktopControllerError {
   WindowUnavailable(String)
   HostUnavailable
   RuntimeOperationFailed(String)
 } derive(@debug.Debug)
+pub fn DesktopControllerError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 type DesktopApp
+pub fn DesktopApp::about_to_wait(Self, @orby.ActiveApp) -> Unit
+pub fn DesktopApp::exiting(Self, @orby.ActiveApp) -> Unit
+pub fn DesktopApp::proxy_message(Self, @orby.ActiveApp, Bytes) -> Unit
+pub fn DesktopApp::started(Self, @orby.ActiveApp) -> Unit raise @orby.AppError
+pub fn DesktopApp::window_event(Self, @orby.ActiveApp, @orby.WindowId, @orby.WindowEvent) -> Unit
 pub impl @orby.App for DesktopApp
 
 pub struct DesktopAsyncContext {
@@ -47,8 +54,11 @@ pub enum DesktopCloseAction {
   Suspend
 } derive(Eq, @debug.Debug)
 pub fn DesktopCloseAction::destroy() -> Self
+pub fn DesktopCloseAction::equal(Self, Self) -> Bool
 pub fn DesktopCloseAction::hide() -> Self
+pub fn DesktopCloseAction::not_equal(Self, Self) -> Bool
 pub fn DesktopCloseAction::suspend() -> Self
+pub fn DesktopCloseAction::to_repr(Self) -> @debug.Repr
 
 pub struct DesktopCommand {
   // private fields
@@ -70,7 +80,10 @@ pub enum DesktopIpcPrincipal {
   Window
   RemotePage
 } derive(Eq, @debug.Debug)
+pub fn DesktopIpcPrincipal::equal(Self, Self) -> Bool
+pub fn DesktopIpcPrincipal::not_equal(Self, Self) -> Bool
 pub fn DesktopIpcPrincipal::remote_page() -> Self
+pub fn DesktopIpcPrincipal::to_repr(Self) -> @debug.Repr
 pub fn DesktopIpcPrincipal::window() -> Self
 
 pub struct DesktopOptions {

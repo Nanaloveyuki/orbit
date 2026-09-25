@@ -7,6 +7,12 @@ pub enum InvocationTransport {
 } derive(Eq, Debug)
 
 ///|
+pub extend InvocationTransport with Eq::{not_equal, equal}
+
+///|
+pub extend InvocationTransport with Debug::{to_repr}
+
+///|
 pub fn InvocationTransport::moonview() -> InvocationTransport {
   MoonView
 }
@@ -34,6 +40,12 @@ pub enum InvocationPrincipal {
   Plugin(String)
   BackgroundTask(String)
 } derive(Eq, Debug)
+
+///|
+pub extend InvocationPrincipal with Eq::{not_equal, equal}
+
+///|
+pub extend InvocationPrincipal with Debug::{to_repr}
 
 ///|
 fn valid_invocation_identity(value : String) -> Bool {
@@ -85,7 +97,7 @@ pub struct InvocationCancellation {
 
 ///|
 fn InvocationCancellation::new() -> InvocationCancellation {
-  { cancelled: Ref(false) }
+  { cancelled: Ref(false), }
 }
 
 ///|

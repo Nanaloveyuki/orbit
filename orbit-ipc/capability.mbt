@@ -34,7 +34,7 @@ pub fn CommandCapability::new(
       raise InvalidCapability(identifier)
     }
   }
-  { identifier, windows, commands }
+  { identifier, windows, commands, }
 }
 
 ///|
@@ -65,6 +65,12 @@ pub enum CapabilityEffect {
 } derive(Eq, Debug)
 
 ///|
+pub extend CapabilityEffect with Eq::{not_equal, equal}
+
+///|
+pub extend CapabilityEffect with Debug::{to_repr}
+
+///|
 pub fn CapabilityEffect::allow() -> CapabilityEffect {
   Allow
 }
@@ -82,6 +88,12 @@ pub enum PrincipalSelector {
   Plugin(String)
   BackgroundTask(String)
 } derive(Eq, Debug)
+
+///|
+pub extend PrincipalSelector with Eq::{not_equal, equal}
+
+///|
+pub extend PrincipalSelector with Debug::{to_repr}
 
 ///|
 pub fn PrincipalSelector::window(
@@ -138,6 +150,12 @@ pub enum InvocationScope {
   Transport(InvocationTransport)
   Origin(String)
 } derive(Eq, Debug)
+
+///|
+pub extend InvocationScope with Eq::{not_equal, equal}
+
+///|
+pub extend InvocationScope with Debug::{to_repr}
 
 ///|
 pub fn InvocationScope::transport(
@@ -237,7 +255,7 @@ pub fn CommandGrant::new(
       raise InvalidCapability(identifier)
     }
   }
-  { identifier, effect, principals, scopes, commands }
+  { identifier, effect, principals, scopes, commands, }
 }
 
 ///|
@@ -266,7 +284,7 @@ pub struct CommandPolicy {
 
 ///|
 pub fn CommandPolicy::new() -> CommandPolicy {
-  { capabilities: Map([]), grants: Map([]) }
+  { capabilities: Map([]), grants: Map([]), }
 }
 
 ///|

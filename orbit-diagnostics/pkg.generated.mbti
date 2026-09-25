@@ -16,6 +16,7 @@ pub struct BitLoggerDiagnosticSink {
   sink : &@sink_graph.Sink
 }
 pub fn BitLoggerDiagnosticSink::new(&@sink_graph.Sink) -> Self
+pub fn BitLoggerDiagnosticSink::record(Self, DiagnosticEvent) -> Unit
 pub impl DiagnosticSink for BitLoggerDiagnosticSink
 
 pub struct DiagnosticEvent {
@@ -36,6 +37,7 @@ pub fn DiagnosticHistory::clear(Self) -> Unit
 pub fn DiagnosticHistory::count(Self) -> Int
 pub fn DiagnosticHistory::dropped_count(Self) -> Int
 pub fn DiagnosticHistory::new(capacity? : Int) -> Self
+pub fn DiagnosticHistory::record(Self, DiagnosticEvent) -> Unit
 pub fn DiagnosticHistory::snapshot(Self) -> Array[@core.Record]
 pub fn DiagnosticHistory::support_bundle(Self) -> SupportBundle
 pub impl DiagnosticSink for DiagnosticHistory
@@ -58,12 +60,18 @@ pub(all) enum DiagnosticKind {
   PluginPollFailed
   DesktopStopping
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticKind::equal(Self, Self) -> Bool
+pub fn DiagnosticKind::not_equal(Self, Self) -> Bool
+pub fn DiagnosticKind::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DiagnosticLevel {
   Info
   Warning
   Error
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticLevel::equal(Self, Self) -> Bool
+pub fn DiagnosticLevel::not_equal(Self, Self) -> Bool
+pub fn DiagnosticLevel::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupportBundle {
   schema_version : Int
@@ -71,7 +79,10 @@ pub(all) struct SupportBundle {
   dropped_event_count : Int
   events : Array[SupportEvent]
 } derive(Eq, ToJson, @debug.Debug)
+pub fn SupportBundle::equal(Self, Self) -> Bool
+pub fn SupportBundle::not_equal(Self, Self) -> Bool
 pub fn SupportBundle::to_json(Self) -> Json
+pub fn SupportBundle::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupportEvent {
   level : String
@@ -79,6 +90,10 @@ pub(all) struct SupportEvent {
   window_label : String?
   configuration_fingerprint : String?
 } derive(Eq, ToJson, @debug.Debug)
+pub fn SupportEvent::equal(Self, Self) -> Bool
+pub fn SupportEvent::not_equal(Self, Self) -> Bool
+pub fn SupportEvent::to_json(Self) -> Json
+pub fn SupportEvent::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

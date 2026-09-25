@@ -1,7 +1,7 @@
 ///|
 test "runtime bounds reject non-positive dimensions" {
   let rejected = try {
-    ignore(RuntimeBounds::new(width=0, height=600))
+    ignore(@orbit-runtime.RuntimeBounds::new(width=0, height=600))
     false
   } catch {
     InvalidState(_) => true
@@ -12,9 +12,15 @@ test "runtime bounds reject non-positive dimensions" {
 
 ///|
 test "runtime options require initial content" {
-  let bounds = RuntimeBounds::new(width=800, height=600)
+  let bounds = @orbit-runtime.RuntimeBounds::new(width=800, height=600)
   let rejected = try {
-    ignore(RuntimeOptions::new(label="main", bounds~, initial_content=Url("")))
+    ignore(
+      @orbit-runtime.RuntimeOptions::new(
+        label="main",
+        bounds~,
+        initial_content=Url(""),
+      ),
+    )
     false
   } catch {
     InvalidState(_) => true
@@ -26,7 +32,11 @@ test "runtime options require initial content" {
 ///|
 test "resource providers require a scheme name" {
   let rejected = try {
-    ignore(RuntimeResourceProvider::new(scheme="", handler=_request => None))
+    ignore(
+      @orbit-runtime.RuntimeResourceProvider::new(scheme="", handler=_request => {
+        None
+      }),
+    )
     false
   } catch {
     InvalidState(_) => true
@@ -38,11 +48,11 @@ test "resource providers require a scheme name" {
 ///|
 priv struct FakeRuntime {
   mut destroyed : Bool
-  mut handler : ((RuntimePageMessage) -> Unit)?
+  mut handler : ((@orbit-runtime.RuntimePageMessage) -> Unit)?
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn capabilities(_self) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn capabilities(_self) {
   {
     navigation: true,
     script_evaluation: true,
@@ -54,42 +64,58 @@ impl WebViewRuntime for FakeRuntime with fn capabilities(_self) {
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn show_file_dialog(_self, _options) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn show_file_dialog(
+  _self,
+  _options,
+) {
   raise Unsupported("file dialogs are unavailable in FakeRuntime")
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn open_print_dialog(_self) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn open_print_dialog(
+  _self,
+) {
   raise Unsupported("print dialogs are unavailable in FakeRuntime")
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn navigate(self, _url) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn navigate(self, _url) {
   if self.destroyed {
     raise InvalidState("navigate after destroy")
   }
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn evaluate_script(self, _script, _id) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn evaluate_script(
+  self,
+  _script,
+  _id,
+) {
   if self.destroyed {
     raise InvalidState("evaluate after destroy")
   }
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn post_message(self, message) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn post_message(
+  self,
+  message,
+) {
   if self.destroyed {
     raise InvalidState("post_message after destroy")
   }
   match self.handler {
-    Some(handler) => handler(RuntimePageMessage::new(body=message))
+    Some(handler) =>
+      handler(@orbit-runtime.RuntimePageMessage::new(body=message))
     None => ()
   }
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn set_message_handler(self, handler) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn set_message_handler(
+  self,
+  handler,
+) {
   if self.destroyed {
     raise InvalidState("set handler after destroy")
   }
@@ -97,21 +123,27 @@ impl WebViewRuntime for FakeRuntime with fn set_message_handler(self, handler) {
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn set_bounds(self, _bounds) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn set_bounds(
+  self,
+  _bounds,
+) {
   if self.destroyed {
     raise InvalidState("set bounds after destroy")
   }
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn set_visible(self, _visible) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn set_visible(
+  self,
+  _visible,
+) {
   if self.destroyed {
     raise InvalidState("set visibility after destroy")
   }
 }
 
 ///|
-impl WebViewRuntime for FakeRuntime with fn destroy(self) {
+impl @orbit-runtime.WebViewRuntime for FakeRuntime with fn destroy(self) {
   self.handler = None
   self.destroyed = true
 }
@@ -120,18 +152,23 @@ impl WebViewRuntime for FakeRuntime with fn destroy(self) {
 priv struct FakeFactory {}
 
 ///|
-impl RuntimeFactory for FakeFactory with fn create(_self, _host, _options) {
-  FakeRuntime::{ destroyed: false, handler: None } as &WebViewRuntime
+impl @orbit-runtime.RuntimeFactory for FakeFactory with fn create(
+  _self,
+  _host,
+  _options,
+) {
+  FakeRuntime::{ destroyed: false, handler: None, }
+  as &@orbit-runtime.WebViewRuntime
 }
 
 ///|
 test "runtime factories return replaceable trait objects" {
-  let factory = FakeFactory::{  } as &RuntimeFactory
+  let factory = FakeFactory::{ } as &@orbit-runtime.RuntimeFactory
   let runtime = factory.create(
-    RuntimeHost::new(1UL),
-    RuntimeOptions::new(
+    @orbit-runtime.RuntimeHost::new(1UL),
+    @orbit-runtime.RuntimeOptions::new(
       label="main",
-      bounds=RuntimeBounds::new(width=800, height=600),
+      bounds=@orbit-runtime.RuntimeBounds::new(width=800, height=600),
       initial_content=Url("orbit://index.html"),
     ),
   )
@@ -156,12 +193,14 @@ test "runtime factories return replaceable trait objects" {
 
 ///|
 test "unsupported runtimes reject file dialogs explicitly" {
-  let runtime = FakeRuntime::{ destroyed: false, handler: None }
+  let runtime = FakeRuntime::{ destroyed: false, handler: None, }
   let rejected = try {
     ignore(
-      WebViewRuntime::show_file_dialog(
+      @orbit-runtime.WebViewRuntime::show_file_dialog(
         runtime,
-        RuntimeFileDialogOptions::new(kind=RuntimeFileDialogKind::OpenFile),
+        @orbit-runtime.RuntimeFileDialogOptions::new(
+          kind=@orbit-runtime.RuntimeFileDialogKind::OpenFile,
+        ),
       ),
     )
     false
@@ -174,9 +213,9 @@ test "unsupported runtimes reject file dialogs explicitly" {
 
 ///|
 test "unsupported runtimes reject print dialogs explicitly" {
-  let runtime = FakeRuntime::{ destroyed: false, handler: None }
+  let runtime = FakeRuntime::{ destroyed: false, handler: None, }
   let rejected = try {
-    WebViewRuntime::open_print_dialog(runtime)
+    @orbit-runtime.WebViewRuntime::open_print_dialog(runtime)
     false
   } catch {
     Unsupported(_) => true
@@ -188,7 +227,7 @@ test "unsupported runtimes reject print dialogs explicitly" {
 ///|
 test "runtime hosts reject a missing native handle" {
   let rejected = try {
-    ignore(RuntimeHost::new(0UL))
+    ignore(@orbit-runtime.RuntimeHost::new(0UL))
     false
   } catch {
     InvalidState(_) => true
@@ -199,9 +238,9 @@ test "runtime hosts reject a missing native handle" {
 
 ///|
 test "external navigation remains denied unless the host approves it" {
-  let options = RuntimeOptions::new(
+  let options = @orbit-runtime.RuntimeOptions::new(
     label="main",
-    bounds=RuntimeBounds::new(width=800, height=600),
+    bounds=@orbit-runtime.RuntimeBounds::new(width=800, height=600),
     initial_content=Url("orbit://app/index.html"),
   )
   assert_false(options.external_navigation_handler()("https://example.com"))
@@ -216,14 +255,14 @@ test "external navigation remains denied unless the host approves it" {
 
 ///|
 test "remote navigation requires a fallback and unique origins" {
-  let navigation = RemoteNavigation::new(
+  let navigation = @orbit-runtime.RemoteNavigation::new(
     allowed_origins=["https://app.example"],
     fallback_url="orbit://app/fallback.html",
   )
   inspect(navigation.fallback_url(), content="orbit://app/fallback.html")
   let rejected = try {
     ignore(
-      RemoteNavigation::new(
+      @orbit-runtime.RemoteNavigation::new(
         allowed_origins=["https://app.example", "https://app.example"],
         fallback_url="orbit://app/fallback.html",
       ),
@@ -238,15 +277,15 @@ test "remote navigation requires a fallback and unique origins" {
 
 ///|
 test "remote navigation requires an embedded fallback provider" {
-  let navigation = RemoteNavigation::new(
+  let navigation = @orbit-runtime.RemoteNavigation::new(
     allowed_origins=["https://app.example"],
     fallback_url="orbit://app/fallback.html",
   )
   let rejected = try {
     ignore(
-      RuntimeOptions::new(
+      @orbit-runtime.RuntimeOptions::new(
         label="main",
-        bounds=RuntimeBounds::new(width=800, height=600),
+        bounds=@orbit-runtime.RuntimeBounds::new(width=800, height=600),
         initial_content=Url("https://app.example"),
         remote_navigation=Some(navigation),
       ),

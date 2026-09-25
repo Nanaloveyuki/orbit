@@ -12,9 +12,18 @@ pub(all) suberror IpcError {
 } derive(Debug)
 
 ///|
+pub extend IpcError with Debug::{to_repr}
+
+///|
 pub struct InvocationId {
   priv value : String
 } derive(Eq, Debug)
+
+///|
+pub extend InvocationId with Eq::{not_equal, equal}
+
+///|
+pub extend InvocationId with Debug::{to_repr}
 
 ///|
 pub fn InvocationId::new(value : String) -> InvocationId raise IpcError {
@@ -39,6 +48,12 @@ pub fn InvocationId::value(self : InvocationId) -> String {
 pub struct CommandName {
   priv value : String
 } derive(Eq, Debug)
+
+///|
+pub extend CommandName with Eq::{not_equal, equal}
+
+///|
+pub extend CommandName with Debug::{to_repr}
 
 ///|
 fn valid_command_char(char : Char) -> Bool {
@@ -111,6 +126,12 @@ pub(all) struct CommandFailure {
   message : String
   data : Json?
 } derive(Eq, Debug)
+
+///|
+pub extend CommandFailure with Eq::{not_equal, equal}
+
+///|
+pub extend CommandFailure with Debug::{to_repr}
 
 ///|
 pub fn CommandFailure::new(

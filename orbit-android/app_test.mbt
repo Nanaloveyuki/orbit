@@ -15,7 +15,7 @@ fn test_runtime_options() -> @runtime.RuntimeOptions {
 test "Android IPC registry and policy are configured together" {
   let registry = @ipc.CommandRegistry::new()
   let result = try {
-    let _ = AndroidAppOptions::new(
+    let _ = @orbit-android.AndroidAppOptions::new(
       runtime_options=test_runtime_options(),
       ipc_registry=Some(registry),
     )

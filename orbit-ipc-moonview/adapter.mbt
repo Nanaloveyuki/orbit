@@ -5,6 +5,12 @@ pub enum PagePrincipal {
 } derive(Eq, Debug)
 
 ///|
+pub extend PagePrincipal with Eq::{not_equal, equal}
+
+///|
+pub extend PagePrincipal with Debug::{to_repr}
+
+///|
 pub fn PagePrincipal::window() -> PagePrincipal {
   Window
 }

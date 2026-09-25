@@ -7,12 +7,21 @@ pub(all) suberror RuntimeError {
 } derive(Debug)
 
 ///|
+pub extend RuntimeError with Debug::{to_repr}
+
+///|
 pub struct RuntimeBounds {
   x : Int
   y : Int
   width : Int
   height : Int
 } derive(Eq, Debug)
+
+///|
+pub extend RuntimeBounds with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeBounds with Debug::{to_repr}
 
 ///|
 pub fn RuntimeBounds::new(
@@ -24,7 +33,7 @@ pub fn RuntimeBounds::new(
   if width <= 0 || height <= 0 {
     raise InvalidState("runtime bounds must have positive dimensions")
   }
-  { x, y, width, height }
+  { x, y, width, height, }
 }
 
 ///|
@@ -38,6 +47,12 @@ pub(all) struct RuntimeCapabilities {
 } derive(Eq, Debug)
 
 ///|
+pub extend RuntimeCapabilities with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeCapabilities with Debug::{to_repr}
+
+///|
 pub(all) enum RuntimeFileDialogKind {
   OpenFile
   OpenFiles
@@ -46,10 +61,22 @@ pub(all) enum RuntimeFileDialogKind {
 } derive(Eq, Debug)
 
 ///|
+pub extend RuntimeFileDialogKind with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeFileDialogKind with Debug::{to_repr}
+
+///|
 pub(all) struct RuntimeFileDialogFilter {
   name : String
   extensions : Array[String]
 } derive(Eq, Debug)
+
+///|
+pub extend RuntimeFileDialogFilter with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeFileDialogFilter with Debug::{to_repr}
 
 ///|
 pub(all) struct RuntimeFileDialogOptions {
@@ -61,10 +88,22 @@ pub(all) struct RuntimeFileDialogOptions {
 } derive(Eq, Debug)
 
 ///|
+pub extend RuntimeFileDialogOptions with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeFileDialogOptions with Debug::{to_repr}
+
+///|
 pub(all) enum RuntimeFileDialogResult {
   Cancelled
   Selected(Array[String])
 } derive(Eq, Debug)
+
+///|
+pub extend RuntimeFileDialogResult with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeFileDialogResult with Debug::{to_repr}
 
 ///|
 pub(all) enum RuntimeLifecycleEvent {
@@ -74,9 +113,18 @@ pub(all) enum RuntimeLifecycleEvent {
 } derive(Debug)
 
 ///|
+pub extend RuntimeLifecycleEvent with Debug::{to_repr}
+
+///|
 pub struct RuntimeHost {
   native_handle : UInt64
 } derive(Eq, Debug)
+
+///|
+pub extend RuntimeHost with Eq::{not_equal, equal}
+
+///|
+pub extend RuntimeHost with Debug::{to_repr}
 
 ///|
 pub fn RuntimeHost::new(
@@ -100,6 +148,12 @@ pub(all) enum InitialContent {
 } derive(Eq, Debug)
 
 ///|
+pub extend InitialContent with Eq::{not_equal, equal}
+
+///|
+pub extend InitialContent with Debug::{to_repr}
+
+///|
 /// A message delivered by the current top-level page. `origin` is absent when
 /// an adapter cannot establish a trustworthy document origin.
 pub struct RuntimePageMessage {
@@ -112,7 +166,7 @@ pub fn RuntimePageMessage::new(
   body~ : String,
   origin? : String? = None,
 ) -> RuntimePageMessage {
-  { body, origin }
+  { body, origin, }
 }
 
 ///|
@@ -130,7 +184,7 @@ pub fn RuntimeFileDialogFilter::new(
   name~ : String,
   extensions~ : Array[String],
 ) -> RuntimeFileDialogFilter {
-  { name, extensions }
+  { name, extensions, }
 }
 
 ///|
@@ -141,7 +195,7 @@ pub fn RuntimeFileDialogOptions::new(
   default_name? : String? = None,
   initial_directory? : String? = None,
 ) -> RuntimeFileDialogOptions {
-  { kind, title, filters, default_name, initial_directory }
+  { kind, title, filters, default_name, initial_directory, }
 }
 
 ///|
@@ -171,7 +225,7 @@ pub fn RemoteNavigation::new(
     }
     seen[origin] = true
   }
-  { allowed_origins, fallback_url }
+  { allowed_origins, fallback_url, }
 }
 
 ///|
@@ -199,7 +253,7 @@ pub fn RuntimeResourceRequest::new(
   uri~ : String,
   body~ : Bytes,
 ) -> RuntimeResourceRequest {
-  { http_method, uri, body }
+  { http_method, uri, body, }
 }
 
 ///|
@@ -232,7 +286,7 @@ pub fn RuntimeResourceResponse::new(
   media_type~ : String,
   body~ : Bytes,
 ) -> RuntimeResourceResponse {
-  { status, media_type, body }
+  { status, media_type, body, }
 }
 
 ///|
@@ -268,7 +322,7 @@ pub fn RuntimeResourceProvider::new(
       "runtime resource scheme must be a non-empty scheme name",
     )
   }
-  { scheme, handler }
+  { scheme, handler, }
 }
 
 ///|

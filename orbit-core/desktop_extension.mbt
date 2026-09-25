@@ -6,6 +6,9 @@ pub(all) suberror DesktopControllerError {
 } derive(Debug)
 
 ///|
+pub extend DesktopControllerError with Debug::{to_repr}
+
+///|
 pub enum DesktopCloseAction {
   Destroy
   Hide
@@ -13,6 +16,12 @@ pub enum DesktopCloseAction {
   /// Showing the window creates a fresh runtime using its original options.
   Suspend
 } derive(Eq, Debug)
+
+///|
+pub extend DesktopCloseAction with Eq::{not_equal, equal}
+
+///|
+pub extend DesktopCloseAction with Debug::{to_repr}
 
 ///|
 pub fn DesktopCloseAction::destroy() -> DesktopCloseAction {
@@ -155,7 +164,7 @@ pub fn DesktopCommand::ui(
   let name = @ipc.CommandName::new(name) catch {
     _ => raise InitializationFailed("desktop extension command name is invalid")
   }
-  { name_: name, handler: Ui(handler) }
+  { name_: name, handler: Ui(handler), }
 }
 
 ///|
@@ -169,7 +178,7 @@ pub fn DesktopCommand::async_command(
   let name = @ipc.CommandName::new(name) catch {
     _ => raise InitializationFailed("desktop extension command name is invalid")
   }
-  { name_: name, handler: Async(handler) }
+  { name_: name, handler: Async(handler), }
 }
 
 ///|

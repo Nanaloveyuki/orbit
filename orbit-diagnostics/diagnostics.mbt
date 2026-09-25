@@ -6,6 +6,12 @@ pub(all) enum DiagnosticLevel {
 } derive(Eq, Debug)
 
 ///|
+pub extend DiagnosticLevel with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticLevel with Debug::{to_repr}
+
+///|
 pub(all) enum DiagnosticKind {
   DesktopStarting
   DesktopStarted
@@ -26,6 +32,12 @@ pub(all) enum DiagnosticKind {
 } derive(Eq, Debug)
 
 ///|
+pub extend DiagnosticKind with Eq::{not_equal, equal}
+
+///|
+pub extend DiagnosticKind with Debug::{to_repr}
+
+///|
 pub struct DiagnosticEvent {
   level : DiagnosticLevel
   kind : DiagnosticKind
@@ -40,7 +52,7 @@ pub fn DiagnosticEvent::new(
   window_label? : String? = None,
   configuration_fingerprint? : String? = None,
 ) -> DiagnosticEvent {
-  { level, kind, window_label, configuration_fingerprint }
+  { level, kind, window_label, configuration_fingerprint, }
 }
 
 ///|
@@ -48,7 +60,7 @@ pub fn DiagnosticEvent::with_configuration_fingerprint(
   self : DiagnosticEvent,
   configuration_fingerprint : String,
 ) -> DiagnosticEvent {
-  { ..self, configuration_fingerprint: Some(configuration_fingerprint) }
+  { ..self, configuration_fingerprint: Some(configuration_fingerprint), }
 }
 
 ///|
@@ -128,6 +140,9 @@ pub impl DiagnosticSink for BitLoggerDiagnosticSink with fn record(self, event) 
 }
 
 ///|
+pub extend BitLoggerDiagnosticSink with DiagnosticSink::{record}
+
+///|
 pub struct DiagnosticHistory {
   priv sink : @bitlogger.HistorySink
   priv mut support_events : Array[SupportEvent]
@@ -204,3 +219,6 @@ pub impl DiagnosticSink for DiagnosticHistory with fn record(self, event) {
   self.sink.write(event.to_record())
   self.append_support_event(event.to_support_event())
 }
+
+///|
+pub extend DiagnosticHistory with DiagnosticSink::{record}

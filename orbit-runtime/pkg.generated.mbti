@@ -14,12 +14,16 @@ pub(all) suberror RuntimeError {
   InvalidState(String)
   OperationFailed(String, String)
 } derive(@debug.Debug)
+pub fn RuntimeError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) enum InitialContent {
   Url(String)
   Html(String)
 } derive(Eq, @debug.Debug)
+pub fn InitialContent::equal(Self, Self) -> Bool
+pub fn InitialContent::not_equal(Self, Self) -> Bool
+pub fn InitialContent::to_repr(Self) -> @debug.Repr
 
 pub struct RemoteNavigation {
   allowed_origins : Array[String]
@@ -35,7 +39,10 @@ pub struct RuntimeBounds {
   width : Int
   height : Int
 } derive(Eq, @debug.Debug)
+pub fn RuntimeBounds::equal(Self, Self) -> Bool
 pub fn RuntimeBounds::new(x? : Int, y? : Int, width~ : Int, height~ : Int) -> Self raise RuntimeError
+pub fn RuntimeBounds::not_equal(Self, Self) -> Bool
+pub fn RuntimeBounds::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RuntimeCapabilities {
   navigation : Bool
@@ -45,12 +52,18 @@ pub(all) struct RuntimeCapabilities {
   devtools : Bool
   file_dialogs : Bool
 } derive(Eq, @debug.Debug)
+pub fn RuntimeCapabilities::equal(Self, Self) -> Bool
+pub fn RuntimeCapabilities::not_equal(Self, Self) -> Bool
+pub fn RuntimeCapabilities::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RuntimeFileDialogFilter {
   name : String
   extensions : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogFilter::equal(Self, Self) -> Bool
 pub fn RuntimeFileDialogFilter::new(name~ : String, extensions~ : Array[String]) -> Self
+pub fn RuntimeFileDialogFilter::not_equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogFilter::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RuntimeFileDialogKind {
   OpenFile
@@ -58,6 +71,9 @@ pub(all) enum RuntimeFileDialogKind {
   SaveFile
   PickDirectory
 } derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogKind::equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogKind::not_equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RuntimeFileDialogOptions {
   kind : RuntimeFileDialogKind
@@ -66,24 +82,34 @@ pub(all) struct RuntimeFileDialogOptions {
   default_name : String?
   initial_directory : String?
 } derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogOptions::equal(Self, Self) -> Bool
 pub fn RuntimeFileDialogOptions::new(kind~ : RuntimeFileDialogKind, title? : String?, filters? : Array[RuntimeFileDialogFilter], default_name? : String?, initial_directory? : String?) -> Self
+pub fn RuntimeFileDialogOptions::not_equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogOptions::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RuntimeFileDialogResult {
   Cancelled
   Selected(Array[String])
 } derive(Eq, @debug.Debug)
+pub fn RuntimeFileDialogResult::equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogResult::not_equal(Self, Self) -> Bool
+pub fn RuntimeFileDialogResult::to_repr(Self) -> @debug.Repr
 
 pub struct RuntimeHost {
   native_handle : UInt64
 } derive(Eq, @debug.Debug)
+pub fn RuntimeHost::equal(Self, Self) -> Bool
 pub fn RuntimeHost::native_handle(Self) -> UInt64
 pub fn RuntimeHost::new(UInt64) -> Self raise RuntimeError
+pub fn RuntimeHost::not_equal(Self, Self) -> Bool
+pub fn RuntimeHost::to_repr(Self) -> @debug.Repr
 
 pub(all) enum RuntimeLifecycleEvent {
   Ready
   Failed(RuntimeError)
   Destroyed
 } derive(@debug.Debug)
+pub fn RuntimeLifecycleEvent::to_repr(Self) -> @debug.Repr
 
 pub struct RuntimeOptions {
   label : String

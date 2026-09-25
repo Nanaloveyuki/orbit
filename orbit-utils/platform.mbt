@@ -9,6 +9,12 @@ pub(all) enum Platform {
 } derive(Eq, Debug)
 
 ///|
+pub extend Platform with Eq::{not_equal, equal}
+
+///|
+pub extend Platform with Debug::{to_repr}
+
+///|
 pub fn Platform::parse(value : StringView) -> Platform {
   match value.to_lower() {
     "windows" => Windows

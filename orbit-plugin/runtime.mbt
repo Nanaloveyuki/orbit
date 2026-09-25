@@ -7,13 +7,19 @@ pub(all) struct PluginDeclaration {
 } derive(Eq, Debug)
 
 ///|
+pub extend PluginDeclaration with Eq::{not_equal, equal}
+
+///|
+pub extend PluginDeclaration with Debug::{to_repr}
+
+///|
 pub fn PluginDeclaration::new(
   id~ : String,
   library~ : String,
   sidecar~ : PluginSidecarManifest,
   permissions? : Array[String] = [],
 ) -> PluginDeclaration {
-  { id, library, sidecar, permissions }
+  { id, library, sidecar, permissions, }
 }
 
 ///|
@@ -29,6 +35,12 @@ pub(all) enum PluginRuntimeError {
 } derive(Eq, Debug)
 
 ///|
+pub extend PluginRuntimeError with Eq::{not_equal, equal}
+
+///|
+pub extend PluginRuntimeError with Debug::{to_repr}
+
+///|
 /// Owns loaded plugin libraries for one desktop process. `shutdown` destroys
 /// plugin instances before closing their libraries. A library whose executor
 /// cannot be joined remains retained and the failure is returned.
@@ -39,7 +51,7 @@ pub struct PluginRuntime {
 
 ///|
 pub fn PluginRuntime::new() -> PluginRuntime {
-  { libraries: [], async_state: None }
+  { libraries: [], async_state: None, }
 }
 
 ///|

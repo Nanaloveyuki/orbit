@@ -6,6 +6,12 @@ pub(all) enum FileCapabilityKind {
 } derive(Eq, Debug)
 
 ///|
+pub extend FileCapabilityKind with Eq::{not_equal, equal}
+
+///|
+pub extend FileCapabilityKind with Debug::{to_repr}
+
+///|
 pub(all) suberror FileCapabilityError {
   RandomUnavailable
   DirectoryUnavailable
@@ -20,11 +26,20 @@ pub(all) suberror FileCapabilityError {
 } derive(Debug)
 
 ///|
+pub extend FileCapabilityError with Debug::{to_repr}
+
+///|
 pub struct FileCapability {
   priv id : String
   priv name : String
   priv kind : FileCapabilityKind
 } derive(Eq, Debug)
+
+///|
+pub extend FileCapability with Eq::{not_equal, equal}
+
+///|
+pub extend FileCapability with Debug::{to_repr}
 
 ///|
 priv enum FileCapabilityLocation {
@@ -52,7 +67,7 @@ let max_native_capabilities_per_window = 256
 
 ///|
 pub fn FileCapabilityRegistry::new() -> FileCapabilityRegistry {
-  { records: Map([]) }
+  { records: Map([]), }
 }
 
 ///|
@@ -156,7 +171,7 @@ pub fn FileCapabilityRegistry::mint(
     kind,
     parent_id: None,
   }
-  Ok({ id, name, kind })
+  Ok({ id, name, kind, })
 }
 
 ///|
@@ -188,7 +203,7 @@ pub fn FileCapabilityRegistry::mint_directory(
     kind: Directory,
     parent_id: None,
   }
-  Ok({ id, name, kind: Directory })
+  Ok({ id, name, kind: Directory, })
 }
 
 ///|
@@ -267,7 +282,7 @@ pub fn FileCapabilityRegistry::mint_child_directory(
       record.name == name {
       match record.parent_id {
         Some(existing_parent) if existing_parent == parent_id =>
-          return Ok({ id, name, kind: Directory })
+          return Ok({ id, name, kind: Directory, })
         _ => ()
       }
     }
@@ -295,7 +310,7 @@ pub fn FileCapabilityRegistry::mint_child_directory(
     kind: Directory,
     parent_id: Some(parent_id),
   }
-  Ok({ id, name, kind: Directory })
+  Ok({ id, name, kind: Directory, })
 }
 
 ///|
@@ -313,7 +328,7 @@ pub fn FileCapabilityRegistry::mint_child_read_file(
       record.name == name {
       match record.parent_id {
         Some(existing_parent) if existing_parent == parent_id =>
-          return Ok({ id, name, kind: Read })
+          return Ok({ id, name, kind: Read, })
         _ => ()
       }
     }
@@ -341,7 +356,7 @@ pub fn FileCapabilityRegistry::mint_child_read_file(
     kind: Read,
     parent_id: Some(parent_id),
   }
-  Ok({ id, name, kind: Read })
+  Ok({ id, name, kind: Read, })
 }
 
 ///|

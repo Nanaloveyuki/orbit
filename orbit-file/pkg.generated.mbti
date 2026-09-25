@@ -14,6 +14,9 @@ pub(all) suberror DirectoryHandleError {
   ReadFailed
   TooLarge
 } derive(Eq, @debug.Debug)
+pub fn DirectoryHandleError::equal(Self, Self) -> Bool
+pub fn DirectoryHandleError::not_equal(Self, Self) -> Bool
+pub fn DirectoryHandleError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror FileCapabilityError {
   RandomUnavailable
@@ -27,30 +30,43 @@ pub(all) suberror FileCapabilityError {
   WrongPrincipal(String)
   WrongKind(String)
 } derive(@debug.Debug)
+pub fn FileCapabilityError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct DirectoryEntry {
   name : String
   kind : DirectoryEntryKind
 } derive(Eq, @debug.Debug)
+pub fn DirectoryEntry::equal(Self, Self) -> Bool
+pub fn DirectoryEntry::not_equal(Self, Self) -> Bool
+pub fn DirectoryEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) enum DirectoryEntryKind {
   File
   Directory
 } derive(Eq, @debug.Debug)
+pub fn DirectoryEntryKind::equal(Self, Self) -> Bool
+pub fn DirectoryEntryKind::not_equal(Self, Self) -> Bool
+pub fn DirectoryEntryKind::to_repr(Self) -> @debug.Repr
 
 pub struct FileCapability {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn FileCapability::equal(Self, Self) -> Bool
 pub fn FileCapability::id(Self) -> String
 pub fn FileCapability::kind(Self) -> FileCapabilityKind
 pub fn FileCapability::name(Self) -> String
+pub fn FileCapability::not_equal(Self, Self) -> Bool
+pub fn FileCapability::to_repr(Self) -> @debug.Repr
 
 pub(all) enum FileCapabilityKind {
   Read
   Write
   Directory
 } derive(Eq, @debug.Debug)
+pub fn FileCapabilityKind::equal(Self, Self) -> Bool
+pub fn FileCapabilityKind::not_equal(Self, Self) -> Bool
+pub fn FileCapabilityKind::to_repr(Self) -> @debug.Repr
 
 type FileCapabilityRecord
 

@@ -9,6 +9,18 @@ pub(all) struct AppConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend AppConfig with Eq::{not_equal, equal}
+
+///|
+pub extend AppConfig with Debug::{to_repr}
+
+///|
+pub extend AppConfig with ToJson::{to_json}
+
+///|
+pub extend AppConfig with FromJson::{from_json}
+
+///|
 pub(all) struct WindowConfig {
   label : String
   title : String
@@ -20,6 +32,18 @@ pub(all) struct WindowConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend WindowConfig with Eq::{not_equal, equal}
+
+///|
+pub extend WindowConfig with Debug::{to_repr}
+
+///|
+pub extend WindowConfig with ToJson::{to_json}
+
+///|
+pub extend WindowConfig with FromJson::{from_json}
+
+///|
 pub(all) struct BundleConfig {
   icons : Array[String]
   windows : WindowsBundleConfig?
@@ -27,9 +51,33 @@ pub(all) struct BundleConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend BundleConfig with Eq::{not_equal, equal}
+
+///|
+pub extend BundleConfig with Debug::{to_repr}
+
+///|
+pub extend BundleConfig with ToJson::{to_json}
+
+///|
+pub extend BundleConfig with FromJson::{from_json}
+
+///|
 pub(all) struct WindowsBundleConfig {
   webview_install_mode : String
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend WindowsBundleConfig with Eq::{not_equal, equal}
+
+///|
+pub extend WindowsBundleConfig with Debug::{to_repr}
+
+///|
+pub extend WindowsBundleConfig with ToJson::{to_json}
+
+///|
+pub extend WindowsBundleConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct LinuxDebConfig {
@@ -39,14 +87,50 @@ pub(all) struct LinuxDebConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend LinuxDebConfig with Eq::{not_equal, equal}
+
+///|
+pub extend LinuxDebConfig with Debug::{to_repr}
+
+///|
+pub extend LinuxDebConfig with ToJson::{to_json}
+
+///|
+pub extend LinuxDebConfig with FromJson::{from_json}
+
+///|
 pub(all) struct LinuxRpmConfig {
   requires : Array[String]
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend LinuxRpmConfig with Eq::{not_equal, equal}
+
+///|
+pub extend LinuxRpmConfig with Debug::{to_repr}
+
+///|
+pub extend LinuxRpmConfig with ToJson::{to_json}
+
+///|
+pub extend LinuxRpmConfig with FromJson::{from_json}
+
+///|
 pub(all) struct LinuxArchConfig {
   depends : Array[String]
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend LinuxArchConfig with Eq::{not_equal, equal}
+
+///|
+pub extend LinuxArchConfig with Debug::{to_repr}
+
+///|
+pub extend LinuxArchConfig with ToJson::{to_json}
+
+///|
+pub extend LinuxArchConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct LinuxBundleConfig {
@@ -63,9 +147,33 @@ pub(all) struct LinuxBundleConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend LinuxBundleConfig with Eq::{not_equal, equal}
+
+///|
+pub extend LinuxBundleConfig with Debug::{to_repr}
+
+///|
+pub extend LinuxBundleConfig with ToJson::{to_json}
+
+///|
+pub extend LinuxBundleConfig with FromJson::{from_json}
+
+///|
 pub(all) struct EmbeddedWebConfig {
   csp : String
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend EmbeddedWebConfig with Eq::{not_equal, equal}
+
+///|
+pub extend EmbeddedWebConfig with Debug::{to_repr}
+
+///|
+pub extend EmbeddedWebConfig with ToJson::{to_json}
+
+///|
+pub extend EmbeddedWebConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct RemoteWebConfig {
@@ -75,10 +183,34 @@ pub(all) struct RemoteWebConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend RemoteWebConfig with Eq::{not_equal, equal}
+
+///|
+pub extend RemoteWebConfig with Debug::{to_repr}
+
+///|
+pub extend RemoteWebConfig with ToJson::{to_json}
+
+///|
+pub extend RemoteWebConfig with FromJson::{from_json}
+
+///|
 pub(all) struct WebConfig {
   embedded : EmbeddedWebConfig
   remote : RemoteWebConfig?
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend WebConfig with Eq::{not_equal, equal}
+
+///|
+pub extend WebConfig with Debug::{to_repr}
+
+///|
+pub extend WebConfig with ToJson::{to_json}
+
+///|
+pub extend WebConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct ViteBuildConfig {
@@ -89,9 +221,33 @@ pub(all) struct ViteBuildConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend ViteBuildConfig with Eq::{not_equal, equal}
+
+///|
+pub extend ViteBuildConfig with Debug::{to_repr}
+
+///|
+pub extend ViteBuildConfig with ToJson::{to_json}
+
+///|
+pub extend ViteBuildConfig with FromJson::{from_json}
+
+///|
 pub(all) struct BuildConfig {
   vite : ViteBuildConfig?
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend BuildConfig with Eq::{not_equal, equal}
+
+///|
+pub extend BuildConfig with Debug::{to_repr}
+
+///|
+pub extend BuildConfig with ToJson::{to_json}
+
+///|
+pub extend BuildConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct PrincipalConfig {
@@ -100,10 +256,34 @@ pub(all) struct PrincipalConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend PrincipalConfig with Eq::{not_equal, equal}
+
+///|
+pub extend PrincipalConfig with Debug::{to_repr}
+
+///|
+pub extend PrincipalConfig with ToJson::{to_json}
+
+///|
+pub extend PrincipalConfig with FromJson::{from_json}
+
+///|
 pub(all) struct ScopeConfig {
   kind : String
   value : String
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend ScopeConfig with Eq::{not_equal, equal}
+
+///|
+pub extend ScopeConfig with Debug::{to_repr}
+
+///|
+pub extend ScopeConfig with ToJson::{to_json}
+
+///|
+pub extend ScopeConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct CapabilityConfig {
@@ -113,6 +293,18 @@ pub(all) struct CapabilityConfig {
   scopes : Array[ScopeConfig]
   commands : Array[String]
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend CapabilityConfig with Eq::{not_equal, equal}
+
+///|
+pub extend CapabilityConfig with Debug::{to_repr}
+
+///|
+pub extend CapabilityConfig with ToJson::{to_json}
+
+///|
+pub extend CapabilityConfig with FromJson::{from_json}
 
 ///|
 /// A native plugin declared by the application configuration.
@@ -128,6 +320,18 @@ pub(all) struct PluginConfig {
 } derive(Eq, Debug, ToJson, FromJson)
 
 ///|
+pub extend PluginConfig with Eq::{not_equal, equal}
+
+///|
+pub extend PluginConfig with Debug::{to_repr}
+
+///|
+pub extend PluginConfig with ToJson::{to_json}
+
+///|
+pub extend PluginConfig with FromJson::{from_json}
+
+///|
 pub(all) struct OrbitConfig {
   schema_version : Int
   app : AppConfig
@@ -137,6 +341,18 @@ pub(all) struct OrbitConfig {
   capabilities : Array[CapabilityConfig]
   plugins : Array[PluginConfig]
 } derive(Eq, Debug, ToJson, FromJson)
+
+///|
+pub extend OrbitConfig with Eq::{not_equal, equal}
+
+///|
+pub extend OrbitConfig with Debug::{to_repr}
+
+///|
+pub extend OrbitConfig with ToJson::{to_json}
+
+///|
+pub extend OrbitConfig with FromJson::{from_json}
 
 ///|
 fn strict_config_json(source : StringView) -> Json raise ConfigError {
@@ -923,7 +1139,7 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
       linux: bundle_linux,
     },
     web: {
-      embedded: { csp: config.web.embedded.csp.trim().to_owned() },
+      embedded: { csp: config.web.embedded.csp.trim().to_owned(), },
       remote: config.web.remote.map(remote => {
         http_url: remote.http_url.trim().to_owned(),
         allowed_origins: remote.allowed_origins.map(origin => {
@@ -971,7 +1187,7 @@ pub fn compile_config(source : StringView) -> EmbeddedConfig raise ConfigError {
   let config = parse_config(source)
   let canonical_json = canonicalize_config(config)
   let fingerprint = fingerprint_string(canonical_json)
-  { canonical_json, fingerprint }
+  { canonical_json, fingerprint, }
 }
 
 ///|
@@ -1006,9 +1222,9 @@ pub fn migrate_config_v1(source : StringView) -> String raise ConfigError {
       publisher: None,
       windows,
     },
-    bundle: { icons: [], windows: None, linux: None },
-    web: { embedded: { csp: config.security.csp }, remote: None },
-    build: { vite: None },
+    bundle: { icons: [], windows: None, linux: None, },
+    web: { embedded: { csp: config.security.csp, }, remote: None, },
+    build: { vite: None, },
     capabilities,
     plugins: config.plugins.map(plugin => {
       id: plugin.id,

@@ -6,6 +6,9 @@ pub(all) suberror CspError {
 } derive(Debug)
 
 ///|
+pub extend CspError with Debug::{to_repr}
+
+///|
 fn escape_html_attribute(value : String) -> String {
   value
   .replace_all(old="&", new="&amp;")

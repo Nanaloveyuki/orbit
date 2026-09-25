@@ -58,9 +58,21 @@ pub(all) struct ConfigDiagnostic {
 } derive(Eq, Debug, ToJson)
 
 ///|
+pub extend ConfigDiagnostic with Eq::{not_equal, equal}
+
+///|
+pub extend ConfigDiagnostic with Debug::{to_repr}
+
+///|
+pub extend ConfigDiagnostic with ToJson::{to_json}
+
+///|
 pub(all) suberror ConfigError {
   Invalid(Array[ConfigDiagnostic])
 } derive(Debug)
+
+///|
+pub extend ConfigError with Debug::{to_repr}
 
 ///|
 pub struct EmbeddedConfig {
@@ -84,7 +96,7 @@ fn diagnostic(
   path : String,
   message : String,
 ) -> ConfigDiagnostic {
-  { code, path, message }
+  { code, path, message, }
 }
 
 ///|
@@ -403,7 +415,7 @@ fn normalize_v1_config(config : V1OrbitConfig) -> V1OrbitConfig {
       version: config.app.version.trim().to_owned(),
     },
     windows,
-    security: { csp: config.security.csp.trim().to_owned() },
+    security: { csp: config.security.csp.trim().to_owned(), },
     capabilities,
     plugins,
   }

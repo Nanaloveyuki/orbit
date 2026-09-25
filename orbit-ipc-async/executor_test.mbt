@@ -24,7 +24,7 @@ async test "shared executor returns completed async responses" {
     @async.pause()
     Ok(payload)
   })
-  let response = dispatch_source_with_deadline(
+  let response = @orbit-ipc-async.dispatch_source_with_deadline(
     registry,
     execution_policy("async.echo"),
     @ipc.InvocationContext::background_task("test"),
@@ -43,7 +43,7 @@ async test "shared executor enforces deadlines and marks cancellation" {
     Ok(payload)
   })
   let context = @ipc.InvocationContext::background_task("test")
-  let response = dispatch_source_with_deadline(
+  let response = @orbit-ipc-async.dispatch_source_with_deadline(
     registry,
     execution_policy("async.timeout"),
     context,
@@ -62,7 +62,7 @@ async test "shared executor contains handler failures" {
     @async.pause()
     raise ExecutorHandlerError
   })
-  let response = dispatch_source_with_deadline(
+  let response = @orbit-ipc-async.dispatch_source_with_deadline(
     registry,
     execution_policy("async.fail"),
     @ipc.InvocationContext::background_task("test"),
@@ -74,7 +74,7 @@ async test "shared executor contains handler failures" {
 ///|
 async test "shared executor preserves protocol parse failures" {
   let registry = @ipc.CommandRegistry::new()
-  let response = dispatch_source_with_deadline(
+  let response = @orbit-ipc-async.dispatch_source_with_deadline(
     registry,
     @ipc.CommandPolicy::new(),
     @ipc.InvocationContext::background_task("test"),

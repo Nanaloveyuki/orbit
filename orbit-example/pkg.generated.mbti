@@ -3,9 +3,11 @@ package "Nanaloveyuki/orbit/orbit-example"
 
 import {
   "Nanaloveyuki/orbit/orbit-core",
+  "Nanaloveyuki/orbit/orbit-event",
   "Nanaloveyuki/orbit/orbit-ipc",
   "Nanaloveyuki/orbit/orbit-plugin",
   "Nanaloveyuki/orbit/orbit-runtime",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -31,9 +33,73 @@ pub fn configured_windows() -> Array[@orbit-core.DesktopWindowOptions]
 
 pub let entry_url : String
 
+pub fn event_app_changed(OrbitContract11, target? : @orbit-event.EventTarget, source? : @orbit-event.EventTarget) -> @orbit-event.EventEnvelope
+
+pub fn event_app_operation(OrbitOperation, target? : @orbit-event.EventTarget, source? : @orbit-event.EventTarget) -> @orbit-event.EventEnvelope
+
 pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
 
 pub fn handle_resource_0(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn orbit_contract_decode_0(Json, String) -> OrbitStatus raise OrbitContractError
+
+pub fn orbit_contract_decode_1(Json, String) -> OrbitOperation raise OrbitContractError
+
+pub fn orbit_contract_decode_10(Json, String) -> Unit raise OrbitContractError
+
+pub fn orbit_contract_decode_11(Json, String) -> OrbitContract11 raise OrbitContractError
+
+pub fn orbit_contract_decode_12(Json, String) -> Int raise OrbitContractError
+
+pub fn orbit_contract_decode_2(Json, String) -> OrbitOperationFailed raise OrbitContractError
+
+pub fn orbit_contract_decode_3(Json, String) -> OrbitContract3 raise OrbitContractError
+
+pub fn orbit_contract_decode_4(Json, String) -> String raise OrbitContractError
+
+pub fn orbit_contract_decode_5(Json, String) -> OrbitOperationStarted raise OrbitContractError
+
+pub fn orbit_contract_decode_6(Json, String) -> String raise OrbitContractError
+
+pub fn orbit_contract_decode_7(Json, String) -> OrbitContract7 raise OrbitContractError
+
+pub fn orbit_contract_decode_8(Json, String) -> OrbitPingResponse raise OrbitContractError
+
+pub fn orbit_contract_decode_9(Json, String) -> String raise OrbitContractError
+
+pub fn orbit_contract_encode_0(OrbitStatus, String) -> Json
+
+pub fn orbit_contract_encode_1(OrbitOperation, String) -> Json
+
+pub fn orbit_contract_encode_10(Unit, String) -> Json
+
+pub fn orbit_contract_encode_11(OrbitContract11, String) -> Json
+
+pub fn orbit_contract_encode_12(Int, String) -> Json
+
+pub fn orbit_contract_encode_2(OrbitOperationFailed, String) -> Json
+
+pub fn orbit_contract_encode_3(OrbitContract3, String) -> Json
+
+pub fn orbit_contract_encode_4(String, String) -> Json
+
+pub fn orbit_contract_encode_5(OrbitOperationStarted, String) -> Json
+
+pub fn orbit_contract_encode_6(String, String) -> Json
+
+pub fn orbit_contract_encode_7(OrbitContract7, String) -> Json
+
+pub fn orbit_contract_encode_8(OrbitPingResponse, String) -> Json
+
+pub fn orbit_contract_encode_9(String, String) -> Json
+
+pub fn register_async_example_ping(@orbit-ipc.CommandRegistry, async (Unit) -> Result[OrbitPingResponse, @orbit-ipc.CommandFailure]) -> Unit raise @orbit-ipc.IpcError
+
+pub fn register_async_example_ping_context(@orbit-ipc.CommandRegistry, async (@orbit-ipc.InvocationContext, Unit) -> Result[OrbitPingResponse, @orbit-ipc.CommandFailure]) -> Unit raise @orbit-ipc.IpcError
+
+pub fn register_example_ping(@orbit-ipc.CommandRegistry, (Unit) -> Result[OrbitPingResponse, @orbit-ipc.CommandFailure]) -> Unit raise @orbit-ipc.IpcError
+
+pub fn register_example_ping_context(@orbit-ipc.CommandRegistry, (@orbit-ipc.InvocationContext, Unit) -> Result[OrbitPingResponse, @orbit-ipc.CommandFailure]) -> Unit raise @orbit-ipc.IpcError
 
 pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
 
@@ -54,8 +120,47 @@ pub let window_visible : Bool
 pub let window_width : Int
 
 // Errors
+pub(all) suberror OrbitContractError {
+  OrbitContractError(String)
+}
 
 // Types and methods
+pub(all) struct OrbitContract11 {
+  revision : Int
+} derive(@debug.Debug)
+
+pub(all) enum OrbitContract3 {
+  Failed
+} derive(Eq, @debug.Debug)
+
+pub(all) enum OrbitContract7 {
+  Started
+} derive(Eq, @debug.Debug)
+
+pub(all) enum OrbitOperation {
+  Failed(OrbitOperationFailed)
+  Started(OrbitOperationStarted)
+} derive(@debug.Debug)
+
+pub(all) struct OrbitOperationFailed {
+  kind : OrbitContract3
+  message : String
+} derive(@debug.Debug)
+
+pub(all) struct OrbitOperationStarted {
+  id : String
+  kind : OrbitContract7
+} derive(@debug.Debug)
+
+pub(all) struct OrbitPingResponse {
+  message : String
+} derive(@debug.Debug)
+
+pub(all) enum OrbitStatus {
+  Idle
+  Running
+  Failed
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

@@ -1,15 +1,18 @@
 ///|
 test "diagnostic history retains bounded safe lifecycle records" {
-  let history = DiagnosticHistory::new(capacity=1)
+  let history = @orbit-diagnostics.DiagnosticHistory::new(capacity=1)
   history.record(
-    DiagnosticEvent::new(
+    @orbit-diagnostics.DiagnosticEvent::new(
       RuntimeReady,
       window_label=Some("main"),
       configuration_fingerprint=Some("f00d"),
     ),
   )
   history.record(
-    DiagnosticEvent::new(RuntimeSuspended, window_label=Some("main")),
+    @orbit-diagnostics.DiagnosticEvent::new(
+      RuntimeSuspended,
+      window_label=Some("main"),
+    ),
   )
 
   inspect(history.capacity(), content="1")
@@ -29,8 +32,8 @@ test "diagnostic history retains bounded safe lifecycle records" {
 
 ///|
 test "diagnostic history clears its retained records" {
-  let history = DiagnosticHistory::new()
-  history.record(DiagnosticEvent::new(DesktopStarted))
+  let history = @orbit-diagnostics.DiagnosticHistory::new()
+  history.record(@orbit-diagnostics.DiagnosticEvent::new(DesktopStarted))
   history.clear()
   inspect(history.count(), content="0")
   inspect(history.dropped_count(), content="0")
@@ -40,15 +43,15 @@ test "diagnostic history clears its retained records" {
 
 ///|
 test "support bundles retain only reviewed lifecycle fields" {
-  let history = DiagnosticHistory::new(capacity=1)
+  let history = @orbit-diagnostics.DiagnosticHistory::new(capacity=1)
   history.record(
-    DiagnosticEvent::new(
+    @orbit-diagnostics.DiagnosticEvent::new(
       RuntimeReady,
       window_label=Some("main"),
       configuration_fingerprint=Some("f00d"),
     ),
   )
-  history.record(DiagnosticEvent::new(RuntimeSuspended))
+  history.record(@orbit-diagnostics.DiagnosticEvent::new(RuntimeSuspended))
 
   let bundle = history.support_bundle()
   inspect(bundle.schema_version, content="1")

@@ -26,7 +26,10 @@ pub enum PagePrincipal {
   Window
   RemotePage
 } derive(Eq, @debug.Debug)
+pub fn PagePrincipal::equal(Self, Self) -> Bool
+pub fn PagePrincipal::not_equal(Self, Self) -> Bool
 pub fn PagePrincipal::remote_page() -> Self
+pub fn PagePrincipal::to_repr(Self) -> @debug.Repr
 pub fn PagePrincipal::window() -> Self
 
 // Type aliases

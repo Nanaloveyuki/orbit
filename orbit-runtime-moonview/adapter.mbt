@@ -445,6 +445,9 @@ pub impl @orbit_runtime.RuntimeFactory for MoonViewRuntimeFactory with fn create
 }
 
 ///|
+pub extend MoonViewRuntimeFactory with @orbit_runtime.RuntimeFactory::{create}
+
+///|
 pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn capabilities(
   _self,
 ) {
@@ -456,6 +459,20 @@ pub impl @orbit_runtime.WebViewRuntime for MoonViewRuntime with fn capabilities(
     devtools: true,
     file_dialogs: true,
   }
+}
+
+///|
+pub extend MoonViewRuntime with @orbit_runtime.WebViewRuntime::{
+  set_bounds,
+  set_visible,
+  show_file_dialog,
+  navigate,
+  evaluate_script,
+  post_message,
+  set_message_handler,
+  destroy,
+  capabilities,
+  open_print_dialog,
 }
 
 ///|

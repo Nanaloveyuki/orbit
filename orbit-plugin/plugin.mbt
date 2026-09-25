@@ -8,6 +8,12 @@ pub(all) struct PluginManifest {
 } derive(Eq, Debug)
 
 ///|
+pub extend PluginManifest with Eq::{not_equal, equal}
+
+///|
+pub extend PluginManifest with Debug::{to_repr}
+
+///|
 /// A build-validated sidecar descriptor. JSON Schema values are retained as
 /// ordinary inspectable JSON rather than becoming a second invocation ABI.
 pub(all) struct PluginCommandDescriptor {
@@ -15,6 +21,15 @@ pub(all) struct PluginCommandDescriptor {
   request_schema : Json
   response_schema : Json
 } derive(Eq, Debug, FromJson)
+
+///|
+pub extend PluginCommandDescriptor with Eq::{not_equal, equal}
+
+///|
+pub extend PluginCommandDescriptor with Debug::{to_repr}
+
+///|
+pub extend PluginCommandDescriptor with FromJson::{from_json}
 
 ///|
 pub(all) struct PluginSidecarManifest {
@@ -29,6 +44,15 @@ pub(all) struct PluginSidecarManifest {
 } derive(Eq, Debug, FromJson)
 
 ///|
+pub extend PluginSidecarManifest with Eq::{not_equal, equal}
+
+///|
+pub extend PluginSidecarManifest with Debug::{to_repr}
+
+///|
+pub extend PluginSidecarManifest with FromJson::{from_json}
+
+///|
 pub(all) enum PluginError {
   LoadFailed
   MissingSymbol(String)
@@ -41,6 +65,12 @@ pub(all) enum PluginError {
   AsyncRuntimeRequired
   ExecutorFailed
 } derive(Eq, Debug)
+
+///|
+pub extend PluginError with Eq::{not_equal, equal}
+
+///|
+pub extend PluginError with Debug::{to_repr}
 
 ///|
 /// A loaded plugin library whose manifest has passed strict JSON validation.
@@ -70,7 +100,7 @@ pub struct PluginPolicy {
 
 ///|
 pub fn PluginPolicy::new() -> PluginPolicy {
-  { granted: Map([]) }
+  { granted: Map([]), }
 }
 
 ///|
@@ -269,7 +299,7 @@ pub fn parse_manifest(source : String) -> Result[PluginManifest, PluginError] {
         ) {
         (Some(id), Some(name), Some(version), Some(commands), Some(permissions)) =>
           if !id.is_empty() && !name.is_empty() && !version.is_empty() {
-            Ok({ id, name, version, commands, permissions })
+            Ok({ id, name, version, commands, permissions, })
           } else {
             Err(InvalidManifest("required manifest fields are invalid"))
           }

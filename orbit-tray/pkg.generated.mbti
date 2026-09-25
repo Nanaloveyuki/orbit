@@ -15,12 +15,16 @@ pub(all) suberror TrayError {
   EmptyIcon
   Unavailable
 } derive(@debug.Debug)
+pub fn TrayError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub struct TrayCommandId {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn TrayCommandId::equal(Self, Self) -> Bool
 pub fn TrayCommandId::new(String) -> Self raise TrayError
+pub fn TrayCommandId::not_equal(Self, Self) -> Bool
+pub fn TrayCommandId::to_repr(Self) -> @debug.Repr
 pub fn TrayCommandId::value(Self) -> String
 
 pub struct TrayController {
@@ -35,6 +39,7 @@ pub(all) enum TrayEvent {
   SecondaryActivation
   Command(TrayCommandId)
 } derive(@debug.Debug)
+pub fn TrayEvent::to_repr(Self) -> @debug.Repr
 
 pub struct TrayIcon {
   png : Bytes
@@ -59,7 +64,10 @@ pub fn TrayItem::visible(Self) -> Bool
 pub struct TrayItemId {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn TrayItemId::equal(Self, Self) -> Bool
 pub fn TrayItemId::new(String) -> Self raise TrayError
+pub fn TrayItemId::not_equal(Self, Self) -> Bool
+pub fn TrayItemId::to_repr(Self) -> @debug.Repr
 pub fn TrayItemId::value(Self) -> String
 
 pub(all) enum TrayMenuEntry {
@@ -67,6 +75,7 @@ pub(all) enum TrayMenuEntry {
   Separator
   Submenu(String, Array[TrayMenuEntry])
 } derive(@debug.Debug)
+pub fn TrayMenuEntry::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

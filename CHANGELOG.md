@@ -6,6 +6,25 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+## 0.1.0-alpha.13 - 2026-09-25
+
+- Build with the installer `latest` channel resolved to MoonBit `moon`
+  0.1.20260920 and `moonc` v0.10.14 (2026-09-18).
+- Declare trait methods with explicit `extend` so MoonBit 0.10.14 no longer
+  promotes `impl` methods implicitly. Derived `Eq`, `Debug`, `ToJson`, and
+  `FromJson` methods, plus trait methods used with dot syntax, are now part of
+  the generated package interface. Rebuild applications against this release.
+- Qualify black-box tests with their package names.
+- Upgrade dependencies to `gmlewis/sha256@0.18.0`, `Nanaloveyuki/ajni@0.2.4`,
+  `Nanaloveyuki/BitLogger@0.8.2`, `Nanaloveyuki/parsec@0.1.4`,
+  `Nanaloveyuki/moonview@0.1.0-beta.11`, `Nanaloveyuki/sync@0.7.2`,
+  `moonbitlang/async@0.22.4`, `Nanaloveyuki/dynlib@0.2.1`,
+  `Nanaloveyuki/orbit-plugin-abi@0.2.3`, and `Nanaloveyuki/image@0.1.2`.
+  `Nanaloveyuki/orby` remains `0.1.0-beta.6`.
+- `moonbitlang/async` 0.22.4 makes `@async.sleep` non-raising. Directory reads
+  no longer catch that call.
+
+
 - Cancel window-owned asynchronous IPC when its runtime is suspended, closed,
   destroyed, or fails; reject new work after dispatcher shutdown.
 - Detach page-event subscriptions and message handlers when resumed runtime

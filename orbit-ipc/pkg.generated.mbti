@@ -27,6 +27,7 @@ pub(all) suberror IpcError {
   DuplicateCommand(String)
   DuplicateCapability(String)
 } derive(@debug.Debug)
+pub fn IpcError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub enum CapabilityEffect {
@@ -35,6 +36,9 @@ pub enum CapabilityEffect {
 } derive(Eq, @debug.Debug)
 pub fn CapabilityEffect::allow() -> Self
 pub fn CapabilityEffect::deny() -> Self
+pub fn CapabilityEffect::equal(Self, Self) -> Bool
+pub fn CapabilityEffect::not_equal(Self, Self) -> Bool
+pub fn CapabilityEffect::to_repr(Self) -> @debug.Repr
 
 pub struct CommandCapability {
   // private fields
@@ -47,7 +51,10 @@ pub(all) struct CommandFailure {
   message : String
   data : Json?
 } derive(Eq, @debug.Debug)
+pub fn CommandFailure::equal(Self, Self) -> Bool
 pub fn CommandFailure::new(code~ : String, message~ : String, data? : Json) -> Self
+pub fn CommandFailure::not_equal(Self, Self) -> Bool
+pub fn CommandFailure::to_repr(Self) -> @debug.Repr
 
 pub struct CommandGrant {
   // private fields
@@ -58,7 +65,10 @@ pub fn CommandGrant::new(identifier~ : String, effect~ : CapabilityEffect, princ
 pub struct CommandName {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn CommandName::equal(Self, Self) -> Bool
 pub fn CommandName::new(String) -> Self raise IpcError
+pub fn CommandName::not_equal(Self, Self) -> Bool
+pub fn CommandName::to_repr(Self) -> @debug.Repr
 pub fn CommandName::value(Self) -> String
 
 pub struct CommandPolicy {
@@ -121,7 +131,10 @@ pub fn InvocationContext::with_response_limit(Self, Int) -> Self raise IpcError
 pub struct InvocationId {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn InvocationId::equal(Self, Self) -> Bool
 pub fn InvocationId::new(String) -> Self raise IpcError
+pub fn InvocationId::not_equal(Self, Self) -> Bool
+pub fn InvocationId::to_repr(Self) -> @debug.Repr
 pub fn InvocationId::value(Self) -> String
 
 pub enum InvocationPrincipal {
@@ -131,6 +144,9 @@ pub enum InvocationPrincipal {
   Plugin(String)
   BackgroundTask(String)
 } derive(Eq, @debug.Debug)
+pub fn InvocationPrincipal::equal(Self, Self) -> Bool
+pub fn InvocationPrincipal::not_equal(Self, Self) -> Bool
+pub fn InvocationPrincipal::to_repr(Self) -> @debug.Repr
 
 pub struct InvocationRequest {
   // private fields
@@ -149,7 +165,10 @@ pub enum InvocationScope {
   Transport(InvocationTransport)
   Origin(String)
 } derive(Eq, @debug.Debug)
+pub fn InvocationScope::equal(Self, Self) -> Bool
+pub fn InvocationScope::not_equal(Self, Self) -> Bool
 pub fn InvocationScope::origin(String) -> Self raise IpcError
+pub fn InvocationScope::to_repr(Self) -> @debug.Repr
 pub fn InvocationScope::transport(InvocationTransport) -> Self
 
 pub enum InvocationTransport {
@@ -159,9 +178,12 @@ pub enum InvocationTransport {
   Background
 } derive(Eq, @debug.Debug)
 pub fn InvocationTransport::background() -> Self
+pub fn InvocationTransport::equal(Self, Self) -> Bool
 pub fn InvocationTransport::http() -> Self
 pub fn InvocationTransport::moonview() -> Self
+pub fn InvocationTransport::not_equal(Self, Self) -> Bool
 pub fn InvocationTransport::plugin() -> Self
+pub fn InvocationTransport::to_repr(Self) -> @debug.Repr
 
 pub enum PrincipalSelector {
   Window(String)
@@ -171,9 +193,12 @@ pub enum PrincipalSelector {
   BackgroundTask(String)
 } derive(Eq, @debug.Debug)
 pub fn PrincipalSelector::background_task(String) -> Self raise IpcError
+pub fn PrincipalSelector::equal(Self, Self) -> Bool
 pub fn PrincipalSelector::http_client(String) -> Self raise IpcError
+pub fn PrincipalSelector::not_equal(Self, Self) -> Bool
 pub fn PrincipalSelector::plugin(String) -> Self raise IpcError
 pub fn PrincipalSelector::remote_page(String) -> Self raise IpcError
+pub fn PrincipalSelector::to_repr(Self) -> @debug.Repr
 pub fn PrincipalSelector::window(String) -> Self raise IpcError
 
 // Type aliases

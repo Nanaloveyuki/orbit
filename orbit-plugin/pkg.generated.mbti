@@ -27,6 +27,10 @@ pub(all) struct PluginCommandDescriptor {
   request_schema : Json
   response_schema : Json
 } derive(Eq, @debug.Debug, @json.FromJson)
+pub fn PluginCommandDescriptor::equal(Self, Self) -> Bool
+pub fn PluginCommandDescriptor::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginCommandDescriptor::not_equal(Self, Self) -> Bool
+pub fn PluginCommandDescriptor::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PluginDeclaration {
   id : String
@@ -34,7 +38,10 @@ pub(all) struct PluginDeclaration {
   sidecar : PluginSidecarManifest
   permissions : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn PluginDeclaration::equal(Self, Self) -> Bool
 pub fn PluginDeclaration::new(id~ : String, library~ : String, sidecar~ : PluginSidecarManifest, permissions? : Array[String]) -> Self
+pub fn PluginDeclaration::not_equal(Self, Self) -> Bool
+pub fn PluginDeclaration::to_repr(Self) -> @debug.Repr
 
 pub(all) enum PluginError {
   LoadFailed
@@ -48,6 +55,9 @@ pub(all) enum PluginError {
   AsyncRuntimeRequired
   ExecutorFailed
 } derive(Eq, @debug.Debug)
+pub fn PluginError::equal(Self, Self) -> Bool
+pub fn PluginError::not_equal(Self, Self) -> Bool
+pub fn PluginError::to_repr(Self) -> @debug.Repr
 
 pub struct PluginLibrary {
   // private fields
@@ -64,6 +74,9 @@ pub(all) struct PluginManifest {
   commands : Array[String]
   permissions : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn PluginManifest::equal(Self, Self) -> Bool
+pub fn PluginManifest::not_equal(Self, Self) -> Bool
+pub fn PluginManifest::to_repr(Self) -> @debug.Repr
 
 pub struct PluginPolicy {
   // private fields
@@ -92,6 +105,9 @@ pub(all) enum PluginRuntimeError {
   LoadFailure(String, PluginError)
   RegistrationFailure(String)
 } derive(Eq, @debug.Debug)
+pub fn PluginRuntimeError::equal(Self, Self) -> Bool
+pub fn PluginRuntimeError::not_equal(Self, Self) -> Bool
+pub fn PluginRuntimeError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PluginSidecarManifest {
   schema_version : Int
@@ -103,6 +119,10 @@ pub(all) struct PluginSidecarManifest {
   requested_permissions : Array[String]
   commands : Array[PluginCommandDescriptor]
 } derive(Eq, @debug.Debug, @json.FromJson)
+pub fn PluginSidecarManifest::equal(Self, Self) -> Bool
+pub fn PluginSidecarManifest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginSidecarManifest::not_equal(Self, Self) -> Bool
+pub fn PluginSidecarManifest::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

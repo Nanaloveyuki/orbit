@@ -72,7 +72,7 @@ let valid_v1_config_source =
 ///|
 fn failure_code(source : StringView) -> String {
   try {
-    ignore(parse_config(source))
+    ignore(@orbit-utils.parse_config(source))
     "accepted"
   } catch {
     Invalid(diagnostics) => diagnostics[0].code
@@ -81,11 +81,11 @@ fn failure_code(source : StringView) -> String {
 
 ///|
 test "configuration compiles to stable v2 embedded data" {
-  let embedded = compile_config(valid_config_source)
+  let embedded = @orbit-utils.compile_config(valid_config_source)
   inspect(embedded.fingerprint().length(), content="64")
   assert_true(embedded.canonical_json().contains("\"schema_version\":2"))
   inspect(
-    compile_config(embedded.canonical_json()).fingerprint(),
+    @orbit-utils.compile_config(embedded.canonical_json()).fingerprint(),
     content=embedded.fingerprint(),
   )
 }
@@ -97,8 +97,8 @@ test "v2 configuration rejects v1 input without a silent compatibility path" {
 
 ///|
 test "migration produces a parseable v2 configuration with window principals" {
-  let migrated = migrate_config_v1(valid_v1_config_source)
-  let config = parse_config(migrated)
+  let migrated = @orbit-utils.migrate_config_v1(valid_v1_config_source)
+  let config = @orbit-utils.parse_config(migrated)
   inspect(config.schema_version, content="2")
   assert_true(migrated.contains("\"effect\":\"allow\""))
   assert_true(migrated.contains("\"kind\":\"window\""))
@@ -108,7 +108,7 @@ test "migration produces a parseable v2 configuration with window principals" {
 ///|
 test "migration rejects configuration versions other than v1" {
   let rejected = try {
-    ignore(migrate_config_v1(valid_config_source))
+    ignore(@orbit-utils.migrate_config_v1(valid_config_source))
     "accepted"
   } catch {
     Invalid(diagnostics) => diagnostics[0].code
@@ -140,7 +140,7 @@ test "optional application metadata remains absent when not declared" {
     old="    \"product_name\": \"Orbit Example\",\n",
     new="",
   )
-  let config = parse_config(without_product_name)
+  let config = @orbit-utils.parse_config(without_product_name)
   assert_true(config.app.product_name is None)
   assert_true(config.app.publisher is None)
 }
@@ -151,7 +151,7 @@ test "Windows WebView installer mode is optional and rejects unsupported values"
     old="\"bundle\": { \"icons\": [] },",
     new="\"bundle\": { \"icons\": [], \"windows\": { \"webview_install_mode\": \"skip\" } },",
   )
-  let config = parse_config(configured)
+  let config = @orbit-utils.parse_config(configured)
   match config.bundle.windows {
     Some(windows) => inspect(windows.webview_install_mode, content="skip")
     None => fail("expected Windows bundle configuration")
@@ -170,7 +170,9 @@ test "Windows WebView installer mode is optional and rejects unsupported values"
 
 ///|
 test "Linux bundle metadata is optional, strict and normalized" {
-  assert_true(parse_config(valid_config_source).bundle.linux is None)
+  assert_true(
+    @orbit-utils.parse_config(valid_config_source).bundle.linux is None,
+  )
   let configured = valid_config_source.replace_all(
     old="\"bundle\": { \"icons\": [] },",
     new=(
@@ -191,7 +193,7 @@ test "Linux bundle metadata is optional, strict and normalized" {
       #|  },
     ),
   )
-  let config = parse_config(configured)
+  let config = @orbit-utils.parse_config(configured)
   match config.bundle.linux {
     Some(linux) => {
       inspect(linux.package_name, content="orbit-example")
@@ -216,7 +218,7 @@ test "Linux bundle metadata is optional, strict and normalized" {
     }
     None => fail("expected Linux bundle configuration")
   }
-  let canonical = canonicalize_config(config)
+  let canonical = @orbit-utils.canonicalize_config(config)
   assert_true(canonical.contains("\"package_name\":\"orbit-example\""))
   let unknown = configured.replace_all(
     old="\"requires\":[\" webkit2gtk4.1 \"]",
@@ -266,7 +268,7 @@ test "Vite configuration is optional but validates explicit workflows" {
     old="\"build\": {},",
     new="\"build\": {\"vite\": {\"dev_command\": \"npm run dev\", \"dev_url\": \"http://127.0.0.1:5173\", \"build_command\": \"npm run build\", \"dist_dir\": \"dist\"}},",
   )
-  assert_true(parse_config(configured).build.vite is Some(_))
+  assert_true(@orbit-utils.parse_config(configured).build.vite is Some(_))
   let invalid = configured.replace_all(
     old="http://127.0.0.1:5173",
     new="file:///tmp/dev",
@@ -285,7 +287,9 @@ test "capability scopes require declared transport or HTTPS origin values" {
     old="\"scopes\": [],",
     new="\"scopes\": [{\"kind\": \"transport\", \"value\": \"moonview\"}, {\"kind\": \"origin\", \"value\": \"https://app.example\"}],",
   )
-  assert_true(parse_config(configured).capabilities[0].scopes.length() == 2)
+  assert_true(
+    @orbit-utils.parse_config(configured).capabilities[0].scopes.length() == 2,
+  )
   let invalid = configured.replace_all(
     old="https://app.example",
     new="http://app.example",
@@ -309,7 +313,7 @@ test "remote web mode requires HTTPS origins and an embedded fallback" {
     #|    }
     #|  },
   let configured = valid_config_source.replace_all(old=embedded, new=remote)
-  let config = parse_config(configured)
+  let config = @orbit-utils.parse_config(configured)
   assert_true(config.web.remote is Some(_))
   let invalid_scheme = configured.replace_all(
     old="https://app.example/start",
@@ -349,7 +353,8 @@ test "remote page capabilities require a MoonView origin-scoped grant" {
       new="\"scopes\": [{\"kind\": \"transport\", \"value\": \"moonview\"}, {\"kind\": \"origin\", \"value\": \"https://app.example\"}],",
     )
   assert_true(
-    parse_config(configured).capabilities[0].principals[0].kind == "remote_page",
+    @orbit-utils.parse_config(configured).capabilities[0].principals[0].kind ==
+    "remote_page",
   )
   let unscoped = configured.replace_all(
     old="{\"kind\": \"origin\", \"value\": \"https://app.example\"}",
@@ -365,7 +370,8 @@ test "plugin configuration requires an explicit sidecar path" {
     new="\"plugins\": [{\"id\":\"demo.echo\",\"library\":\"plugins/demo.dll\",\"manifest\":\"plugins/demo.plugin.json\",\"permissions\":[]}]",
   )
   assert_true(
-    parse_config(configured).plugins[0].manifest == "plugins/demo.plugin.json",
+    @orbit-utils.parse_config(configured).plugins[0].manifest ==
+    "plugins/demo.plugin.json",
   )
   let missing = configured.replace_all(
     old="\"manifest\":\"plugins/demo.plugin.json\",",

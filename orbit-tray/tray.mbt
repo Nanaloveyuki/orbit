@@ -8,16 +8,25 @@ pub(all) suberror TrayError {
 } derive(Debug)
 
 ///|
+pub extend TrayError with Debug::{to_repr}
+
+///|
 pub struct TrayItemId {
   priv value_ : String
 } derive(Eq, Debug)
+
+///|
+pub extend TrayItemId with Eq::{not_equal, equal}
+
+///|
+pub extend TrayItemId with Debug::{to_repr}
 
 ///|
 pub fn TrayItemId::new(value : String) -> TrayItemId raise TrayError {
   if value.trim().is_empty() {
     raise InvalidIdentifier("tray item identifier must not be empty")
   }
-  { value_: value }
+  { value_: value, }
 }
 
 ///|
@@ -31,11 +40,17 @@ pub struct TrayCommandId {
 } derive(Eq, Debug)
 
 ///|
+pub extend TrayCommandId with Eq::{not_equal, equal}
+
+///|
+pub extend TrayCommandId with Debug::{to_repr}
+
+///|
 pub fn TrayCommandId::new(value : String) -> TrayCommandId raise TrayError {
   if value.trim().is_empty() {
     raise InvalidIdentifier("tray command identifier must not be empty")
   }
-  { value_: value }
+  { value_: value, }
 }
 
 ///|
@@ -69,11 +84,17 @@ pub(all) enum TrayMenuEntry {
 } derive(Debug)
 
 ///|
+pub extend TrayMenuEntry with Debug::{to_repr}
+
+///|
 pub(all) enum TrayEvent {
   PrimaryActivation
   SecondaryActivation
   Command(TrayCommandId)
 } derive(Debug)
+
+///|
+pub extend TrayEvent with Debug::{to_repr}
 
 ///|
 pub struct TrayController {
@@ -86,7 +107,7 @@ pub fn TrayController::new(
   replace_item : (TrayItem) -> Result[Unit, TrayError],
   open_menu : (TrayItemId) -> Result[Unit, TrayError],
 ) -> TrayController {
-  { replace_item_: replace_item, open_menu_: open_menu }
+  { replace_item_: replace_item, open_menu_: open_menu, }
 }
 
 ///|
@@ -153,7 +174,7 @@ pub fn TrayItem::new(
   if commands.length() > 65536 {
     raise MenuTooLarge
   }
-  { id, icon, tooltip, visible, menu }
+  { id, icon, tooltip, visible, menu, }
 }
 
 ///|
