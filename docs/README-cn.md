@@ -68,7 +68,7 @@ capability 保护的 IPC，以及开发和生产构建脚本。
 ## 接入已有应用
 
 ~~~sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.14
+moon add Nanaloveyuki/orbit@0.1.0-alpha.15
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev
@@ -76,6 +76,10 @@ npx orbit dev
 
 CLI 从 `orbit.conf.json` 读取构建和开发命令，不会猜测前端框架、包管理器、
 开发 URL 或输出目录。
+
+剪贴板、Shell、用户目录、系统密钥库、开机启动、防止休眠和全局热键由实验性
+`orbit-desktop` 扩展提供。应用必须显式构造并注入对应扩展，再把命令授予本地窗口；
+导入包本身不会打开这些原生能力。Shell 和目录命令会向已授权页面返回本机路径。
 
 ## 编辑应用
 

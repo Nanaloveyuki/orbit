@@ -6,6 +6,30 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+## 0.1.0-alpha.15 - 2026-09-28
+- Add the experimental `orbit-desktop` extension package. Applications must
+  construct and inject `DesktopClipboardExtension`, `DesktopShellExtension`,
+  `DesktopSessionExtension`, and `DesktopHotkeyExtension` explicitly; importing
+  the package does not enable native capabilities.
+- Clipboard, shell, XDG-style paths, OS safe storage, auto-launch, keep-awake,
+  and global hotkeys are available only after an application grants the new
+  `orbit.clipboard.*`, `orbit.shell.*`, `orbit.paths.*`, `orbit.safe_storage.*`,
+  `orbit.auto_launch.*`, `orbit.keepawake.*`, and `orbit.hotkey.*` commands to a
+  local window principal.
+- Shell and path commands return native paths to that authorized window. File
+  content access remains on the opaque-handle `orbit-desktop-file` bridge.
+- Hotkey triggers are drained on the desktop poll and emitted as
+  `orbit.hotkey.triggered` only when the extension is constructed with an event
+  router. Shutdown releases the hotkey backend and any keep-awake guard.
+- Pin `moonbit-community/proton_clipboard@0.3.3`,
+  `moonbit-community/proton_global_hotkey@0.3.3`,
+  `moonbit-community/proton_safe_storage@0.3.3`,
+  `moonbit-community/proton_shell@0.3.3`,
+  `moonbit-community/proton_auto_launch@0.3.3`,
+  `moonbit-community/proton_keepawake@0.3.3`, and
+  `moonrockz/directories@0.1.1`.
+
+
 ## 0.1.0-alpha.14 - 2026-09-25
 
 - `0.1.0-alpha.13` was uploaded to Mooncake during release verification and

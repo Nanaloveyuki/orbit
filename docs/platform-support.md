@@ -1,6 +1,6 @@
 # Platform Support
 
-Orbit `0.1.0-alpha.14` is a pre-release desktop framework. Its public support
+Orbit `0.1.0-alpha.15` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
 The proposed beta support contract is maintained in the
@@ -16,6 +16,7 @@ support status; it does not promote experimental targets.
 | File picker and handle-bound file bridge | Supported | Unavailable | Not supported |
 | Native print dialog | Supported | Unavailable | Not supported |
 | System tray | Supported | Unavailable | Not supported |
+| Optional desktop host commands | Experimental | Experimental | Experimental |
 | Per-window WebView suspension | Supported | Experimental | Not supported |
 
 "Supported" means the feature is covered by the maintained Windows native test
@@ -79,6 +80,12 @@ can be removed after the desktop host dependency becomes target-aware.
   state when persistence cannot complete.
 - Tray support is an explicit `orbit-tray-windows` extension. It is not enabled
   by configuration alone and unavailable on non-Windows targets.
+- `orbit-desktop` host commands are explicit extensions. Clipboard, shell, path,
+  safe storage, auto-launch, keep-awake, and global hotkey support depend on the
+  wrapped native backend and are not part of the Windows GUI acceptance claim.
+  Shell and path commands expose native paths to an authorized local window.
+  Linux hotkeys require X11. Safe storage is currently a Windows and macOS
+  backend.
 - Orbit does not provide auto-updates, crash-report collection, enterprise
   policy management, or a process-global WebView runtime shutdown contract.
 - Lifecycle diagnostics are memory-only, opt-in, and intentionally contain only

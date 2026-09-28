@@ -41,6 +41,7 @@ through the Orbit core contract.
 | `orbit-tray` / `orbit-tray-windows` | pure tray model and Windows tray host | Experimental extension; Windows-only native support |
 | `orbit-desktop-file` / `orbit-file` | picker and opaque-handle file operations | Experimental extension; no path exposure guarantee may be weakened |
 | `orbit-diagnostics` | bounded lifecycle diagnostics and support bundles | Experimental, opt-in, memory-only support surface |
+| `orbit-desktop` | optional clipboard, shell, paths, safe storage, auto-launch, keep-awake, and hotkeys | Experimental extension; explicit injection only; native backend availability is not a support promise |
 
 These extensions may be shipped and used by applications. They are not allowed
 to force a breaking change in the core candidate without a separate compatibility

@@ -26,6 +26,7 @@ modify the Orbit repository. It is not application documentation.
 - `orbit-cli`: Node.js development, build, diagnostics, packaging, and verification commands.
 - `orbit-plugin`: sidecar, dynamic library, and plugin ABI runtime.
 - `orbit-android` and `orbit-runtime-android`: Android host and runtime integration.
+- `orbit-desktop`: optional clipboard, shell, path, safe-storage, auto-launch, keep-awake, and hotkey extensions.
 - `orbit-example`: the smallest end-to-end application.
 - `examples/`: runnable application references.
 

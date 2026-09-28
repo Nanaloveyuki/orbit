@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit/orbit-desktop"
+
+import {
+  "Nanaloveyuki/orbit/orbit-core",
+  "Nanaloveyuki/orbit/orbit-event",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct DesktopClipboardExtension {
+}
+pub fn DesktopClipboardExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn DesktopClipboardExtension::new() -> Self
+
+pub struct DesktopHotkeyExtension {
+  // private fields
+}
+pub fn DesktopHotkeyExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn DesktopHotkeyExtension::new(events? : @orbit-event.EventRouter?) -> Self
+
+pub struct DesktopSessionExtension {
+  // private fields
+}
+pub fn DesktopSessionExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn DesktopSessionExtension::new() -> Self
+
+pub struct DesktopShellExtension {
+}
+pub fn DesktopShellExtension::as_extension(Self) -> &@orbit-core.DesktopExtension
+pub fn DesktopShellExtension::new() -> Self
+
+// Type aliases
+
+// Traits

@@ -196,6 +196,67 @@ capability（文件和目录合计），达到上限时条目仍可显示但不�
 目录 capability 目前只支持目录相对的只读文件与目录枚举；不支持写入、创建、删除或
 页面提供的相对路径。
 
+## 桌面宿主命令
+
+`orbit-desktop` 是实验扩展，导入包不会启用任何原生能力。应用必须分别构造并注入
+需要的扩展：
+
+```moonbit
+let clipboard = @desktop.DesktopClipboardExtension::new()
+let shell = @desktop.DesktopShellExtension::new()
+let session = @desktop.DesktopSessionExtension::new()
+let hotkeys = @desktop.DesktopHotkeyExtension::new(events=Some(router))
+let options = @core.DesktopOptions::new(
+  windows~,
+  ipc_registry=Some(registry),
+  ipc_policy=Some(policy),
+  event_router=Some(router),
+  extensions=[
+    clipboard.as_extension(),
+    shell.as_extension(),
+    session.as_extension(),
+    hotkeys.as_extension(),
+  ],
+)
+```
+
+这些命令默认没有权限，并且只应授予本地 `window` principal。不要向 `remote_page`、
+`http_client`、`plugin` 或 `background_task` 授予它们。单条文本 payload 最多 64 KiB。
+原生失败返回 `desktop_failed` 或 `desktop_unavailable`，响应不包含宿主错误原文。
+
+| 命令 | 请求 | 成功响应 |
+| --- | --- | --- |
+| `orbit.clipboard.supported` | `{}` | `{ "supported": <bool> }` |
+| `orbit.clipboard.read_text` | `{}` | `{ "text": <string 或 null> }` |
+| `orbit.clipboard.write_text` | `{ "text": "..." }` | `{ "written": true }` |
+| `orbit.shell.supported` | `{}` | `{ "supported": <bool> }` |
+| `orbit.shell.open` | `{ "path": "...", "action"?: "open" \| "reveal" \| "trash" }` | `{ "completed": true }` |
+| `orbit.paths.base` | `{}` | `{ "available": <bool>, ... }` |
+| `orbit.paths.user` | `{}` | `{ "available": <bool>, ... }` |
+| `orbit.paths.project` | `{ "qualifier", "organization", "application" }` | `{ "available": <bool>, ... }` |
+| `orbit.safe_storage.available` | `{}` | `{ "available": <bool> }` |
+| `orbit.safe_storage.encrypt` | `{ "text": "..." }` | `{ "value": "<base64>" }` |
+| `orbit.safe_storage.decrypt` | `{ "value": "<base64>" }` | `{ "text": "..." }` |
+| `orbit.auto_launch.supported` | `{}` | `{ "supported": <bool> }` |
+| `orbit.auto_launch.set` | `{ "name", "path", "enabled" }` | `{ "enabled": <bool> }` |
+| `orbit.keepawake.acquire` | `{ "scope"?: "system" \| "display" \| "system_and_display", "reason"?: "..." }` | `{ "active": true, "scope": "..." }` |
+| `orbit.keepawake.release` | `{}` | `{ "released": <bool> }` |
+| `orbit.hotkey.supported` | `{}` | `{ "supported": <bool> }` |
+| `orbit.hotkey.register` | `{ "accelerator": "Ctrl+Shift+K", "enabled"?: true }` | `{ "accelerator": "...", "changed": <bool> }` |
+| `orbit.hotkey.list` | `{}` | `{ "accelerators": ["..."] }` |
+
+`orbit.shell.open` 和 `orbit.paths.*` 会把本机路径交给已授权页面。只在应用确实需要
+打开、显示、删除或定位用户目录时授予它们；文件读写仍应走 `orbit-desktop-file` 的
+opaque handle。`orbit.safe_storage.*` 使用操作系统用户密钥库，密文是 base64。
+`orbit.auto_launch.set` 会写入当前用户的登录启动项。`orbit.keepawake.acquire` 替换
+该扩展持有的唯一 guard，扩展关闭时释放它。
+
+热键扩展在 `start` 时创建原生后端；平台不支持时启动失败，且不会注册命令以外的资源。
+事件循环每次 `poll` 排空已触发的快捷键。传入 `event_router` 时，每个触发发布
+`orbit.hotkey.triggered`，payload 为 `{ "accelerator": "..." }`，目标是应用。未传入
+router 时触发被丢弃。Linux 热键需要 X11 和 `libX11`；Wayland-only 会话不在范围内。
+macOS 可能要求 Input Monitoring 权限。安全存储目前主要覆盖 Windows 和 macOS。
+
 ## 远端 HTTPS 页面
 
 `web.remote` 是显式生产模式，不是开发服务器快捷方式：

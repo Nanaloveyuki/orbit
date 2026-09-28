@@ -81,7 +81,7 @@ scripts needed for development and production builds.
 ## Add Orbit to an existing app
 
 ```sh
-moon add Nanaloveyuki/orbit@0.1.0-alpha.14
+moon add Nanaloveyuki/orbit@0.1.0-alpha.15
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev
@@ -90,6 +90,12 @@ npx orbit dev
 The CLI reads build and development commands from `orbit.conf.json`. It does
 not guess the frontend framework, package manager, development URL, or output
 directory.
+
+Clipboard, shell, user directories, OS safe storage, auto-launch, keep-awake,
+and global hotkeys come from the experimental `orbit-desktop` extensions.
+Construct and inject only the extensions the application needs, then grant
+their commands to a local window. Importing the package does not enable them.
+Shell and directory commands return native paths to that authorized window.
 
 ## Edit an application
 

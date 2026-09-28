@@ -1,0 +1,14 @@
+import {
+  "moonbit-community/proton_auto_launch",
+  "moonbit-community/proton_clipboard",
+  "moonbit-community/proton_global_hotkey",
+  "moonbit-community/proton_keepawake",
+  "moonbit-community/proton_safe_storage",
+  "moonbit-community/proton_shell",
+  "moonrockz/directories",
+  "Nanaloveyuki/orbit/orbit-core" @core,
+  "Nanaloveyuki/orbit/orbit-event" @event,
+  "Nanaloveyuki/orbit/orbit-ipc" @ipc,
+}
+
+supported_targets = "native"

@@ -74,6 +74,22 @@ not be inferred from the synchronous v1 contract.
 - Suspending or destroying a window MUST revoke or invalidate extension resources
   whose lifetime is bound to that window.
 
+## Desktop host extension
+
+- `orbit-desktop` MUST remain opt-in. Constructing one of its extensions is the
+  only way its commands become registrable.
+- Clipboard, shell, path, safe storage, auto-launch, keep-awake, and hotkey
+  commands MUST stay behind the normal capability policy and SHOULD be granted
+  only to a local `window` principal.
+- Shell and path responses MAY contain native paths. Applications that must not
+  expose paths MUST NOT grant those commands.
+- Native backend errors MUST be mapped to stable Orbit failure codes. Unredacted
+  native error text MUST NOT be returned to a page.
+- The hotkey backend MUST be created in `start` and destroyed in `shutdown`.
+  Trigger polling MUST be non-blocking.
+- Keep-awake and hotkey resources MUST be released on shutdown even when the
+  page never sends a release command.
+
 ## Diagnostics extension
 
 Diagnostics MUST be opt-in and bounded. They MUST exclude IPC payloads, paths,

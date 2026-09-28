@@ -1,6 +1,6 @@
 name = "Nanaloveyuki/orbit"
 
-version = "0.1.0-alpha.14"
+version = "0.1.0-alpha.15"
 
 description = "Composable desktop application foundations for MoonBit."
 
@@ -26,4 +26,11 @@ import {
   "Nanaloveyuki/dynlib@0.2.1",
   "Nanaloveyuki/orbit-plugin-abi@0.2.3",
   "Nanaloveyuki/image@0.1.2",
+  "moonbit-community/proton_clipboard@0.3.3",
+  "moonbit-community/proton_global_hotkey@0.3.3",
+  "moonbit-community/proton_safe_storage@0.3.3",
+  "moonbit-community/proton_shell@0.3.3",
+  "moonbit-community/proton_auto_launch@0.3.3",
+  "moonbit-community/proton_keepawake@0.3.3",
+  "moonrockz/directories@0.1.1",
 }
