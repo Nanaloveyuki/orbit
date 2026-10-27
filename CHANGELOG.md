@@ -4,7 +4,7 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
-## Unreleased
+## 0.2.0-alpha.1 - 2026-10-27
 
 - Pin the compiler archive to `0.10.17+d971670cd` and CLI to `0.1.20261023`
   across CI, nested examples, and newly generated applications.
@@ -12,6 +12,15 @@ notes those changes and the required application migration.
   and tray-controller callbacks from `Result` returns to typed `raise` effects.
   Callers now consume success values directly and handle failures with `catch`;
   tray callbacks return `Unit` and raise `TrayError` instead of returning `Ok`/`Err`.
+- Upgrade sibling dependencies to `Nanaloveyuki/ajni@0.3.2`,
+  `Nanaloveyuki/BitLogger@0.9.1`, `Nanaloveyuki/parsec@0.1.5`,
+  `Nanaloveyuki/moonview@0.1.0-beta.12`, `Nanaloveyuki/sync@0.7.3`,
+  `Nanaloveyuki/orby@0.1.0-beta.7`, `Nanaloveyuki/dynlib@0.2.2`,
+  `Nanaloveyuki/orbit-plugin-abi@0.2.4`, and `Nanaloveyuki/image@0.1.3`.
+- Align the contract compiler, CLI, package compatibility metadata, and nested
+  MoonBit examples with this release. Regenerate bindings and embedded resources,
+  then rebuild application packages with the matching CLI; old packages retain
+  their existing verifier requirements.
 
 ## 0.1.0-alpha.15 - 2026-09-28
 - Add the experimental `orbit-desktop` extension package. Applications must

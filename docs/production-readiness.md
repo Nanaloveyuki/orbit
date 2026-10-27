@@ -1,6 +1,6 @@
 # Production Readiness
 
-Orbit `0.1.0-alpha.15` is pre-release software. Its current Windows x64
+Orbit `0.2.0-alpha.1` is pre-release software. Its current Windows x64
 support and signed packaging workflow are suitable for integration testing and
 early application delivery, but they are not yet Orbit 1.0 compatibility
 promises.

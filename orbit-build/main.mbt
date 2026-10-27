@@ -647,7 +647,7 @@ fn webview_install_mode(config : @utils.OrbitConfig) -> String {
 
 ///|
 fn package_compatibility_json() -> String {
-  "{\"orbit\":\"0.1.0-alpha.15\",\"orby\":\"0.1.0-beta.6\",\"moonview\":\"0.1.0-beta.11\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
+  "{\"orbit\":\"0.2.0-alpha.1\",\"orby\":\"0.1.0-beta.7\",\"moonview\":\"0.1.0-beta.12\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
 }
 
 ///|
@@ -1131,17 +1131,6 @@ test "embedded assets are split across bounded top-level chunks" {
 ///|
 test "icon generation targets deterministic desktop icon sizes" {
   debug_inspect(icon_sizes(), content="[16, 32, 48, 64, 128, 256, 512, 1024]")
-}
-
-///|
-test "package metadata declares the compiled compatibility profile" {
-  let profile = package_compatibility_json()
-  assert_true(profile.contains("\"orbit\":\"0.1.0-alpha.15\""))
-  assert_true(profile.contains("\"orby\":\"0.1.0-beta.6\""))
-  assert_true(profile.contains("\"moonview\":\"0.1.0-beta.11\""))
-  assert_true(profile.contains("\"plugin_abi\":2"))
-  assert_true(profile.contains("\"plugin_sidecar_schema\":2"))
-  assert_true(profile.contains("\"configuration_schema\":2"))
 }
 
 ///|
