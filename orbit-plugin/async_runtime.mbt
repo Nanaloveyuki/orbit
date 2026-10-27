@@ -6,7 +6,7 @@ priv struct PendingPluginInvocation {
 
 ///|
 fn PendingPluginInvocation::new() -> PendingPluginInvocation {
-  { condition: @cond_var.Cond(), result: None }
+  { condition: @cond_var.Cond(), result: None, }
 }
 
 ///|
@@ -117,7 +117,7 @@ async fn PluginLibrary::invoke_async(
 fn PluginLibrary::complete_executor_invocation(
   self : PluginLibrary,
   invocation_id : UInt64,
-  status : Int,
+  status : Int32,
   response : Bytes,
 ) -> Unit {
   match self.pending_invocations.get(invocation_id) {
@@ -156,7 +156,7 @@ fn PluginLibrary::complete_host_request(
 fn PluginLibrary::cancel_host_request(
   self : PluginLibrary,
   request_id : UInt64,
-  status : Int,
+  status : Int32,
 ) -> Result[Unit, @abi.AbiError] {
   match self.executor {
     Some(executor) => executor.cancel_host_request(request_id, status)

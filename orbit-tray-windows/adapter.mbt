@@ -13,7 +13,7 @@ type TrayCallback = (
 struct MountedTrayItem {
   item : @tray.TrayItem
   native : NativeTrayItem
-  slot : Int
+  slot : Int32
 }
 
 ///|
@@ -81,23 +81,23 @@ fn create_native_item(item : @tray.TrayItem) -> Result[MountedTrayItem, String] 
   if status.val != 0 {
     return Err("Windows tray item creation failed")
   }
-  Ok({ item, native, slot: native_item_slot(native) })
+  Ok({ item, native, slot: native_item_slot(native), })
 }
 
 ///|
 fn WindowsTrayExtension::replace(
   self : WindowsTrayExtension,
   item : @tray.TrayItem,
-) -> Result[Unit, @tray.TrayError] {
+) -> Unit raise @tray.TrayError {
   if !self.alive.val {
-    return Err(Unavailable)
+    raise Unavailable
   }
   for index in 0..<self.items.val.length() {
     let mounted = self.items.val[index]
     if mounted.item.id() == item.id() {
       let image = match tray_image(item) {
         Ok(image) => image
-        Err(_) => return Err(Unavailable)
+        Err(_) => raise Unavailable
       }
       let status = Ref(0)
       native_replace_item(
@@ -110,35 +110,38 @@ fn WindowsTrayExtension::replace(
         status,
       )
       if status.val != 0 {
-        return Err(Unavailable)
+        raise Unavailable
       }
       self.items.val[index] = { ..mounted, item, }
-      return Ok(())
+      return
     }
   }
-  Err(Unavailable)
+  raise Unavailable
 }
 
 ///|
 fn WindowsTrayExtension::open_menu(
   self : WindowsTrayExtension,
   id : @tray.TrayItemId,
-) -> Result[Unit, @tray.TrayError] {
+) -> Unit raise @tray.TrayError {
   if !self.alive.val {
-    return Err(Unavailable)
+    raise Unavailable
   }
   for mounted in self.items.val {
     if mounted.item.id() == id {
       let status = Ref(0)
       native_open_menu(mounted.native, encode_menu(mounted.item.menu()), status)
-      return if status.val == 0 { Ok(()) } else { Err(Unavailable) }
+      if status.val != 0 {
+        raise Unavailable
+      }
+      return
     }
   }
-  Err(Unavailable)
+  raise Unavailable
 }
 
 ///|
-fn append_u16(output : Array[Byte], value : Int) -> Unit {
+fn append_u16(output : Array[Byte], value : Int32) -> Unit {
   output.push((value & 0xFF).to_byte())
   output.push(((value >> 8) & 0xFF).to_byte())
 }

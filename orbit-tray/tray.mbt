@@ -98,14 +98,14 @@ pub extend TrayEvent with Debug::{to_repr}
 
 ///|
 pub struct TrayController {
-  priv replace_item_ : (TrayItem) -> Result[Unit, TrayError]
-  priv open_menu_ : (TrayItemId) -> Result[Unit, TrayError]
+  priv replace_item_ : (TrayItem) -> Unit raise TrayError
+  priv open_menu_ : (TrayItemId) -> Unit raise TrayError
 }
 
 ///|
 pub fn TrayController::new(
-  replace_item : (TrayItem) -> Result[Unit, TrayError],
-  open_menu : (TrayItemId) -> Result[Unit, TrayError],
+  replace_item : (TrayItem) -> Unit raise TrayError,
+  open_menu : (TrayItemId) -> Unit raise TrayError,
 ) -> TrayController {
   { replace_item_: replace_item, open_menu_: open_menu, }
 }
@@ -115,10 +115,7 @@ pub fn TrayController::replace_item(
   self : TrayController,
   item : TrayItem,
 ) -> Unit raise TrayError {
-  match (self.replace_item_)(item) {
-    Ok(_) => ()
-    Err(error) => raise error
-  }
+  (self.replace_item_)(item)
 }
 
 ///|
@@ -126,10 +123,7 @@ pub fn TrayController::open_menu(
   self : TrayController,
   id : TrayItemId,
 ) -> Unit raise TrayError {
-  match (self.open_menu_)(id) {
-    Ok(_) => ()
-    Err(error) => raise error
-  }
+  (self.open_menu_)(id)
 }
 
 ///|
@@ -166,8 +160,8 @@ pub fn TrayItem::new(
   id : TrayItemId,
   icon : TrayIcon,
   tooltip : String,
-  visible? : Bool = true,
-  menu? : Array[TrayMenuEntry] = [],
+  visible~ : Bool = true,
+  menu~ : Array[TrayMenuEntry] = [],
 ) -> TrayItem raise TrayError {
   let commands : Map[String, Bool] = Map([])
   validate_menu_entries(menu, commands)

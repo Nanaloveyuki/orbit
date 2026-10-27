@@ -25,7 +25,7 @@ pub fn migrate_config_v1(StringView) -> String raise ConfigError
 
 pub fn normalize_config(OrbitConfig) -> OrbitConfig
 
-pub fn normalize_resource_path(String) -> Result[String, ResourceError]
+pub fn normalize_resource_path(String) -> String raise ResourceError
 
 pub fn parse_config(StringView) -> OrbitConfig raise ConfigError
 
@@ -184,7 +184,7 @@ pub fn LinuxRpmConfig::to_json(Self) -> Json
 pub fn LinuxRpmConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct OrbitConfig {
-  schema_version : Int
+  schema_version : Int32
   app : AppConfig
   bundle : BundleConfig
   web : WebConfig
@@ -249,7 +249,7 @@ pub struct ResourceTable {
 }
 pub fn ResourceTable::add(Self, EmbeddedResource) -> Unit raise ResourceError
 pub fn ResourceTable::get(Self, String) -> EmbeddedResource?
-pub fn ResourceTable::length(Self) -> Int
+pub fn ResourceTable::length(Self) -> Int32
 pub fn ResourceTable::new() -> Self
 
 pub(all) struct ScopeConfig {
@@ -287,8 +287,8 @@ pub fn WebConfig::to_repr(Self) -> @debug.Repr
 pub(all) struct WindowConfig {
   label : String
   title : String
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   entry : String
   visible : Bool
   resizable : Bool

@@ -33,14 +33,8 @@ test "tray controller replaces complete item state and explicitly opens menus" {
   let replaced : Ref[String?] = Ref(None)
   let opened : Ref[String?] = Ref(None)
   let controller = @orbit-tray.TrayController::new(
-    item => {
-      replaced.val = Some(item.id().value())
-      Ok(())
-    },
-    id => {
-      opened.val = Some(id.value())
-      Ok(())
-    },
+    item => replaced.val = Some(item.id().value()),
+    id => opened.val = Some(id.value()),
   )
   let id = @orbit-tray.TrayItemId::new("main")
   controller.replace_item(

@@ -36,7 +36,7 @@ pub fn EmbeddedResource::fingerprint(self : EmbeddedResource) -> String {
 }
 
 ///|
-pub fn normalize_resource_path(path : String) -> Result[String, ResourceError] {
+pub fn normalize_resource_path(path : String) -> String raise ResourceError {
   let normalized = path.trim().to_owned().replace_all(old="\\", new="/")
   if normalized.is_empty() ||
     normalized.has_prefix("/") ||
@@ -46,15 +46,15 @@ pub fn normalize_resource_path(path : String) -> Result[String, ResourceError] {
     normalized.contains("#") ||
     normalized.contains("%") ||
     normalized.contains_char('\u{0000}') {
-    return Err(InvalidPath(path))
+    raise InvalidPath(path)
   }
   let segments = normalized.split("/").to_array()
   for segment in segments {
     if segment.is_empty() || segment == "." || segment == ".." {
-      return Err(InvalidPath(path))
+      raise InvalidPath(path)
     }
   }
-  Ok(normalized)
+  normalized
 }
 
 ///|
@@ -63,10 +63,7 @@ pub fn EmbeddedResource::new(
   media_type~ : String,
   bytes~ : Bytes,
 ) -> EmbeddedResource raise ResourceError {
-  let path = match normalize_resource_path(path) {
-    Ok(value) => value
-    Err(error) => raise error
-  }
+  let path = normalize_resource_path(path)
   {
     path,
     media_type: media_type.trim().to_owned(),
@@ -101,13 +98,14 @@ pub fn ResourceTable::get(
   self : ResourceTable,
   path : String,
 ) -> EmbeddedResource? {
-  match normalize_resource_path(path) {
-    Ok(path) => self.resources.get(path)
-    Err(_) => None
+  try normalize_resource_path(path) catch {
+    _ => None
+  } noraise {
+    path => self.resources.get(path)
   }
 }
 
 ///|
-pub fn ResourceTable::length(self : ResourceTable) -> Int {
+pub fn ResourceTable::length(self : ResourceTable) -> Int32 {
   self.resources.length()
 }

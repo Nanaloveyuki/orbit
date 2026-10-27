@@ -17,9 +17,9 @@ pub struct AndroidAppOptions {
 ///|
 pub fn AndroidAppOptions::new(
   runtime_options~ : @runtime.RuntimeOptions,
-  ipc_registry? : @ipc.CommandRegistry? = None,
-  ipc_policy? : @ipc.CommandPolicy? = None,
-  trusted_origin? : String = "https://orbit.local",
+  ipc_registry~ : @ipc.CommandRegistry? = None,
+  ipc_policy~ : @ipc.CommandPolicy? = None,
+  trusted_origin~ : String = "https://orbit.local",
 ) -> AndroidAppOptions raise AndroidAppError {
   match (ipc_registry, ipc_policy) {
     (Some(_), None) | (None, Some(_)) =>
@@ -112,8 +112,8 @@ fn destroy_runtime(runtime_slot : Ref[&@runtime.WebViewRuntime?]) -> Unit {
 ///|
 fn resize_runtime(
   runtime_slot : Ref[&@runtime.WebViewRuntime?],
-  width : Int,
-  height : Int,
+  width : Int32,
+  height : Int32,
 ) -> Unit {
   if width <= 0 || height <= 0 {
     return

@@ -14,7 +14,7 @@ Vite、Tailwind CSS 4 和 shadcn/ui 实现完整的本地备忘录工作流。
 
 ## 环境
 
-- MoonBit `0.10.x`（`moon` 0.1.20260920）对应工具链；
+- MoonBit 编译器 `0.10.17+d971670cd`，CLI `0.1.20261023`；
 - Node.js 20 或更高版本；
 - pnpm 11；
 - Windows x64 上的 MSVC、Windows SDK 和 WebView2 Runtime；
@@ -111,13 +111,13 @@ gradle -PwaseeAndroidDir=<path-to-wasee-moon>/android :app:assembleDebug --no-da
 该路径会构建 Wasee guest wasm、复制到 Orbit APK 的忽略资源目录，并编译
 WaseeHostSession。Orbit 负责 Activity 生命周期和 USB 权限 UI，Wasee 负责
 Chicory、AndroidUsbHost、AOA 重枚举和 guest 到 madk 的 transport 桥接。
-可选构建还需要 Android platform 36、Build Tools 37.0.0 和 MoonBit 0.10.x（`moon` 0.1.20260920）；
+可选构建还需要 Android platform 36、Build Tools 37.0.0 和 MoonBit `0.10.17+d971670cd`（`moon` `0.1.20261023`）；
 Gradle 会先更新 Wasee checkout 的 MoonCake 依赖，并临时创建 Orbit Android
 构建所需的 moon.work。
 
 ## 独立项目边界
 
-本目录有自己的 `moon.mod`、`.moon-version`、`package.json` 和 `pnpm-lock.yaml`；`android/`
+本目录有自己的 `moon.mod`、`.moonbit-toolchain`、`.moon-version`、`package.json` 和 `pnpm-lock.yaml`；`android/`
 另有独立的 `moon.mod`，因此桌面构建不会解析 Android host 包。
 `scripts/orbit-tool.mjs` 在当前 monorepo 中优先使用本地 `orbit-build`，复制到其他位置后
 自动使用 `@nanaloveyuki/orbit-cli`。Android 构建在 monorepo 中会临时创建相对路径

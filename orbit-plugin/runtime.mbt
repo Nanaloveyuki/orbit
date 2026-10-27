@@ -17,7 +17,7 @@ pub fn PluginDeclaration::new(
   id~ : String,
   library~ : String,
   sidecar~ : PluginSidecarManifest,
-  permissions? : Array[String] = [],
+  permissions~ : Array[String] = [],
 ) -> PluginDeclaration {
   { id, library, sidecar, permissions, }
 }
@@ -111,7 +111,7 @@ fn PluginRuntime::cleanup_library_failure(
 pub fn PluginRuntime::start(
   self : PluginRuntime,
   declarations : Array[PluginDeclaration],
-  development_directory? : String? = None,
+  development_directory~ : String? = None,
 ) -> Result[Unit, PluginRuntimeError] {
   match self.shutdown() {
     Err(error) => return Err(error)

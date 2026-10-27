@@ -1,12 +1,12 @@
 ///|
 priv struct AddRequest {
-  left : Int
-  right : Int
+  left : Int32
+  right : Int32
 } derive(FromJson)
 
 ///|
 priv struct AddResponse {
-  value : Int
+  value : Int32
 } derive(ToJson)
 
 ///|

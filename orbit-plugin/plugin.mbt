@@ -33,8 +33,8 @@ pub extend PluginCommandDescriptor with FromJson::{from_json}
 
 ///|
 pub(all) struct PluginSidecarManifest {
-  schema_version : Int
-  abi_version : Int
+  schema_version : Int32
+  abi_version : Int32
   id : String
   name : String
   version : String

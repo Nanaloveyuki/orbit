@@ -107,17 +107,17 @@ fn random_handle_id() -> String? {
 ///|
 fn mint_handle_id(
   records : Map[String, FileCapabilityRecord],
-) -> Result[String, FileCapabilityError] {
+) -> String raise FileCapabilityError {
   for _ in 0..<8 {
     let id = match random_handle_id() {
       Some(id) => id
-      None => return Err(RandomUnavailable)
+      None => raise RandomUnavailable
     }
     if !records.contains(id) {
-      return Ok(id)
+      return id
     }
   }
-  Err(RandomUnavailable)
+  raise RandomUnavailable
 }
 
 ///|
@@ -134,7 +134,7 @@ fn file_capability_directory_error(
 fn native_capability_count(
   records : Map[String, FileCapabilityRecord],
   window_label : String,
-) -> Int {
+) -> Int32 {
   let mut count = 0
   for _, record in records {
     if record.window_label == window_label {
@@ -155,14 +155,11 @@ pub fn FileCapabilityRegistry::mint(
   window_label : String,
   path : String,
   kind : FileCapabilityKind,
-) -> Result[FileCapability, FileCapabilityError] {
+) -> FileCapability raise FileCapabilityError {
   if kind == Directory {
-    return Err(DirectoryUnavailable)
+    raise DirectoryUnavailable
   }
-  let id = match mint_handle_id(self.records) {
-    Ok(id) => id
-    Err(error) => return Err(error)
-  }
+  let id = mint_handle_id(self.records)
   let name = file_display_name(path)
   self.records[id] = {
     location: Path(path),
@@ -171,7 +168,7 @@ pub fn FileCapabilityRegistry::mint(
     kind,
     parent_id: None,
   }
-  Ok({ id, name, kind, })
+  { id, name, kind, }
 }
 
 ///|
@@ -182,18 +179,14 @@ pub fn FileCapabilityRegistry::mint_directory(
   self : FileCapabilityRegistry,
   window_label : String,
   path : String,
-) -> Result[FileCapability, FileCapabilityError] {
+) -> FileCapability raise FileCapabilityError {
   if native_capability_count(self.records, window_label) >=
     max_native_capabilities_per_window {
-    return Err(DirectoryCapabilityLimit)
+    raise DirectoryCapabilityLimit
   }
-  let id = match mint_handle_id(self.records) {
-    Ok(id) => id
-    Err(error) => return Err(error)
-  }
-  let directory = match native_directory_open_path(path) {
-    Ok(directory) => directory
-    Err(error) => return Err(file_capability_directory_error(error))
+  let id = mint_handle_id(self.records)
+  let directory = native_directory_open_path(path) catch {
+    error => raise file_capability_directory_error(error)
   }
   let name = file_display_name(path)
   self.records[id] = {
@@ -203,7 +196,7 @@ pub fn FileCapabilityRegistry::mint_directory(
     kind: Directory,
     parent_id: None,
   }
-  Ok({ id, name, kind: Directory, })
+  { id, name, kind: Directory, }
 }
 
 ///|
@@ -214,16 +207,16 @@ pub fn FileCapabilityRegistry::resolve(
   window_label : String,
   id : String,
   kind : FileCapabilityKind,
-) -> Result[String, FileCapabilityError] {
+) -> String raise FileCapabilityError {
   match self.records.get(id) {
-    None => Err(UnknownHandle(id))
+    None => raise UnknownHandle(id)
     Some(record) if record.window_label != window_label =>
-      Err(WrongPrincipal(id))
-    Some(record) if record.kind != kind => Err(WrongKind(id))
+      raise WrongPrincipal(id)
+    Some(record) if record.kind != kind => raise WrongKind(id)
     Some(record) =>
       match record.location {
-        Path(path) => Ok(path)
-        Directory(_) | NativeReadFile(_) => Err(WrongKind(id))
+        Path(path) => path
+        Directory(_) | NativeReadFile(_) => raise WrongKind(id)
       }
   }
 }
@@ -233,16 +226,16 @@ fn FileCapabilityRegistry::resolve_directory(
   self : FileCapabilityRegistry,
   window_label : String,
   id : String,
-) -> Result[NativeDirectory, FileCapabilityError] {
+) -> NativeDirectory raise FileCapabilityError {
   match self.records.get(id) {
-    None => Err(UnknownHandle(id))
+    None => raise UnknownHandle(id)
     Some(record) if record.window_label != window_label =>
-      Err(WrongPrincipal(id))
-    Some(record) if record.kind != Directory => Err(WrongKind(id))
+      raise WrongPrincipal(id)
+    Some(record) if record.kind != Directory => raise WrongKind(id)
     Some(record) =>
       match record.location {
-        Directory(directory) => Ok(directory)
-        Path(_) | NativeReadFile(_) => Err(DirectoryUnavailable)
+        Directory(directory) => directory
+        Path(_) | NativeReadFile(_) => raise DirectoryUnavailable
       }
   }
 }
@@ -254,16 +247,12 @@ pub fn FileCapabilityRegistry::list_directory(
   self : FileCapabilityRegistry,
   window_label : String,
   id : String,
-  max_entries : Int,
-) -> Result[Array[DirectoryEntry], FileCapabilityError] {
-  let directory = match self.resolve_directory(window_label, id) {
-    Ok(directory) => directory
-    Err(error) => return Err(error)
-  }
-  match native_directory_list(directory, max_entries) {
-    Ok(entries) => Ok(entries)
-    Err(TooLarge) => Err(DirectoryTooLarge)
-    Err(_) => Err(DirectoryReadFailed)
+  max_entries : Int32,
+) -> Array[DirectoryEntry] raise FileCapabilityError {
+  let directory = self.resolve_directory(window_label, id)
+  native_directory_list(directory, max_entries) catch {
+    TooLarge => raise DirectoryTooLarge
+    _ => raise DirectoryReadFailed
   }
 }
 
@@ -275,33 +264,26 @@ pub fn FileCapabilityRegistry::mint_child_directory(
   window_label : String,
   parent_id : String,
   name : String,
-) -> Result[FileCapability, FileCapabilityError] {
+) -> FileCapability raise FileCapabilityError {
   for id, record in self.records {
     if record.window_label == window_label &&
       record.kind == Directory &&
       record.name == name {
       match record.parent_id {
         Some(existing_parent) if existing_parent == parent_id =>
-          return Ok({ id, name, kind: Directory, })
+          return { id, name, kind: Directory, }
         _ => ()
       }
     }
   }
   if native_capability_count(self.records, window_label) >=
     max_native_capabilities_per_window {
-    return Err(DirectoryCapabilityLimit)
+    raise DirectoryCapabilityLimit
   }
-  let id = match mint_handle_id(self.records) {
-    Ok(id) => id
-    Err(error) => return Err(error)
-  }
-  let parent = match self.resolve_directory(window_label, parent_id) {
-    Ok(parent) => parent
-    Err(error) => return Err(error)
-  }
-  let directory = match native_directory_open_relative(parent, name) {
-    Ok(directory) => directory
-    Err(error) => return Err(file_capability_directory_error(error))
+  let id = mint_handle_id(self.records)
+  let parent = self.resolve_directory(window_label, parent_id)
+  let directory = native_directory_open_relative(parent, name) catch {
+    error => raise file_capability_directory_error(error)
   }
   self.records[id] = {
     location: Directory(directory),
@@ -310,7 +292,7 @@ pub fn FileCapabilityRegistry::mint_child_directory(
     kind: Directory,
     parent_id: Some(parent_id),
   }
-  Ok({ id, name, kind: Directory, })
+  { id, name, kind: Directory, }
 }
 
 ///|
@@ -321,33 +303,26 @@ pub fn FileCapabilityRegistry::mint_child_read_file(
   window_label : String,
   parent_id : String,
   name : String,
-) -> Result[FileCapability, FileCapabilityError] {
+) -> FileCapability raise FileCapabilityError {
   for id, record in self.records {
     if record.window_label == window_label &&
       record.kind == Read &&
       record.name == name {
       match record.parent_id {
         Some(existing_parent) if existing_parent == parent_id =>
-          return Ok({ id, name, kind: Read, })
+          return { id, name, kind: Read, }
         _ => ()
       }
     }
   }
   if native_capability_count(self.records, window_label) >=
     max_native_capabilities_per_window {
-    return Err(DirectoryCapabilityLimit)
+    raise DirectoryCapabilityLimit
   }
-  let id = match mint_handle_id(self.records) {
-    Ok(id) => id
-    Err(error) => return Err(error)
-  }
-  let parent = match self.resolve_directory(window_label, parent_id) {
-    Ok(parent) => parent
-    Err(error) => return Err(error)
-  }
-  let file = match native_directory_open_read_relative(parent, name) {
-    Ok(file) => file
-    Err(error) => return Err(file_capability_directory_error(error))
+  let id = mint_handle_id(self.records)
+  let parent = self.resolve_directory(window_label, parent_id)
+  let file = native_directory_open_read_relative(parent, name) catch {
+    error => raise file_capability_directory_error(error)
   }
   self.records[id] = {
     location: NativeReadFile(file),
@@ -356,7 +331,7 @@ pub fn FileCapabilityRegistry::mint_child_read_file(
     kind: Read,
     parent_id: Some(parent_id),
   }
-  Ok({ id, name, kind: Read, })
+  { id, name, kind: Read, }
 }
 
 ///|
@@ -367,23 +342,24 @@ pub fn FileCapabilityRegistry::read_native_file(
   self : FileCapabilityRegistry,
   window_label : String,
   id : String,
-  max_bytes : Int,
-) -> Result[Bytes?, FileCapabilityError] {
+  max_bytes : Int32,
+) -> Bytes? raise FileCapabilityError {
   match self.records.get(id) {
-    None => Err(UnknownHandle(id))
+    None => raise UnknownHandle(id)
     Some(record) if record.window_label != window_label =>
-      Err(WrongPrincipal(id))
-    Some(record) if record.kind != Read => Err(WrongKind(id))
+      raise WrongPrincipal(id)
+    Some(record) if record.kind != Read => raise WrongKind(id)
     Some(record) =>
       match record.location {
-        Path(_) => Ok(None)
-        NativeReadFile(file) =>
-          match native_read_file_read(file, max_bytes) {
-            Ok(bytes) => Ok(Some(bytes))
-            Err(TooLarge) => Err(FileTooLarge)
-            Err(_) => Err(FileReadFailed)
+        Path(_) => None
+        NativeReadFile(file) => {
+          let bytes = native_read_file_read(file, max_bytes) catch {
+            TooLarge => raise FileTooLarge
+            _ => raise FileReadFailed
           }
-        Directory(_) => Err(WrongKind(id))
+          Some(bytes)
+        }
+        Directory(_) => raise WrongKind(id)
       }
   }
 }
@@ -423,6 +399,6 @@ pub fn FileCapabilityRegistry::clear(self : FileCapabilityRegistry) -> Unit {
 }
 
 ///|
-pub fn FileCapabilityRegistry::length(self : FileCapabilityRegistry) -> Int {
+pub fn FileCapabilityRegistry::length(self : FileCapabilityRegistry) -> Int32 {
   self.records.length()
 }

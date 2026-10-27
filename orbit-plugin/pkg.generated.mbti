@@ -110,8 +110,8 @@ pub fn PluginRuntimeError::not_equal(Self, Self) -> Bool
 pub fn PluginRuntimeError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PluginSidecarManifest {
-  schema_version : Int
-  abi_version : Int
+  schema_version : Int32
+  abi_version : Int32
   id : String
   name : String
   version : String

@@ -29,8 +29,9 @@ Orbit build. To compile the integration against a sibling Wasee checkout:
 gradle -PwaseeAndroidDir=<path-to-wasee-moon>/android :app:assembleDebug --no-daemon
 ~~~
 
-The optional build also needs MoonBit 0.10.x (`moon` 0.1.20260920), Android platform 36, and Build
-Tools 37.0.0 in addition to the normal Orbit Android toolchain. The Gradle task
+The optional build also needs MoonBit `0.10.17+d971670cd` (`moon` `0.1.20261023`),
+Android platform 36, and Build Tools 37.0.0 in addition to the normal Orbit
+Android toolchain. The Gradle task
 updates the Wasee checkout before building its guest artifact and creates the
 same transient Orbit moon.work used by the normal Android build.
 

@@ -1,0 +1,48 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Nanaloveyuki/orbit-react-memo-android"
+
+import {
+  "Nanaloveyuki/orbit/orbit-ipc",
+  "Nanaloveyuki/orbit/orbit-runtime",
+}
+
+// Values
+pub let app_identifier : String
+
+pub let app_name : String
+
+pub let app_version : String
+
+pub let configuration_fingerprint : String
+
+pub let configuration_json : String
+
+pub fn configured_android_runtime_options() -> @orbit-runtime.RuntimeOptions
+
+pub fn configured_ipc_policy() -> @orbit-ipc.CommandPolicy raise @orbit-ipc.IpcError
+
+pub fn dispatch_android_event(Int32, Int32, Int32) -> Unit
+
+pub fn dispatch_android_webview_event(Int32, Int64, Bytes, Bytes) -> Unit
+
+pub let entry_url : String
+
+pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn handle_resource_0(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn resource_response_0(String) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub let resource_scheme : String
+
+pub let window_label : String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

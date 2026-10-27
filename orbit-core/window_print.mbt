@@ -39,7 +39,7 @@ fn DesktopApp::open_window_print_dialog(
   }
   try {
     runtime.open_print_dialog()
-    Ok({ opened: true })
+    Ok({ opened: true, })
   } catch {
     Unsupported(_) =>
       Err(

@@ -206,13 +206,13 @@ test "extension startup failure records only its stable diagnostic code" {
     initial_content=Html("<main></main>"),
   )
   let history = @diagnostics.DiagnosticHistory::new()
-  let extension = FailingStartExtension::{  }
+  let extension = FailingStartExtension::{ }
   let options = DesktopOptions::new(
     windows=[DesktopWindowOptions::new("Orbit", runtime_options)],
     extensions=[extension as &DesktopExtension],
     diagnostic_sink=Some(history as &@diagnostics.DiagnosticSink),
   )
-  let factory = DiagnosticTestRuntimeFactory::{  }
+  let factory = DiagnosticTestRuntimeFactory::{ }
   let app : DesktopApp = {
     factory: factory as &@runtime.RuntimeFactory,
     options,

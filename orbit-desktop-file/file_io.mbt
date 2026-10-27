@@ -1,8 +1,8 @@
 ///|
-let max_file_read_bytes : Int = 64 * 1024
+let max_file_read_bytes : Int32 = 64 * 1024
 
 ///|
-let max_directory_entries : Int = 128
+let max_directory_entries : Int32 = 128
 
 ///|
 extern "C" fn link_async_fs() = "orbit_core_link_async_fs"
@@ -15,13 +15,13 @@ priv struct FileReadRequest {
 ///|
 priv struct FileBinaryReadResponse {
   data : String
-  size : Int
+  size : Int32
 } derive(ToJson)
 
 ///|
 priv struct FileTextReadResponse {
   text : String
-  size : Int
+  size : Int32
 } derive(ToJson)
 
 ///|
@@ -32,7 +32,7 @@ priv struct FileWriteRequest {
 
 ///|
 priv struct FileWriteResponse {
-  size : Int
+  size : Int32
 } derive(ToJson)
 
 ///|
@@ -74,21 +74,20 @@ fn resolve_file_path(
       file_read_failure("invalid_handle", "file handle must not be empty"),
     )
   }
-  match files.resolve(label, id, kind) {
-    Ok(path) => Ok(path)
-    Err(WrongPrincipal(_)) =>
+  Ok(files.resolve(label, id, kind)) catch {
+    WrongPrincipal(_) =>
       Err(
         file_read_failure(
           "file_handle_denied", "file handle belongs to another window",
         ),
       )
-    Err(WrongKind(_)) =>
+    WrongKind(_) =>
       Err(
         file_read_failure(
           "file_handle_invalid", "file handle does not allow this operation",
         ),
       )
-    Err(_) =>
+    _ =>
       Err(
         file_read_failure("file_handle_invalid", "file handle is unavailable"),
       )
@@ -107,30 +106,28 @@ async fn read_capability_bytes(
     )
   }
   let label = resolve_file_window_label(context)
-  let native = match
-    files.read_native_file(label, request.id, max_file_read_bytes) {
-    Ok(bytes) => bytes
-    Err(WrongPrincipal(_)) =>
+  let native = files.read_native_file(label, request.id, max_file_read_bytes) catch {
+    WrongPrincipal(_) =>
       return Err(
         file_read_failure(
           "file_handle_denied", "file handle belongs to another window",
         ),
       )
-    Err(WrongKind(_)) =>
+    WrongKind(_) =>
       return Err(
         file_read_failure(
           "file_handle_invalid", "file handle does not allow this operation",
         ),
       )
-    Err(FileTooLarge) =>
+    FileTooLarge =>
       return Err(
         file_read_failure(
           "file_too_large", "file exceeds the 64 KiB read limit",
         ),
       )
-    Err(FileReadFailed) =>
+    FileReadFailed =>
       return Err(file_read_failure("file_read_failed", "could not read file"))
-    Err(_) =>
+    _ =>
       return Err(
         file_read_failure("file_handle_invalid", "file handle is unavailable"),
       )
@@ -143,9 +140,8 @@ async fn read_capability_bytes(
     None => ()
   }
   link_async_fs()
-  let path = match files.resolve(label, request.id, Read) {
-    Ok(path) => path
-    Err(_) =>
+  let path = files.resolve(label, request.id, Read) catch {
+    _ =>
       return Err(
         file_read_failure("file_handle_invalid", "file handle is unavailable"),
       )
@@ -293,32 +289,30 @@ async fn read_directory_capability(
     )
   }
   let label = context.label()
-  let listed = match
-    files.list_directory(label, request.id, max_directory_entries) {
-    Ok(entries) => entries
-    Err(WrongPrincipal(_)) =>
+  let listed = files.list_directory(label, request.id, max_directory_entries) catch {
+    WrongPrincipal(_) =>
       return Err(
         file_read_failure(
           "file_handle_denied", "file handle belongs to another window",
         ),
       )
-    Err(WrongKind(_)) =>
+    WrongKind(_) =>
       return Err(
         file_read_failure(
           "file_handle_invalid", "file handle does not allow this operation",
         ),
       )
-    Err(DirectoryTooLarge) =>
+    DirectoryTooLarge =>
       return Err(
         file_read_failure(
           "directory_too_large", "directory exceeds the 128 entry limit",
         ),
       )
-    Err(DirectoryReadFailed) =>
+    DirectoryReadFailed =>
       return Err(
         file_read_failure("directory_read_failed", "could not read directory"),
       )
-    Err(_) =>
+    _ =>
       return Err(
         file_read_failure("file_handle_invalid", "file handle is unavailable"),
       )
@@ -327,14 +321,12 @@ async fn read_directory_capability(
   for entry in listed {
     let id = match entry.kind {
       @file.DirectoryEntryKind::Directory =>
-        match files.mint_child_directory(label, request.id, entry.name) {
-          Ok(capability) => Some(capability.id())
-          Err(_) => None
+        Some(files.mint_child_directory(label, request.id, entry.name).id()) catch {
+          _ => None
         }
       @file.DirectoryEntryKind::File =>
-        match files.mint_child_read_file(label, request.id, entry.name) {
-          Ok(capability) => Some(capability.id())
-          Err(_) => None
+        Some(files.mint_child_read_file(label, request.id, entry.name).id()) catch {
+          _ => None
         }
     }
     entries.push({

@@ -6,7 +6,7 @@ priv struct AsyncExit {
 
 ///|
 fn AsyncExit::new() -> AsyncExit {
-  { finished: Ref(false), condition: @cond_var.Cond() }
+  { finished: Ref(false), condition: @cond_var.Cond(), }
 }
 
 ///|

@@ -2,7 +2,7 @@
 fn bindings_source(
   config : @utils.OrbitConfig,
   fingerprint : String,
-  contract? : CompiledContract? = None,
+  contract~ : CompiledContract? = None,
 ) -> String {
   let names = Json::array(page_command_names(config).map(Json::string)).stringify()
   let fingerprint = Json::string(fingerprint).stringify()
@@ -121,7 +121,7 @@ fn bindings_source(
 ///|
 fn bindings_declarations(
   config : @utils.OrbitConfig,
-  contract? : CompiledContract? = None,
+  contract~ : CompiledContract? = None,
 ) -> String {
   let entries = page_command_names(config).map(command => {
     let types = match contract {

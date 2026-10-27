@@ -23,5 +23,3 @@ test "contract compiler emits a typed tagged union" {
   assert_true(compiled.native.contains("Ok("))
   assert_true(compiled.native.contains("Error("))
 }
-
-

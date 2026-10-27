@@ -98,7 +98,7 @@ fn windows_tray_extension() -> &@core.DesktopExtension? {
 
 ///|
 fn main {
-  let state = { latest: Ref({ "value": "" }) }
+  let state = { latest: Ref({ "value": "" }), }
   let diagnostics = @diagnostics.DiagnosticHistory::new()
   let ipc_registry = command_registry(state) catch {
     _ => fail("could not register IPC commands")

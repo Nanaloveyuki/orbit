@@ -24,8 +24,8 @@ pub extend AppConfig with FromJson::{from_json}
 pub(all) struct WindowConfig {
   label : String
   title : String
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   entry : String
   visible : Bool
   resizable : Bool
@@ -333,7 +333,7 @@ pub extend PluginConfig with FromJson::{from_json}
 
 ///|
 pub(all) struct OrbitConfig {
-  schema_version : Int
+  schema_version : Int32
   app : AppConfig
   bundle : BundleConfig
   web : WebConfig
@@ -370,7 +370,7 @@ fn strict_config_json(source : StringView) -> Json raise ConfigError {
 }
 
 ///|
-fn json_schema_version(value : Json) -> Int? {
+fn json_schema_version(value : Json) -> Int32? {
   match value {
     Object(object) =>
       match object.get("schema_version") {
@@ -384,7 +384,7 @@ fn json_schema_version(value : Json) -> Int? {
 }
 
 ///|
-fn unsupported_schema(expected : Int) -> ConfigError {
+fn unsupported_schema(expected : Int32) -> ConfigError {
   Invalid([
     diagnostic(
       "unsupported_schema",
@@ -674,9 +674,8 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         ),
       )
     }
-    match normalize_resource_path(window.entry) {
-      Ok(_) => ()
-      Err(_) =>
+    try normalize_resource_path(window.entry) catch {
+      _ =>
         diagnostics.push(
           diagnostic(
             "invalid_entry",
@@ -684,14 +683,23 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
             "window entry must be a normalized relative resource path",
           ),
         )
+    } noraise {
+      _ => ()
     }
   }
   let icon_paths : Map[String, Bool] = Map([])
   for index, icon in config.bundle.icons {
     let path = "$.bundle.icons[\{index}]"
     let icon = icon.trim().to_owned()
-    match normalize_resource_path(icon) {
-      Ok(normalized) =>
+    try normalize_resource_path(icon) catch {
+      _ =>
+        diagnostics.push(
+          diagnostic(
+            "invalid_icon", path, "bundle icon must be a normalized relative resource path",
+          ),
+        )
+    } noraise {
+      normalized =>
         if icon_paths.contains(normalized) {
           diagnostics.push(
             diagnostic(
@@ -701,12 +709,6 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         } else {
           icon_paths[normalized] = true
         }
-      Err(_) =>
-        diagnostics.push(
-          diagnostic(
-            "invalid_icon", path, "bundle icon must be a normalized relative resource path",
-          ),
-        )
     }
   }
   match config.bundle.windows {
@@ -743,14 +745,15 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
           ),
         )
       }
-      match normalize_resource_path(remote.fallback_entry) {
-        Ok(_) => ()
-        Err(_) =>
+      try normalize_resource_path(remote.fallback_entry) catch {
+        _ =>
           diagnostics.push(
             diagnostic(
               "invalid_fallback_entry", "$.web.remote.fallback_entry", "remote fallback_entry must be a normalized relative resource path",
             ),
           )
+      } noraise {
+        _ => ()
       }
       if remote.allowed_origins.is_empty() {
         diagnostics.push(
@@ -808,14 +811,15 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
           ),
         )
       }
-      match normalize_resource_path(vite.dist_dir) {
-        Ok(_) => ()
-        Err(_) =>
+      try normalize_resource_path(vite.dist_dir) catch {
+        _ =>
           diagnostics.push(
             diagnostic(
               "invalid_dist_dir", "$.build.vite.dist_dir", "Vite dist directory must be a normalized relative path",
             ),
           )
+      } noraise {
+        _ => ()
       }
     }
     None => ()
@@ -1023,9 +1027,8 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
         ),
       )
     }
-    match normalize_resource_path(plugin.manifest) {
-      Ok(_) => ()
-      Err(_) =>
+    try normalize_resource_path(plugin.manifest) catch {
+      _ =>
         diagnostics.push(
           diagnostic(
             "invalid_plugin_manifest",
@@ -1033,6 +1036,8 @@ pub fn validate_config(config : OrbitConfig) -> Array[ConfigDiagnostic] {
             "plugin manifest must be a normalized relative sidecar path",
           ),
         )
+    } noraise {
+      _ => ()
     }
     let granted_permissions : Map[String, Bool] = Map([])
     for permission_index, permission in plugin.permissions {
@@ -1065,7 +1070,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     title: window.title.trim().to_owned(),
     width: window.width,
     height: window.height,
-    entry: normalize_resource_path(window.entry).unwrap_or(window.entry),
+    entry: normalize_resource_path(window.entry) catch {
+      _ => window.entry
+    },
     visible: window.visible,
     resizable: window.resizable,
   })
@@ -1073,7 +1080,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     dev_command: vite.dev_command.trim().to_owned(),
     dev_url: vite.dev_url.trim().to_owned(),
     build_command: vite.build_command.trim().to_owned(),
-    dist_dir: normalize_resource_path(vite.dist_dir).unwrap_or(vite.dist_dir),
+    dist_dir: normalize_resource_path(vite.dist_dir) catch {
+      _ => vite.dist_dir
+    },
   })
   let bundle_windows = config.bundle.windows.map(windows => {
     webview_install_mode: windows.webview_install_mode.trim().to_owned(),
@@ -1113,10 +1122,12 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
   })
   let plugins = config.plugins.map(plugin => PluginConfig::{
     id: plugin.id.trim().to_owned(),
-    library: normalize_resource_path(plugin.library).unwrap_or(plugin.library),
-    manifest: normalize_resource_path(plugin.manifest).unwrap_or(
-      plugin.manifest,
-    ),
+    library: normalize_resource_path(plugin.library) catch {
+      _ => plugin.library
+    },
+    manifest: normalize_resource_path(plugin.manifest) catch {
+      _ => plugin.manifest
+    },
     permissions: plugin.permissions.map(permission => {
       permission.trim().to_owned()
     }),
@@ -1133,7 +1144,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
     },
     bundle: {
       icons: config.bundle.icons.map(icon => {
-        normalize_resource_path(icon).unwrap_or(icon)
+        normalize_resource_path(icon) catch {
+          _ => icon
+        }
       }),
       windows: bundle_windows,
       linux: bundle_linux,
@@ -1145,9 +1158,9 @@ pub fn normalize_config(config : OrbitConfig) -> OrbitConfig {
         allowed_origins: remote.allowed_origins.map(origin => {
           origin.trim().to_owned()
         }),
-        fallback_entry: normalize_resource_path(remote.fallback_entry).unwrap_or(
-          remote.fallback_entry,
-        ),
+        fallback_entry: normalize_resource_path(remote.fallback_entry) catch {
+          _ => remote.fallback_entry
+        },
       }),
     },
     build: { vite, },

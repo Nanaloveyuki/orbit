@@ -51,32 +51,32 @@ test "CSP injection places policy first in head" {
 
 ///|
 test "resource paths reject traversal" {
-  let rejected = @orbit-utils.normalize_resource_path("assets/../secret.txt")
-  assert_true(rejected is Err(InvalidPath(_)))
+  let rejected = try {
+    ignore(@orbit-utils.normalize_resource_path("assets/../secret.txt"))
+    false
+  } catch {
+    InvalidPath(_) => true
+    _ => false
+  }
+  assert_true(rejected)
 }
 
 ///|
 test "resource paths reject absolute Windows paths and NUL" {
-  assert_true(
-    @orbit-utils.normalize_resource_path("C:/assets/index.html")
-    is Err(InvalidPath(_)),
-  )
-  assert_true(
-    @orbit-utils.normalize_resource_path("assets/\u{0000}index.html")
-    is Err(InvalidPath(_)),
-  )
-  assert_true(
-    @orbit-utils.normalize_resource_path("assets/%2e%2e/secret")
-    is Err(InvalidPath(_)),
-  )
-  assert_true(
-    @orbit-utils.normalize_resource_path("index.html?debug=true")
-    is Err(InvalidPath(_)),
-  )
-  assert_true(
-    @orbit-utils.normalize_resource_path("index.html#main")
-    is Err(InvalidPath(_)),
-  )
+  for
+    path in [
+      "C:/assets/index.html", "assets/\u{0000}index.html", "assets/%2e%2e/secret",
+      "index.html?debug=true", "index.html#main",
+    ] {
+    let rejected = try {
+      ignore(@orbit-utils.normalize_resource_path(path))
+      false
+    } catch {
+      InvalidPath(_) => true
+      _ => false
+    }
+    assert_true(rejected)
+  }
 }
 
 ///|

@@ -41,7 +41,7 @@ pub fn resource_response_0(String) -> @orbit-runtime.RuntimeResourceResponse?
 
 pub let resource_scheme : String
 
-pub let window_height : Int
+pub let window_height : Int32
 
 pub let window_label : String
 
@@ -51,7 +51,7 @@ pub let window_title : String
 
 pub let window_visible : Bool
 
-pub let window_width : Int
+pub let window_width : Int32
 
 // Errors
 

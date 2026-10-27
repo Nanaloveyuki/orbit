@@ -27,12 +27,12 @@ pub fn csp_meta_tag(policy : String) -> String raise CspError {
 }
 
 ///|
-fn is_html_space(code : Int) -> Bool {
+fn is_html_space(code : Int32) -> Bool {
   code == 9 || code == 10 || code == 12 || code == 13 || code == 32
 }
 
 ///|
-fn find_head_start(html : StringView, offset : Int) -> Int? {
+fn find_head_start(html : StringView, offset : Int32) -> Int32? {
   if offset >= html.length() {
     return None
   }

@@ -8,7 +8,7 @@ pub struct DesktopFileExtension {
 
 ///|
 pub fn DesktopFileExtension::new() -> DesktopFileExtension {
-  { files: @file.FileCapabilityRegistry::new() }
+  { files: @file.FileCapabilityRegistry::new(), }
 }
 
 ///|

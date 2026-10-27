@@ -1,30 +1,46 @@
 ///|
 test "file capabilities remain bound to the selecting window" {
   let registry = @orbit-file.FileCapabilityRegistry::new()
-  let capability = registry
-    .mint("main", "C:\\secret\\report.txt", Read)
-    .unwrap_or_else(() => fail("expected random handle"))
+  let capability = registry.mint("main", "C:\\secret\\report.txt", Read) catch {
+    _ => fail("expected random handle")
+  }
   assert_eq(capability.name(), "report.txt")
   assert_true(capability.id().length() >= 20)
-  match registry.resolve("main", capability.id(), Read) {
-    Ok(path) => assert_eq(path, "C:\\secret\\report.txt")
+  let path = registry.resolve("main", capability.id(), Read) catch {
     _ => fail("expected selecting window to resolve its handle")
   }
-  match registry.resolve("other", capability.id(), Read) {
-    Err(WrongPrincipal(_)) => ()
-    _ => fail("expected cross-window denial")
+  assert_eq(path, "C:\\secret\\report.txt")
+  let cross_window_denied = try {
+    ignore(registry.resolve("other", capability.id(), Read))
+    false
+  } catch {
+    WrongPrincipal(_) => true
+    _ => false
   }
-  match registry.resolve("main", capability.id(), Write) {
-    Err(WrongKind(_)) => ()
-    _ => fail("expected operation-kind denial")
+  assert_true(cross_window_denied)
+  let wrong_kind_denied = try {
+    ignore(registry.resolve("main", capability.id(), Write))
+    false
+  } catch {
+    WrongKind(_) => true
+    _ => false
   }
-  match registry.mint("main", "C:\\secret\\folder", Directory) {
-    Err(DirectoryUnavailable) => ()
-    _ => fail("directory capabilities require a native directory handle")
+  assert_true(wrong_kind_denied)
+  let directory_denied = try {
+    ignore(registry.mint("main", "C:\\secret\\folder", Directory))
+    false
+  } catch {
+    DirectoryUnavailable => true
+    _ => false
   }
+  assert_true(directory_denied)
   registry.revoke_window("main")
-  match registry.resolve("main", capability.id(), Read) {
-    Err(UnknownHandle(_)) => ()
-    _ => fail("expected revocation")
+  let revoked = try {
+    ignore(registry.resolve("main", capability.id(), Read))
+    false
+  } catch {
+    UnknownHandle(_) => true
+    _ => false
   }
+  assert_true(revoked)
 }

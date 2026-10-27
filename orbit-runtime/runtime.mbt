@@ -11,10 +11,10 @@ pub extend RuntimeError with Debug::{to_repr}
 
 ///|
 pub struct RuntimeBounds {
-  x : Int
-  y : Int
-  width : Int
-  height : Int
+  x : Int32
+  y : Int32
+  width : Int32
+  height : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -25,10 +25,10 @@ pub extend RuntimeBounds with Debug::{to_repr}
 
 ///|
 pub fn RuntimeBounds::new(
-  x? : Int = 0,
-  y? : Int = 0,
-  width~ : Int,
-  height~ : Int,
+  x~ : Int32 = 0,
+  y~ : Int32 = 0,
+  width~ : Int32,
+  height~ : Int32,
 ) -> RuntimeBounds raise RuntimeError {
   if width <= 0 || height <= 0 {
     raise InvalidState("runtime bounds must have positive dimensions")
@@ -164,7 +164,7 @@ pub struct RuntimePageMessage {
 ///|
 pub fn RuntimePageMessage::new(
   body~ : String,
-  origin? : String? = None,
+  origin~ : String? = None,
 ) -> RuntimePageMessage {
   { body, origin, }
 }
@@ -190,10 +190,10 @@ pub fn RuntimeFileDialogFilter::new(
 ///|
 pub fn RuntimeFileDialogOptions::new(
   kind~ : RuntimeFileDialogKind,
-  title? : String? = None,
-  filters? : Array[RuntimeFileDialogFilter] = [],
-  default_name? : String? = None,
-  initial_directory? : String? = None,
+  title~ : String? = None,
+  filters~ : Array[RuntimeFileDialogFilter] = [],
+  default_name~ : String? = None,
+  initial_directory~ : String? = None,
 ) -> RuntimeFileDialogOptions {
   { kind, title, filters, default_name, initial_directory, }
 }
@@ -275,14 +275,14 @@ pub fn RuntimeResourceRequest::body(self : RuntimeResourceRequest) -> Bytes {
 
 ///|
 pub struct RuntimeResourceResponse {
-  status : Int
+  status : Int32
   media_type : String
   body : Bytes
 }
 
 ///|
 pub fn RuntimeResourceResponse::new(
-  status~ : Int,
+  status~ : Int32,
   media_type~ : String,
   body~ : Bytes,
 ) -> RuntimeResourceResponse {
@@ -290,7 +290,7 @@ pub fn RuntimeResourceResponse::new(
 }
 
 ///|
-pub fn RuntimeResourceResponse::status(self : RuntimeResourceResponse) -> Int {
+pub fn RuntimeResourceResponse::status(self : RuntimeResourceResponse) -> Int32 {
   self.status
 }
 
@@ -358,12 +358,12 @@ pub fn RuntimeOptions::new(
   label~ : String,
   bounds~ : RuntimeBounds,
   initial_content~ : InitialContent,
-  initialization_script? : String = "",
-  visible? : Bool = true,
-  lifecycle_handler? : (RuntimeLifecycleEvent) -> Unit = _event => (),
-  external_navigation_handler? : (String) -> Bool = _url => false,
-  resource_provider? : RuntimeResourceProvider? = None,
-  remote_navigation? : RemoteNavigation? = None,
+  initialization_script~ : String = "",
+  visible~ : Bool = true,
+  lifecycle_handler~ : (RuntimeLifecycleEvent) -> Unit = _event => (),
+  external_navigation_handler~ : (String) -> Bool = _url => false,
+  resource_provider~ : RuntimeResourceProvider? = None,
+  remote_navigation~ : RemoteNavigation? = None,
 ) -> RuntimeOptions raise RuntimeError {
   if label.is_empty() {
     raise InvalidState("runtime label must not be empty")

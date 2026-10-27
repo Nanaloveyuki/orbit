@@ -16,7 +16,8 @@ Orbit 不绑定前端框架。静态 HTML/CSS/JavaScript、React、Vue 和其他
 
 ## 环境要求
 
-- [MoonBit 工具链](https://www.moonbitlang.com/download/)
+- [MoonBit 工具链](https://www.moonbitlang.com/download/)：编译器
+  `0.10.17+d971670cd`，CLI `0.1.20261023`
 - 本机 C/C++ 编译和链接工具链
 - 使用 CLI 或 Vite 时需要 Node.js 20 或更高版本
 - Windows：MSVC 和 Windows SDK

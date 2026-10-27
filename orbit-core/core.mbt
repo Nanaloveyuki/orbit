@@ -47,8 +47,8 @@ pub fn DesktopIpcPrincipal::remote_page() -> DesktopIpcPrincipal {
 pub fn DesktopWindowOptions::new(
   window_title : String,
   runtime_options : @runtime.RuntimeOptions,
-  resizable? : Bool = true,
-  ipc_principal? : DesktopIpcPrincipal = Window,
+  resizable~ : Bool = true,
+  ipc_principal~ : DesktopIpcPrincipal = Window,
 ) -> DesktopWindowOptions raise CoreError {
   if window_title.is_empty() {
     raise InitializationFailed("window title must not be empty")
@@ -92,16 +92,16 @@ fn resolve_plugin_development_directory(
 ///|
 pub fn DesktopOptions::new(
   windows~ : Array[DesktopWindowOptions],
-  ipc_registry? : @ipc.CommandRegistry? = None,
-  ipc_policy? : @ipc.CommandPolicy? = None,
-  plugin_declarations? : Array[@plugin.PluginDeclaration] = [],
-  plugin_development_directory? : String? = None,
-  event_router? : @event.EventRouter? = None,
-  extensions? : Array[&DesktopExtension] = [],
-  close_request_handler? : ((String, DesktopController) -> DesktopCloseAction)? = None,
-  runtime_suspend_handler? : ((String) -> Result[Unit, String])? = None,
-  diagnostic_sink? : &@diagnostics.DiagnosticSink? = None,
-  diagnostic_configuration_fingerprint? : String? = None,
+  ipc_registry~ : @ipc.CommandRegistry? = None,
+  ipc_policy~ : @ipc.CommandPolicy? = None,
+  plugin_declarations~ : Array[@plugin.PluginDeclaration] = [],
+  plugin_development_directory~ : String? = None,
+  event_router~ : @event.EventRouter? = None,
+  extensions~ : Array[&DesktopExtension] = [],
+  close_request_handler~ : ((String, DesktopController) -> DesktopCloseAction)? = None,
+  runtime_suspend_handler~ : ((String) -> Result[Unit, String])? = None,
+  diagnostic_sink~ : &@diagnostics.DiagnosticSink? = None,
+  diagnostic_configuration_fingerprint~ : String? = None,
 ) -> DesktopOptions raise CoreError {
   if windows.is_empty() {
     raise InitializationFailed("at least one desktop window is required")
@@ -1404,7 +1404,7 @@ pub impl @orby.App for DesktopApp with fn exiting(self, active) {
 pub fn run(
   factory : &@runtime.RuntimeFactory,
   options : DesktopOptions,
-) -> Int raise CoreError {
+) -> Int32 raise CoreError {
   let event_loop = @orby.EventLoop::new() catch {
     error => raise InitializationFailed(init_reason(error))
   }

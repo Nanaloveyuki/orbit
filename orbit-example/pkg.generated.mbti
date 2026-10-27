@@ -49,7 +49,7 @@ pub fn orbit_contract_decode_10(Json, String) -> Unit raise OrbitContractError
 
 pub fn orbit_contract_decode_11(Json, String) -> OrbitContract11 raise OrbitContractError
 
-pub fn orbit_contract_decode_12(Json, String) -> Int raise OrbitContractError
+pub fn orbit_contract_decode_12(Json, String) -> Int32 raise OrbitContractError
 
 pub fn orbit_contract_decode_2(Json, String) -> OrbitOperationFailed raise OrbitContractError
 
@@ -75,7 +75,7 @@ pub fn orbit_contract_encode_10(Unit, String) -> Json
 
 pub fn orbit_contract_encode_11(OrbitContract11, String) -> Json
 
-pub fn orbit_contract_encode_12(Int, String) -> Json
+pub fn orbit_contract_encode_12(Int32, String) -> Json
 
 pub fn orbit_contract_encode_2(OrbitOperationFailed, String) -> Json
 
@@ -107,7 +107,7 @@ pub fn resource_response_0(String) -> @orbit-runtime.RuntimeResourceResponse?
 
 pub let resource_scheme : String
 
-pub let window_height : Int
+pub let window_height : Int32
 
 pub let window_label : String
 
@@ -117,7 +117,7 @@ pub let window_title : String
 
 pub let window_visible : Bool
 
-pub let window_width : Int
+pub let window_width : Int32
 
 // Errors
 pub(all) suberror OrbitContractError {
@@ -126,7 +126,7 @@ pub(all) suberror OrbitContractError {
 
 // Types and methods
 pub(all) struct OrbitContract11 {
-  revision : Int
+  revision : Int32
 } derive(@debug.Debug)
 
 pub(all) enum OrbitContract3 {

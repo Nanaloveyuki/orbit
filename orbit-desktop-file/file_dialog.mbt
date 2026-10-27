@@ -80,18 +80,18 @@ fn show_file_dialog(
   try {
     match ui.show_file_dialog(options) {
       @runtime.RuntimeFileDialogResult::Cancelled =>
-        Ok({ cancelled: true, files: [] })
+        Ok({ cancelled: true, files: [], })
       @runtime.RuntimeFileDialogResult::Selected(paths) => {
         let selected_files : Array[FileDialogFileResponse] = []
         let file_kind = dialog_file_kind(kind)
         for path in paths {
-          let capability_result = match file_kind {
-            Directory => files.mint_directory(label, path)
-            Read | Write => files.mint(label, path, file_kind)
-          }
-          let capability = match capability_result {
-            Ok(capability) => capability
-            Err(_) =>
+          let capability = try {
+            match file_kind {
+              Directory => files.mint_directory(label, path)
+              Read | Write => files.mint(label, path, file_kind)
+            }
+          } catch {
+            _ =>
               return Err(
                 @ipc.CommandFailure::new(
                   code="handle_unavailable",
@@ -105,7 +105,7 @@ fn show_file_dialog(
             kind: dialog_file_kind_name(file_kind),
           })
         }
-        Ok({ cancelled: false, files: selected_files })
+        Ok({ cancelled: false, files: selected_files, })
       }
     }
   } catch {

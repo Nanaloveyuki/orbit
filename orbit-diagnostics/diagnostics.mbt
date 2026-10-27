@@ -48,9 +48,9 @@ pub struct DiagnosticEvent {
 ///|
 pub fn DiagnosticEvent::new(
   kind : DiagnosticKind,
-  level? : DiagnosticLevel = Info,
-  window_label? : String? = None,
-  configuration_fingerprint? : String? = None,
+  level~ : DiagnosticLevel = Info,
+  window_label~ : String? = None,
+  configuration_fingerprint~ : String? = None,
 ) -> DiagnosticEvent {
   { level, kind, window_label, configuration_fingerprint, }
 }
@@ -146,11 +146,11 @@ pub extend BitLoggerDiagnosticSink with DiagnosticSink::{record}
 pub struct DiagnosticHistory {
   priv sink : @bitlogger.HistorySink
   priv mut support_events : Array[SupportEvent]
-  priv mut support_dropped_event_count : Int
+  priv mut support_dropped_event_count : Int32
 }
 
 ///|
-pub fn DiagnosticHistory::new(capacity? : Int = 128) -> DiagnosticHistory {
+pub fn DiagnosticHistory::new(capacity~ : Int32 = 128) -> DiagnosticHistory {
   {
     sink: @bitlogger.history_sink(capacity~),
     support_events: [],
@@ -159,17 +159,17 @@ pub fn DiagnosticHistory::new(capacity? : Int = 128) -> DiagnosticHistory {
 }
 
 ///|
-pub fn DiagnosticHistory::capacity(self : DiagnosticHistory) -> Int {
+pub fn DiagnosticHistory::capacity(self : DiagnosticHistory) -> Int32 {
   self.sink.capacity()
 }
 
 ///|
-pub fn DiagnosticHistory::count(self : DiagnosticHistory) -> Int {
+pub fn DiagnosticHistory::count(self : DiagnosticHistory) -> Int32 {
   self.sink.count()
 }
 
 ///|
-pub fn DiagnosticHistory::dropped_count(self : DiagnosticHistory) -> Int {
+pub fn DiagnosticHistory::dropped_count(self : DiagnosticHistory) -> Int32 {
   self.sink.dropped_count()
 }
 

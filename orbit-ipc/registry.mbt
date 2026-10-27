@@ -23,7 +23,7 @@ pub struct CommandRegistry {
 
 ///|
 pub fn CommandRegistry::new() -> CommandRegistry {
-  { handlers: Map([]) }
+  { handlers: Map([]), }
 }
 
 ///|
@@ -168,7 +168,7 @@ pub fn CommandRegistry::contains(
 }
 
 ///|
-pub fn CommandRegistry::length(self : CommandRegistry) -> Int {
+pub fn CommandRegistry::length(self : CommandRegistry) -> Int32 {
   self.handlers.length()
 }
 

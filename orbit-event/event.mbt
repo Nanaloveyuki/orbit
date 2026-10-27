@@ -80,8 +80,8 @@ pub extend EventEnvelope with Debug::{to_repr}
 pub fn EventEnvelope::new(
   name~ : EventName,
   payload~ : Json,
-  source? : EventTarget = Application,
-  target? : EventTarget = Any,
+  source~ : EventTarget = Application,
+  target~ : EventTarget = Any,
 ) -> EventEnvelope {
   { name, source, target, payload, }
 }
@@ -118,16 +118,16 @@ type EventHandler = (EventEnvelope) -> Result[Unit, EventDeliveryFailure]
 /// Identifies an additional router subscription. It can only be removed through
 /// the router that created it.
 pub struct EventSubscription {
-  priv router_identifier : Int
+  priv router_identifier : Int32
   priv target : String
-  priv identifier : Int
+  priv identifier : Int32
 }
 
 ///|
-let next_router_identifier : Ref[Int] = Ref(1)
+let next_router_identifier : Ref[Int32] = Ref(1)
 
 ///|
-fn allocate_router_identifier() -> Int {
+fn allocate_router_identifier() -> Int32 {
   let identifier = next_router_identifier.val
   next_router_identifier.val += 1
   identifier
@@ -138,10 +138,10 @@ fn allocate_router_identifier() -> Int {
 /// be safely used from the desktop UI thread without introducing a second
 /// runtime or changing the native plugin ABI.
 pub struct EventRouter {
-  priv identifier : Int
+  priv identifier : Int32
   priv handlers : Map[String, EventHandler]
-  priv additional_handlers : Map[String, Map[Int, EventHandler]]
-  priv mut next_subscription_identifier : Int
+  priv additional_handlers : Map[String, Map[Int32, EventHandler]]
+  priv mut next_subscription_identifier : Int32
 }
 
 ///|

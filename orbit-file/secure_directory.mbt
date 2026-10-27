@@ -46,7 +46,7 @@ priv type NativeReadFile
 #borrow(path, status)
 extern "C" fn native_directory_open(
   path : Bytes,
-  status : Ref[Int],
+  status : Ref[Int32],
 ) -> NativeDirectory = "orbit_file_directory_open"
 
 ///|
@@ -57,8 +57,8 @@ extern "C" fn native_directory_close(directory : NativeDirectory) -> Unit = "orb
 #borrow(directory, status)
 extern "C" fn native_directory_entries(
   directory : NativeDirectory,
-  max_entries : Int,
-  status : Ref[Int],
+  max_entries : Int32,
+  status : Ref[Int32],
 ) -> Bytes = "orbit_file_directory_entries"
 
 ///|
@@ -66,7 +66,7 @@ extern "C" fn native_directory_entries(
 extern "C" fn native_directory_open_child(
   directory : NativeDirectory,
   name : Bytes,
-  status : Ref[Int],
+  status : Ref[Int32],
 ) -> NativeDirectory = "orbit_file_directory_open_child"
 
 ///|
@@ -74,7 +74,7 @@ extern "C" fn native_directory_open_child(
 extern "C" fn native_directory_open_read_file(
   directory : NativeDirectory,
   name : Bytes,
-  status : Ref[Int],
+  status : Ref[Int32],
 ) -> NativeReadFile = "orbit_file_directory_open_read_file"
 
 ///|
@@ -85,12 +85,12 @@ extern "C" fn native_read_file_close(file : NativeReadFile) -> Unit = "orbit_fil
 #borrow(file, status)
 extern "C" fn native_read_file_bytes(
   file : NativeReadFile,
-  max_bytes : Int,
-  status : Ref[Int],
+  max_bytes : Int32,
+  status : Ref[Int32],
 ) -> Bytes = "orbit_file_read_file_bytes"
 
 ///|
-fn directory_error_from_status(status : Int) -> DirectoryHandleError {
+fn directory_error_from_status(status : Int32) -> DirectoryHandleError {
   match status {
     2 => InvalidChildName
     4 => TooLarge
@@ -100,7 +100,7 @@ fn directory_error_from_status(status : Int) -> DirectoryHandleError {
 }
 
 ///|
-fn decode_u32_le(bytes : Bytes, offset : Int) -> Int? {
+fn decode_u32_le(bytes : Bytes, offset : Int32) -> Int32? {
   if offset < 0 || offset + 4 > bytes.length() {
     return None
   }
@@ -115,62 +115,62 @@ fn decode_u32_le(bytes : Bytes, offset : Int) -> Int? {
 ///|
 fn decode_directory_entries(
   bytes : Bytes,
-) -> Result[Array[DirectoryEntry], DirectoryHandleError] {
+) -> Array[DirectoryEntry] raise DirectoryHandleError {
   let count = match decode_u32_le(bytes, 0) {
     Some(count) if count >= 0 && count <= 128 => count
-    _ => return Err(ReadFailed)
+    _ => raise ReadFailed
   }
   let mut offset = 4
   let entries : Array[DirectoryEntry] = []
   for _ in 0..<count {
     if offset + 5 > bytes.length() {
-      return Err(ReadFailed)
+      raise ReadFailed
     }
     let kind = match bytes[offset].to_int() {
       1 => File
       2 => Directory
-      _ => return Err(ReadFailed)
+      _ => raise ReadFailed
     }
     let name_length = match decode_u32_le(bytes, offset + 1) {
       Some(length) if length > 0 && length <= 4096 => length
-      _ => return Err(ReadFailed)
+      _ => raise ReadFailed
     }
     offset += 5
     if offset + name_length > bytes.length() {
-      return Err(ReadFailed)
+      raise ReadFailed
     }
     let name = @utf8.decode(bytes[offset:offset + name_length]) catch {
-      _ => return Err(ReadFailed)
+      _ => raise ReadFailed
     }
     if name.is_empty() {
-      return Err(ReadFailed)
+      raise ReadFailed
     }
     entries.push({ name, kind, })
     offset += name_length
   }
   if offset != bytes.length() {
-    return Err(ReadFailed)
+    raise ReadFailed
   }
-  Ok(entries)
+  entries
 }
 
 ///|
 fn native_directory_open_path(
   path : String,
-) -> Result[NativeDirectory, DirectoryHandleError] {
+) -> NativeDirectory raise DirectoryHandleError {
   let status = Ref(0)
   let directory = native_directory_open(@utf8.encode(path, bom=false), status)
   if status.val != 0 {
-    return Err(directory_error_from_status(status.val))
+    raise directory_error_from_status(status.val)
   }
-  Ok(directory)
+  directory
 }
 
 ///|
 fn native_directory_open_relative(
   directory : NativeDirectory,
   name : String,
-) -> Result[NativeDirectory, DirectoryHandleError] {
+) -> NativeDirectory raise DirectoryHandleError {
   let status = Ref(0)
   let child = native_directory_open_child(
     directory,
@@ -178,20 +178,20 @@ fn native_directory_open_relative(
     status,
   )
   if status.val != 0 {
-    return Err(directory_error_from_status(status.val))
+    raise directory_error_from_status(status.val)
   }
-  Ok(child)
+  child
 }
 
 ///|
 fn native_directory_list(
   directory : NativeDirectory,
-  max_entries : Int,
-) -> Result[Array[DirectoryEntry], DirectoryHandleError] {
+  max_entries : Int32,
+) -> Array[DirectoryEntry] raise DirectoryHandleError {
   let status = Ref(0)
   let bytes = native_directory_entries(directory, max_entries, status)
   if status.val != 0 {
-    return Err(directory_error_from_status(status.val))
+    raise directory_error_from_status(status.val)
   }
   decode_directory_entries(bytes)
 }
@@ -200,7 +200,7 @@ fn native_directory_list(
 fn native_directory_open_read_relative(
   directory : NativeDirectory,
   name : String,
-) -> Result[NativeReadFile, DirectoryHandleError] {
+) -> NativeReadFile raise DirectoryHandleError {
   let status = Ref(0)
   let file = native_directory_open_read_file(
     directory,
@@ -208,20 +208,20 @@ fn native_directory_open_read_relative(
     status,
   )
   if status.val != 0 {
-    return Err(directory_error_from_status(status.val))
+    raise directory_error_from_status(status.val)
   }
-  Ok(file)
+  file
 }
 
 ///|
 fn native_read_file_read(
   file : NativeReadFile,
-  max_bytes : Int,
-) -> Result[Bytes, DirectoryHandleError] {
+  max_bytes : Int32,
+) -> Bytes raise DirectoryHandleError {
   let status = Ref(0)
   let bytes = native_read_file_bytes(file, max_bytes, status)
   if status.val != 0 {
-    return Err(directory_error_from_status(status.val))
+    raise directory_error_from_status(status.val)
   }
-  Ok(bytes)
+  bytes
 }

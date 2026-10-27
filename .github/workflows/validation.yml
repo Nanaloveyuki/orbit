@@ -43,16 +43,22 @@ jobs:
       - name: Install MoonBit
         shell: pwsh
         run: |
-          $env:MOONBIT_INSTALL_VERSION = (Get-Content .moon-version -Raw).Trim()
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content .moonbit-toolchain -Raw).Trim()
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           "$HOME\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - run: moon version --all
-      - name: Verify MoonBit release line
+      - name: Verify pinned MoonBit toolchain
         shell: pwsh
         run: |
-          if (-not (moon version --all | Select-String -Pattern '^moonc v0\.10\.')) {
-            throw "MoonBit 0.10.x is required"
+          $versions = moon version --all
+          $compiler = (Get-Content .moonbit-toolchain -Raw).Trim()
+          $cli = (Get-Content .moon-version -Raw).Trim()
+          if (-not ($versions | Select-String -SimpleMatch "moonc v$compiler (")) {
+            throw "MoonBit compiler $compiler is required"
+          }
+          if (-not ($versions | Select-String -SimpleMatch "moon $cli (")) {
+            throw "MoonBit CLI $cli is required"
           }
       - run: moon update
       - run: moon check --target native --deny-warn
@@ -83,11 +89,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- "$(cat .moonbit-toolchain)"
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - run: moon version --all
-      - name: Verify MoonBit release line
-        run: moon version --all | grep -E '^moonc v0\.10\.'
+      - name: Verify pinned MoonBit toolchain
+        run: |
+          moon version --all | grep -F "moonc v$(cat .moonbit-toolchain) ("
+          moon version --all | grep -F "moon $(cat .moon-version) ("
       - run: moon update
       - run: moon check --target native --deny-warn
       - run: moon test --target native --deny-warn
@@ -142,9 +150,13 @@ jobs:
           echo "ANDROID_NDK_HOME=$android_sdk/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s "$(cat .moon-version)"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- "$(cat .moonbit-toolchain)"
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
           echo "MOON_HOME=$HOME/.moon" >> "$GITHUB_ENV"
+      - name: Verify pinned MoonBit toolchain
+        run: |
+          moon version --all | grep -F "moonc v$(cat .moonbit-toolchain) ("
+          moon version --all | grep -F "moon $(cat .moon-version) ("
       - name: Install project dependencies
         run: |
           moon -C ../.. update

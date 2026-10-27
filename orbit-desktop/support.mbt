@@ -2,7 +2,7 @@
 using @core {trait DesktopExtension}
 
 ///|
-const TEXT_LIMIT : Int = 65536
+const TEXT_LIMIT : Int32 = 65536
 
 ///|
 fn invalid_payload() -> @ipc.CommandFailure {

@@ -6,7 +6,7 @@ pub struct DesktopHotkeyExtension {
 
 ///|
 pub fn DesktopHotkeyExtension::new(
-  events? : @event.EventRouter? = None,
+  events~ : @event.EventRouter? = None,
 ) -> DesktopHotkeyExtension {
   { events, manager: Ref(None), }
 }

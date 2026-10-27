@@ -32,11 +32,11 @@ pub fn DiagnosticEvent::with_configuration_fingerprint(Self, String) -> Self
 pub struct DiagnosticHistory {
   // private fields
 }
-pub fn DiagnosticHistory::capacity(Self) -> Int
+pub fn DiagnosticHistory::capacity(Self) -> Int32
 pub fn DiagnosticHistory::clear(Self) -> Unit
-pub fn DiagnosticHistory::count(Self) -> Int
-pub fn DiagnosticHistory::dropped_count(Self) -> Int
-pub fn DiagnosticHistory::new(capacity? : Int) -> Self
+pub fn DiagnosticHistory::count(Self) -> Int32
+pub fn DiagnosticHistory::dropped_count(Self) -> Int32
+pub fn DiagnosticHistory::new(capacity? : Int32) -> Self
 pub fn DiagnosticHistory::record(Self, DiagnosticEvent) -> Unit
 pub fn DiagnosticHistory::snapshot(Self) -> Array[@core.Record]
 pub fn DiagnosticHistory::support_bundle(Self) -> SupportBundle
@@ -74,9 +74,9 @@ pub fn DiagnosticLevel::not_equal(Self, Self) -> Bool
 pub fn DiagnosticLevel::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SupportBundle {
-  schema_version : Int
-  capacity : Int
-  dropped_event_count : Int
+  schema_version : Int32
+  capacity : Int32
+  dropped_event_count : Int32
   events : Array[SupportEvent]
 } derive(Eq, ToJson, @debug.Debug)
 pub fn SupportBundle::equal(Self, Self) -> Bool

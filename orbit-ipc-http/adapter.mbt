@@ -2,7 +2,7 @@
 const DEFAULT_ENDPOINT_PATH : String = "/orbit/v1/invoke"
 
 ///|
-const MAX_IPC_MESSAGE_BYTES : Int = 262_144
+const MAX_IPC_MESSAGE_BYTES : Int32 = 262_144
 
 ///|
 pub(all) suberror HttpAdapterError {
@@ -75,7 +75,7 @@ priv struct PreparedRequest {
 
 ///|
 priv struct AdapterResponse {
-  status : Int
+  status : Int32
   reason : String
   body : String
   headers : @http.Headers
@@ -89,11 +89,11 @@ priv enum BodyReadError {
 
 ///|
 fn adapter_failure(
-  status : Int,
+  status : Int32,
   reason : String,
   code : String,
   message : String,
-  headers? : @http.Headers = Map([]),
+  headers~ : @http.Headers = Map([]),
 ) -> AdapterResponse {
   {
     status,
@@ -130,7 +130,7 @@ fn is_json_content_type(value : String) -> Bool {
 }
 
 ///|
-fn content_length(headers : @http.Headers) -> Int? raise {
+fn content_length(headers : @http.Headers) -> Int32? raise {
   match headers.get("content-length") {
     None => None
     Some(value) => Some(@string.parse_int(value.trim(), base=10))
@@ -140,8 +140,8 @@ fn content_length(headers : @http.Headers) -> Int? raise {
 ///|
 fn validate_body_headers(
   headers : @http.Headers,
-  max_request_bytes : Int,
-) -> Result[Int?, AdapterResponse] {
+  max_request_bytes : Int32,
+) -> Result[Int32?, AdapterResponse] {
   if headers.contains("content-length") && headers.contains("transfer-encoding") {
     return Err(
       adapter_failure(
@@ -177,7 +177,7 @@ fn validate_body_headers(
 ///|
 async fn read_body_limited(
   body : &@io.Reader,
-  limit : Int,
+  limit : Int32,
 ) -> Result[String, BodyReadError] {
   let chunks : Array[Bytes] = []
   let mut length = 0
@@ -212,8 +212,8 @@ pub struct HttpAdapter {
   priv policy : @ipc.CommandPolicy
   priv authenticate : (HttpRequestMetadata) -> AuthenticatedHttpClient?
   priv endpoint_path : String
-  priv max_request_bytes : Int
-  priv max_response_chars : Int
+  priv max_request_bytes : Int32
+  priv max_response_chars : Int32
 }
 
 ///|
@@ -227,9 +227,9 @@ pub fn HttpAdapter::new(
   registry : @ipc.CommandRegistry,
   policy : @ipc.CommandPolicy,
   authenticate : (HttpRequestMetadata) -> AuthenticatedHttpClient?,
-  endpoint_path? : String = DEFAULT_ENDPOINT_PATH,
-  max_request_bytes? : Int = MAX_IPC_MESSAGE_BYTES,
-  max_response_chars? : Int = MAX_IPC_MESSAGE_BYTES,
+  endpoint_path~ : String = DEFAULT_ENDPOINT_PATH,
+  max_request_bytes~ : Int32 = MAX_IPC_MESSAGE_BYTES,
+  max_response_chars~ : Int32 = MAX_IPC_MESSAGE_BYTES,
 ) -> HttpAdapter raise HttpAdapterError {
   if !valid_endpoint_path(endpoint_path) {
     raise InvalidAdapterConfiguration("invalid HTTP invocation endpoint path")
@@ -407,7 +407,7 @@ pub async fn HttpAdapter::handle(
 pub async fn HttpAdapter::serve(
   self : HttpAdapter,
   server : @http.Server,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   server.run_forever(allow_failure=true, max_connections?) <| ((
     request,

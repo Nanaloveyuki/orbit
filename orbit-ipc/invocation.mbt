@@ -124,7 +124,7 @@ pub struct InvocationContext {
   priv transport : InvocationTransport
   priv principal : InvocationPrincipal
   priv origin : String?
-  priv max_response_chars : Int
+  priv max_response_chars : Int32
   priv cancellation : InvocationCancellation
 }
 
@@ -204,7 +204,7 @@ pub fn InvocationContext::background_task(
 ///|
 pub fn InvocationContext::with_response_limit(
   self : InvocationContext,
-  max_response_chars : Int,
+  max_response_chars : Int32,
 ) -> InvocationContext raise IpcError {
   if max_response_chars < 256 || max_response_chars > 262_144 {
     raise InvalidContext(
@@ -240,7 +240,7 @@ pub fn InvocationContext::origin(self : InvocationContext) -> String? {
 }
 
 ///|
-pub fn InvocationContext::max_response_chars(self : InvocationContext) -> Int {
+pub fn InvocationContext::max_response_chars(self : InvocationContext) -> Int32 {
   self.max_response_chars
 }
 

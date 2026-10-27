@@ -9,8 +9,8 @@ priv struct V1AppConfig {
 priv struct V1WindowConfig {
   label : String
   title : String
-  width : Int
-  height : Int
+  width : Int32
+  height : Int32
   entry : String
   visible : Bool
   resizable : Bool
@@ -42,7 +42,7 @@ priv struct V1PluginConfig {
 
 ///|
 priv struct V1OrbitConfig {
-  schema_version : Int
+  schema_version : Int32
   app : V1AppConfig
   windows : Array[V1WindowConfig]
   security : V1SecurityConfig
@@ -156,15 +156,16 @@ fn valid_command_name(value : String) -> Bool {
 
 ///|
 fn valid_plugin_library_path(value : String) -> Bool {
-  match normalize_resource_path(value) {
-    Ok(path) =>
+  try normalize_resource_path(value) catch {
+    _ => false
+  } noraise {
+    path =>
       path.has_prefix("plugins/") &&
       (
         path.has_suffix(".dll") ||
         path.has_suffix(".so") ||
         path.has_suffix(".dylib")
       )
-    Err(_) => false
   }
 }
 
@@ -238,9 +239,8 @@ fn validate_v1_config(config : V1OrbitConfig) -> Array[ConfigDiagnostic] {
         ),
       )
     }
-    match normalize_resource_path(window.entry) {
-      Ok(_) => ()
-      Err(_) =>
+    try normalize_resource_path(window.entry) catch {
+      _ =>
         diagnostics.push(
           diagnostic(
             "invalid_entry",
@@ -248,6 +248,8 @@ fn validate_v1_config(config : V1OrbitConfig) -> Array[ConfigDiagnostic] {
             "window entry must be a normalized relative resource path",
           ),
         )
+    } noraise {
+      _ => ()
     }
   }
   let capability_identifiers : Map[String, Bool] = Map([])
@@ -391,7 +393,9 @@ fn normalize_v1_config(config : V1OrbitConfig) -> V1OrbitConfig {
     title: window.title.trim().to_owned(),
     width: window.width,
     height: window.height,
-    entry: normalize_resource_path(window.entry).unwrap_or(window.entry),
+    entry: normalize_resource_path(window.entry) catch {
+      _ => window.entry
+    },
     visible: window.visible,
     resizable: window.resizable,
   })
@@ -402,7 +406,9 @@ fn normalize_v1_config(config : V1OrbitConfig) -> V1OrbitConfig {
   })
   let plugins = config.plugins.map(plugin => V1PluginConfig::{
     id: plugin.id.trim().to_owned(),
-    library: normalize_resource_path(plugin.library).unwrap_or(plugin.library),
+    library: normalize_resource_path(plugin.library) catch {
+      _ => plugin.library
+    },
     permissions: plugin.permissions.map(permission => {
       permission.trim().to_owned()
     }),

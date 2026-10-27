@@ -27,7 +27,7 @@ pub fn Platform::parse(value : StringView) -> Platform {
 }
 
 ///|
-extern "C" fn native_platform_code() -> Int = "orbit_current_platform"
+extern "C" fn native_platform_code() -> Int32 = "orbit_current_platform"
 
 ///|
 pub fn current_platform() -> Platform {

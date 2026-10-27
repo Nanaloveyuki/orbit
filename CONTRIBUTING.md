@@ -7,13 +7,30 @@ beta 契约的参考标准见[标准文档](docs/standards/README.md)；在首�
 
 ## 开发环境
 
-- MoonBit 工具链，版本入口由 [`.moon-version`](.moon-version) 记录；
+- MoonBit 编译器 `0.10.17+d971670cd`，CLI `0.1.20261023`；安装归档由
+  [`.moonbit-toolchain`](.moonbit-toolchain) 固定，[`.moon-version`](.moon-version)
+  记录 CLI 版本；
 - Node.js 20 或更高版本；
 - 平台 native toolchain；
 - Windows：MSVC/Windows SDK；MoonView 自动准备 WebView2 SDK；
 - Linux：C compiler、GTK3、WebKitGTK 4.1、Xvfb；
 - Android：JDK 17、Android SDK 35、Build Tools 36.1.0、NDK 29、CMake 4.1.2；
 - 插件 fixture 在 Windows 使用 `cl.exe`，不可用时回退 `clang.exe`，Linux 使用 `cc`。
+
+Unix 安装固定版本：
+
+```sh
+curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- "$(cat .moonbit-toolchain)"
+```
+
+Windows 安装时也使用编译器归档标识，不把 CLI 版本传给安装器：
+
+```powershell
+$env:MOONBIT_INSTALL_VERSION = (Get-Content .moonbit-toolchain -Raw).Trim()
+irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+```
+
+运行 `moon version --all`，确认编译器和 CLI 分别与两个版本文件一致。
 
 ```sh
 git clone https://github.com/Nanaloveyuki/orbit.git

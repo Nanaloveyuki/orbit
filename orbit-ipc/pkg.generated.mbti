@@ -18,7 +18,7 @@ pub fn encode_response(InvocationResponse) -> String
 // Errors
 pub(all) suberror IpcError {
   MalformedEnvelope(String)
-  UnsupportedVersion(Int)
+  UnsupportedVersion(Int32)
   InvalidInvocationId(String)
   InvalidCommandName(String)
   InvalidCapability(String)
@@ -91,7 +91,7 @@ pub async fn CommandRegistry::dispatch_for_window_async(Self, StringView, Comman
 pub async fn CommandRegistry::dispatch_invocation_async(Self, InvocationRequest, CommandPolicy, InvocationContext) -> String
 pub fn CommandRegistry::dispatch_with_context(Self, StringView, CommandPolicy, InvocationContext) -> String
 pub async fn CommandRegistry::dispatch_with_context_async(Self, StringView, CommandPolicy, InvocationContext) -> String
-pub fn CommandRegistry::length(Self) -> Int
+pub fn CommandRegistry::length(Self) -> Int32
 pub fn CommandRegistry::new() -> Self
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
 pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async(Self, CommandName, async (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
@@ -119,14 +119,14 @@ pub struct InvocationContext {
 pub fn InvocationContext::background_task(String) -> Self raise IpcError
 pub fn InvocationContext::cancellation(Self) -> InvocationCancellation
 pub fn InvocationContext::http_client(String, origin? : String) -> Self raise IpcError
-pub fn InvocationContext::max_response_chars(Self) -> Int
+pub fn InvocationContext::max_response_chars(Self) -> Int32
 pub fn InvocationContext::origin(Self) -> String?
 pub fn InvocationContext::plugin(String) -> Self raise IpcError
 pub fn InvocationContext::principal(Self) -> InvocationPrincipal
 pub fn InvocationContext::remote_page(String, origin~ : String?) -> Self raise IpcError
 pub fn InvocationContext::transport(Self) -> InvocationTransport
 pub fn InvocationContext::window(String) -> Self raise IpcError
-pub fn InvocationContext::with_response_limit(Self, Int) -> Self raise IpcError
+pub fn InvocationContext::with_response_limit(Self, Int32) -> Self raise IpcError
 
 pub struct InvocationId {
   // private fields
@@ -154,7 +154,7 @@ pub struct InvocationRequest {
 pub fn InvocationRequest::command(Self) -> CommandName
 pub fn InvocationRequest::id(Self) -> InvocationId
 pub fn InvocationRequest::payload(Self) -> Json
-pub fn InvocationRequest::timeout_ms(Self) -> Int
+pub fn InvocationRequest::timeout_ms(Self) -> Int32
 
 pub(all) enum InvocationResponse {
   Success(InvocationId, Json)

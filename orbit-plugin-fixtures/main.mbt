@@ -178,7 +178,7 @@ fn run_v2_fixture(path : String) -> Unit {
   let event_loop = @orby.EventLoop::new() catch {
     _ => abort("could not create v2 fixture event loop")
   }
-  let app_loop = event_loop.start_external_app({ runtime, finished, failure }) catch {
+  let app_loop = event_loop.start_external_app({ runtime, finished, failure, }) catch {
     _ => abort("could not start v2 fixture event loop")
   }
   let wakeup_callback = app_loop.wakeup_callback_for_foreign_thread()
@@ -384,7 +384,7 @@ fn run_core_v2_fixture(path : String) -> Unit {
     _ => fail("could not configure core v2 fixture IPC")
   }
   let lifecycle : Ref[((@runtime.RuntimeLifecycleEvent) -> Unit)?] = Ref(None)
-  let factory = { runtime: { lifecycle, } }
+  let factory = { runtime: { lifecycle, }, }
   let runtime_options = @runtime.RuntimeOptions::new(
     label="main",
     bounds=@runtime.RuntimeBounds::new(width=320, height=240),

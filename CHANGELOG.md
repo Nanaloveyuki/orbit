@@ -6,6 +6,13 @@ notes those changes and the required application migration.
 
 ## Unreleased
 
+- Pin the compiler archive to `0.10.17+d971670cd` and CLI to `0.1.20261023`
+  across CI, nested examples, and newly generated applications.
+- **Breaking:** migrate file-capability operations, resource-path normalization,
+  and tray-controller callbacks from `Result` returns to typed `raise` effects.
+  Callers now consume success values directly and handle failures with `catch`;
+  tray callbacks return `Unit` and raise `TrayError` instead of returning `Ok`/`Err`.
+
 ## 0.1.0-alpha.15 - 2026-09-28
 - Add the experimental `orbit-desktop` extension package. Applications must
   construct and inject `DesktopClipboardExtension`, `DesktopShellExtension`,

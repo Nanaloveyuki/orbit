@@ -14,7 +14,7 @@ import {
 // Values
 pub fn ipc_initialization_script(String) -> String
 
-pub fn run(&@orbit-runtime.RuntimeFactory, DesktopOptions) -> Int raise CoreError
+pub fn run(&@orbit-runtime.RuntimeFactory, DesktopOptions) -> Int32 raise CoreError
 
 pub fn run_async(&@orbit-runtime.RuntimeFactory, DesktopOptions, async () -> Unit) -> Unit raise CoreError
 

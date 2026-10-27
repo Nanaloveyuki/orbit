@@ -237,7 +237,7 @@ pub fn CommandGrant::new(
   identifier~ : String,
   effect~ : CapabilityEffect,
   principals~ : Array[PrincipalSelector],
-  scopes? : Array[InvocationScope] = [],
+  scopes~ : Array[InvocationScope] = [],
   commands~ : Array[CommandName],
 ) -> CommandGrant raise IpcError {
   if !valid_capability_identifier(identifier) ||

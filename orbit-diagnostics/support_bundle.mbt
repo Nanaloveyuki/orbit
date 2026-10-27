@@ -17,9 +17,9 @@ pub extend SupportEvent with ToJson::{to_json}
 
 ///|
 pub(all) struct SupportBundle {
-  schema_version : Int
-  capacity : Int
-  dropped_event_count : Int
+  schema_version : Int32
+  capacity : Int32
+  dropped_event_count : Int32
   events : Array[SupportEvent]
 } derive(Eq, Debug, ToJson)
 

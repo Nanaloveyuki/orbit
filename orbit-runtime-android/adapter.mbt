@@ -83,7 +83,7 @@ pub struct AndroidRuntimeFactory {
 
 ///|
 pub fn AndroidRuntimeFactory::new(
-  trusted_origin? : String = "https://orbit.local",
+  trusted_origin~ : String = "https://orbit.local",
 ) -> AndroidRuntimeFactory {
   { trusted_origin, }
 }
@@ -94,12 +94,12 @@ struct AndroidRuntime {
   provider : @runtime.RuntimeResourceProvider
   trusted_origin : String
   message_handler : Ref[((@runtime.RuntimePageMessage) -> Unit)?]
-  next_operation : Ref[Int]
+  next_operation : Ref[Int32]
   mut destroyed : Bool
 }
 
 ///|
-fn next_operation_id(counter : Ref[Int], operation : String) -> String {
+fn next_operation_id(counter : Ref[Int32], operation : String) -> String {
   let id = counter.val
   counter.val = id + 1
   "orbit-android-\{operation}-\{id}"
@@ -110,7 +110,7 @@ fn respond_asset(
   view : @moonview_android.AndroidWebView,
   provider : @runtime.RuntimeResourceProvider,
   request : @moonview_android.AndroidAssetRequest,
-  counter : Ref[Int],
+  counter : Ref[Int32],
 ) -> Unit {
   let uri = "\{embedded_origin(provider)}/\{request.path}"
   let response = provider.handle(

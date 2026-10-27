@@ -30,7 +30,7 @@ pub fn TrayCommandId::value(Self) -> String
 pub struct TrayController {
   // private fields
 }
-pub fn TrayController::new((TrayItem) -> Result[Unit, TrayError], (TrayItemId) -> Result[Unit, TrayError]) -> Self
+pub fn TrayController::new((TrayItem) -> Unit raise TrayError, (TrayItemId) -> Unit raise TrayError) -> Self
 pub fn TrayController::open_menu(Self, TrayItemId) -> Unit raise TrayError
 pub fn TrayController::replace_item(Self, TrayItem) -> Unit raise TrayError
 

@@ -159,10 +159,8 @@ async fn collect_assets(
     if normalized != config_path && normalized != output_path {
       match @fs.kind(path, follow_symlink=false) {
         Regular => {
-          let resource_path = match
-            @utils.normalize_resource_path(relative_path) {
-            Ok(value) => value
-            Err(_) => {
+          let resource_path = @utils.normalize_resource_path(relative_path) catch {
+            _ => {
               abort_build(
                 "asset path must be a normalized relative resource path",
               )
@@ -217,8 +215,8 @@ let embedded_asset_chunk_size = 8192
 
 ///|
 fn embedded_asset_expression(
-  window_index : Int,
-  asset_index : Int,
+  window_index : Int32,
+  asset_index : Int32,
   bytes : Bytes,
 ) -> (String, String) {
   let resource_name = "embedded_asset_\{window_index}_\{asset_index}"
@@ -234,7 +232,7 @@ fn embedded_asset_expression(
   for offset = 0
       offset < bytes.length()
       offset = offset + embedded_asset_chunk_size {
-    let end = Int::min(offset + embedded_asset_chunk_size, bytes.length())
+    let end = Int32::min(offset + embedded_asset_chunk_size, bytes.length())
     let chunk = bytes.get_view(start=offset, end~).unwrap().to_owned()
     let chunk_name = "\{resource_name}_chunk_\{chunk_index}"
     let expression = bytes_expression(chunk, "  ")
@@ -528,7 +526,7 @@ async fn write_bytes_if_changed(output : String, content : Bytes) -> Unit {
 }
 
 ///|
-fn icon_sizes() -> Array[Int] {
+fn icon_sizes() -> Array[Int32] {
   [16, 32, 48, 64, 128, 256, 512, 1024]
 }
 
@@ -536,7 +534,7 @@ fn icon_sizes() -> Array[Int] {
 async fn generate_icons(
   source_path : String,
   output_directory : String,
-  compression_level : Int,
+  compression_level : Int32,
 ) -> Unit {
   if compression_level < 0 || compression_level > 9 {
     abort_build("icon compression level must be between 0 and 9")
@@ -708,7 +706,7 @@ fn page_command_names(config : @utils.OrbitConfig) -> Array[String] {
 async fn generate_bindings(
   config_path : String,
   output_path : String,
-  contract_path? : String? = None,
+  contract_path~ : String? = None,
 ) -> Unit {
   let declaration_path = if output_path.has_suffix(".mjs") {
     output_path[:output_path.length() - 4].to_owned() + ".d.mts"
@@ -799,7 +797,7 @@ async fn generate(
   config_path : String,
   output_path : String,
   development_url : String?,
-  android? : Bool = false,
+  android~ : Bool = false,
 ) -> Unit {
   let config_path = @fs.realpath(config_path)
   let configuration_directory = parent_path(config_path)
@@ -1193,5 +1191,3 @@ test "package metadata exports Linux bundle configuration and icons" {
   assert_true(metadata.contains("\"rpm\":{\"requires\":[\"webkit2gtk4.1\"]}"))
   assert_true(metadata.contains("\"arch\":{\"depends\":[\"webkit2gtk-4.1\"]}"))
 }
-
-

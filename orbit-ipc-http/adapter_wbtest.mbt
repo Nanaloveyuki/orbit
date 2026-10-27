@@ -31,9 +31,9 @@ fn http_test_adapter(
 ///|
 fn http_request(
   meth : @http.RequestMethod,
-  path? : String = "/orbit/v1/invoke",
-  origin? : String = "https://app.example",
-  authorization? : String = "Bearer secret",
+  path~ : String = "/orbit/v1/invoke",
+  origin~ : String = "https://app.example",
+  authorization~ : String = "Bearer secret",
 ) -> @http.Request {
   {
     meth,
@@ -51,7 +51,7 @@ fn test_authenticator(
   metadata : HttpRequestMetadata,
 ) -> AuthenticatedHttpClient? {
   if metadata.header("Authorization") == Some("Bearer secret") {
-    Some({ identifier: "sync-client" })
+    Some({ identifier: "sync-client", })
   } else {
     None
   }
@@ -95,7 +95,7 @@ test "HTTP authentication metadata excludes bodies and normalizes header lookup"
     observed.val = metadata.path() == "/orbit/v1/invoke" &&
       metadata.remote_address() == "127.0.0.1:4123" &&
       metadata.header("AUTHORIZATION") == Some("Bearer secret")
-    Some({ identifier: "sync-client" })
+    Some({ identifier: "sync-client", })
   })
   let prepared = adapter.prepare(http_request(Post), "127.0.0.1:4123")
   assert_true(prepared is Ok(_))

@@ -26,7 +26,8 @@ embedded.
 
 ## Prerequisites
 
-- [MoonBit](https://www.moonbitlang.com/download/)
+- [MoonBit](https://www.moonbitlang.com/download/) compiler `0.10.17+d971670cd`
+  with CLI `0.1.20261023`
 - A native C/C++ compiler and linker
 - Node.js 20 or newer when using the CLI or Vite
 - Windows: MSVC and the Windows SDK
@@ -144,7 +145,8 @@ explicitly scoped.
 
 ### `moon update` or dependency download fails
 
-Check the MoonBit version in `.moon-version`, confirm network access, and retry
+Check the compiler archive in `.moonbit-toolchain` and CLI version in
+`.moon-version`, confirm network access, and retry
 with a clean project-level dependency state. Do not edit generated dependency
 files by hand.
 

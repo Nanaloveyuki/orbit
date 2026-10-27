@@ -1,7 +1,7 @@
 ///|
 pub(all) suberror IpcError {
   MalformedEnvelope(String)
-  UnsupportedVersion(Int)
+  UnsupportedVersion(Int32)
   InvalidInvocationId(String)
   InvalidCommandName(String)
   InvalidCapability(String)
@@ -91,7 +91,7 @@ pub struct InvocationRequest {
   priv id : InvocationId
   priv command : CommandName
   priv payload : Json
-  priv timeout_ms : Int
+  priv timeout_ms : Int32
 }
 
 ///|
@@ -110,7 +110,7 @@ pub fn InvocationRequest::payload(self : InvocationRequest) -> Json {
 }
 
 ///|
-pub fn InvocationRequest::timeout_ms(self : InvocationRequest) -> Int {
+pub fn InvocationRequest::timeout_ms(self : InvocationRequest) -> Int32 {
   self.timeout_ms
 }
 
@@ -165,7 +165,7 @@ fn required_field(
 }
 
 ///|
-fn decode_exact_int(value : Json, name : String) -> Int raise IpcError {
+fn decode_exact_int(value : Json, name : String) -> Int32 raise IpcError {
   match value {
     Number(number, ..) => {
       if number > 2147483647.0 || number < -2147483648.0 {

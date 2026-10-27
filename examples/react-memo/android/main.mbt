@@ -18,13 +18,17 @@ fn memo_registry() -> @ipc.CommandRegistry raise @ipc.IpcError {
 }
 
 ///|
-pub fn dispatch_android_event(kind : Int, first : Int, second : Int) -> Unit {
+pub fn dispatch_android_event(
+  kind : Int32,
+  first : Int32,
+  second : Int32,
+) -> Unit {
   @ajni_android.dispatch_from_android(kind, first, second)
 }
 
 ///|
 pub fn dispatch_android_webview_event(
-  kind : Int,
+  kind : Int32,
   handle : Int64,
   payload : Bytes,
   detail : Bytes,

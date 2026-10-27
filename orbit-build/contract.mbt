@@ -5,7 +5,7 @@ priv suberror BindingContractError {
 
 ///|
 priv struct ContractType {
-  id : Int
+  id : Int32
   native_type : String
   frontend_type : String
 }
@@ -20,7 +20,7 @@ priv struct ContractCompiler {
   resolving : Map[String, Bool]
   native : Array[String]
   frontend : Array[String]
-  mut next_id : Int
+  mut next_id : Int32
 }
 
 ///|
@@ -119,7 +119,7 @@ fn contract_identifier(name : String, uppercase : Bool) -> Bool {
 ///|
 fn ContractCompiler::finish(
   self : ContractCompiler,
-  id : Int,
+  id : Int32,
   native_type : String,
   frontend_type : String,
   decode : String,
@@ -135,7 +135,7 @@ fn ContractCompiler::finish(
 fn ContractCompiler::named(
   self : ContractCompiler,
   name : String,
-  depth : Int,
+  depth : Int32,
 ) -> ContractType raise BindingContractError {
   match self.resolved.get(name) {
     Some(value) => return value
@@ -167,8 +167,8 @@ fn ContractCompiler::compile(
   self : ContractCompiler,
   schema : Json,
   path : String,
-  depth : Int,
-  name? : String? = None,
+  depth : Int32,
+  name~ : String? = None,
 ) -> ContractType raise BindingContractError {
   if depth > 64 {
     contract_error(path, "schema nesting exceeds 64 levels")
@@ -590,8 +590,8 @@ fn ContractCompiler::object_type(
   self : ContractCompiler,
   fields : Map[String, Json],
   path : String,
-  depth : Int,
-  id : Int,
+  depth : Int32,
+  id : Int32,
   name : String?,
 ) -> ContractType raise BindingContractError {
   contract_keys(
@@ -694,5 +694,3 @@ fn ContractCompiler::object_type(
     "  let result : Map[String, Json] = Map([])\n\{encode_fields.join("\n")}\n  Json::object(result)",
   )
 }
-
-

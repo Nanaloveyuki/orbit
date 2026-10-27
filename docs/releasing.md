@@ -28,14 +28,13 @@ only then makes the GitHub Release public. A failure leaves the GitHub Release
 as a draft for inspection. npm prereleases use their first prerelease identifier
 as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
-`.moon-version` selects the installer-supported `latest` channel. For
-`0.1.0-alpha.15` that channel resolves to `moon` 0.1.20260920 and `moonc`
-v0.10.14 (2026-09-18). The dated installer artifact `20260920` is not
-downloadable, so the repository keeps the `latest` channel. CI records the
-resolved compiler and build-tool versions with `moon version --all` before
-validation and requires the MoonBit 0.10.x release line; `moon check` and
-`moon test` remain the compatibility gates. Do not add a date-version pin
-unless that installer artifact is confirmed to remain downloadable.
+`.moonbit-toolchain` selects the exact installer archive `0.10.17+d971670cd`;
+`.moon-version` records the corresponding CLI version `0.1.20261023`. Unix CI
+passes the archive identifier to `unix.sh`; Windows CI sets
+`MOONBIT_INSTALL_VERSION` from the same file before running `powershell.ps1`.
+Do not pass the CLI version to the installer or use the floating `latest`
+channel. CI records `moon version --all` and requires both exact versions
+before validation; `moon check` and `moon test` remain the compatibility gates.
 
 Mooncake's publish command intentionally runs without `--frozen`: its own
 verification extracts the package into a fresh directory and must install the
