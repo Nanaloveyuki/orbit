@@ -17,7 +17,7 @@ Orbit 不绑定前端框架。静态 HTML/CSS/JavaScript、React、Vue 和其他
 ## 环境要求
 
 - [MoonBit 工具链](https://www.moonbitlang.com/download/)：编译器
-  `0.10.17+d971670cd`，CLI `0.1.20261023`
+  `0.10.19+97801ee1b`，CLI `0.1.20261029`
 - 本机 C/C++ 编译和链接工具链
 - 使用 CLI 或 Vite 时需要 Node.js 20 或更高版本
 - Windows：MSVC 和 Windows SDK
@@ -69,7 +69,7 @@ capability 保护的 IPC，以及开发和生产构建脚本。
 ## 接入已有应用
 
 ~~~sh
-moon add Nanaloveyuki/orbit@0.2.0-alpha.1
+moon add Nanaloveyuki/orbit@0.2.0-alpha.2
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev

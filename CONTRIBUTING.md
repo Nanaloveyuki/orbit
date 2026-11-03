@@ -7,7 +7,7 @@ beta 契约的参考标准见[标准文档](docs/standards/README.md)；在首�
 
 ## 开发环境
 
-- MoonBit 编译器 `0.10.17+d971670cd`，CLI `0.1.20261023`；安装归档由
+- MoonBit 编译器 `0.10.19+97801ee1b`，CLI `0.1.20261029`；安装归档由
   [`.moonbit-toolchain`](.moonbit-toolchain) 固定，[`.moon-version`](.moon-version)
   记录 CLI 版本；
 - Node.js 20 或更高版本；

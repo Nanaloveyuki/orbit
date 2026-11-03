@@ -4,6 +4,17 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
+## 0.2.0-alpha.2 - 2026-11-03
+
+- Pin compiler `0.10.19+97801ee1b` and CLI `0.1.20261029` across CI,
+  nested examples, and newly generated applications.
+- Upgrade owned dependencies to ajni 0.3.5, BitLogger 0.9.2, parsec 0.1.6,
+  moonview 0.1.0-beta.13, sync 0.7.4, orby 0.1.0-beta.8, dynlib 0.2.3,
+  orbit-plugin-abi 0.2.5, and image 0.1.4.
+- Align the CLI, contract compiler, and package compatibility metadata with
+  this release. Regenerate application bindings and rebuild packages with the
+  matching CLI; public APIs and plugin ABI versions are unchanged.
+
 ## 0.2.0-alpha.1 - 2026-10-27
 
 - Pin the compiler archive to `0.10.17+d971670cd` and CLI to `0.1.20261023`
