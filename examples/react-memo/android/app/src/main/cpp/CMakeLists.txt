@@ -32,6 +32,7 @@ if(NOT EXISTS "${MOON_HOME}/lib/runtime/runtime.c")
 endif()
 
 set(AJNI_BRIDGE_SOURCE "${AJNI_ROOT}/src/android/ajni_bridge.c")
+set(AJNI_RUNTIME_SOURCE "${AJNI_ROOT}/src/runtime/ajni_runtime.c")
 set(AJNI_WEBVIEW_BRIDGE_SOURCE "${AJNI_ROOT}/src/webview/ajni_webview_bridge.c")
 list(GET MOONBIT_RUNTIME_SOURCES 0 MOONBIT_RUNTIME_SOURCE)
 if(NOT EXISTS "${MOONBIT_RUNTIME_SOURCE}")
@@ -52,6 +53,7 @@ add_custom_target(generate_orbit_android
     "${ANDROID_ROOT}/moon.mod"
     "${ANDROID_ROOT}/moon.pkg"
     "${AJNI_BRIDGE_SOURCE}"
+    "${AJNI_RUNTIME_SOURCE}"
     "${AJNI_WEBVIEW_BRIDGE_SOURCE}"
   BYPRODUCTS "${MOONBIT_APP_SOURCE}"
   COMMENT "Generating Orbit Memo Android MoonBit source"
@@ -61,6 +63,7 @@ add_custom_target(generate_orbit_android
 set_source_files_properties("${MOONBIT_APP_SOURCE}" PROPERTIES GENERATED TRUE)
 add_library(ajni SHARED
   "${AJNI_BRIDGE_SOURCE}"
+  "${AJNI_RUNTIME_SOURCE}"
   "${AJNI_WEBVIEW_BRIDGE_SOURCE}"
   "${MOONBIT_APP_SOURCE}"
   ${MOONBIT_RUNTIME_SOURCES}

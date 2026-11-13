@@ -27,6 +27,16 @@ pub fn dispatch_android_event(
 }
 
 ///|
+pub fn create_int_callback(env : UInt64) -> UInt64 {
+  @ajni_android.create_int_callback(env)
+}
+
+///|
+pub fn handled_observer_error() -> Int32 {
+  @ajni_android.handled_observer_error()
+}
+
+///|
 pub fn dispatch_android_webview_event(
   kind : Int32,
   handle : Int64,

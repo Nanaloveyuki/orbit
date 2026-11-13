@@ -16,6 +16,8 @@ notes those changes and the required application migration.
   Keep-awake guards use the application task group and release during shutdown.
 - Generate contracts with `#derive` syntax and align the CLI, contract schema,
   bindings, and compatibility metadata with this release.
+- Link the Android reference host with AJNI's generic runtime and export its
+  managed callback helpers required by AJNI 0.3.8.
 
 ## 0.2.0-alpha.2 - 2026-11-03
 

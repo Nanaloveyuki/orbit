@@ -21,6 +21,8 @@ pub fn configured_android_runtime_options() -> @orbit-runtime.RuntimeOptions
 
 pub fn configured_ipc_policy() -> @orbit-ipc.CommandPolicy raise @orbit-ipc.IpcError
 
+pub fn create_int_callback(UInt64) -> UInt64
+
 pub fn dispatch_android_event(Int32, Int32, Int32) -> Unit
 
 pub fn dispatch_android_webview_event(Int32, Int64, Bytes, Bytes) -> Unit
@@ -30,6 +32,8 @@ pub let entry_url : String
 pub fn handle_resource(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
 
 pub fn handle_resource_0(@orbit-runtime.RuntimeResourceRequest) -> @orbit-runtime.RuntimeResourceResponse?
+
+pub fn handled_observer_error() -> Int32
 
 pub fn resource_response(String) -> @orbit-runtime.RuntimeResourceResponse?
 
