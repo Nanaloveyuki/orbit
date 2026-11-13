@@ -2,4 +2,3 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - shadcn@4.19.0
-  - '@nanaloveyuki/orbit-cli@0.1.0-alpha.8'

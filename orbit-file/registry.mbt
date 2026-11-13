@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum FileCapabilityKind {
   Read
   Write
   Directory
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FileCapabilityKind with Eq::{not_equal, equal}
@@ -12,6 +13,7 @@ pub extend FileCapabilityKind with Eq::{not_equal, equal}
 pub extend FileCapabilityKind with Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) suberror FileCapabilityError {
   RandomUnavailable
   DirectoryUnavailable
@@ -23,17 +25,18 @@ pub(all) suberror FileCapabilityError {
   UnknownHandle(String)
   WrongPrincipal(String)
   WrongKind(String)
-} derive(Debug)
+}
 
 ///|
 pub extend FileCapabilityError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct FileCapability {
   priv id : String
   priv name : String
   priv kind : FileCapabilityKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend FileCapability with Eq::{not_equal, equal}

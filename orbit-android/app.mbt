@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 pub(all) suberror AndroidAppError {
   InvalidOptions(String)
-} derive(Debug)
+}
 
 ///|
 pub extend AndroidAppError with Debug::{to_repr}

@@ -6,11 +6,12 @@ pub(all) suberror OrbitContractError { OrbitContractError(String) }
 ///|
 fn[T] orbit_contract_fail(path : String) -> T raise OrbitContractError { raise OrbitContractError("invalid value at " + path) }
 ///|
+#derive(Eq, Debug)
 pub(all) enum OrbitStatus {
   Idle
   Running
   Failed
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_0(value : Json, path : String) -> OrbitStatus raise OrbitContractError {
@@ -33,9 +34,10 @@ pub fn orbit_contract_encode_0(value : OrbitStatus, path : String) -> Json {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum OrbitContract3 {
   Failed
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_3(value : Json, path : String) -> OrbitContract3 raise OrbitContractError {
@@ -65,10 +67,11 @@ pub fn orbit_contract_encode_4(value : String, path : String) -> Json {
 }
 
 ///|
+#derive(Debug)
 pub(all) struct OrbitOperationFailed {
   kind : OrbitContract3
   message : String
-} derive(Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_2(value : Json, path : String) -> OrbitOperationFailed raise OrbitContractError {
@@ -100,9 +103,10 @@ pub fn orbit_contract_encode_6(value : String, path : String) -> Json {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum OrbitContract7 {
   Started
-} derive(Eq, Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_7(value : Json, path : String) -> OrbitContract7 raise OrbitContractError {
@@ -121,10 +125,11 @@ pub fn orbit_contract_encode_7(value : OrbitContract7, path : String) -> Json {
 }
 
 ///|
+#derive(Debug)
 pub(all) struct OrbitOperationStarted {
   id : String
   kind : OrbitContract7
-} derive(Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_5(value : Json, path : String) -> OrbitOperationStarted raise OrbitContractError {
@@ -145,10 +150,11 @@ pub fn orbit_contract_encode_5(value : OrbitOperationStarted, path : String) -> 
 }
 
 ///|
+#derive(Debug)
 pub(all) enum OrbitOperation {
   Failed(OrbitOperationFailed)
   Started(OrbitOperationStarted)
-} derive(Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_1(value : Json, path : String) -> OrbitOperation raise OrbitContractError {
@@ -182,9 +188,10 @@ pub fn orbit_contract_encode_9(value : String, path : String) -> Json {
 }
 
 ///|
+#derive(Debug)
 pub(all) struct OrbitPingResponse {
   message : String
-} derive(Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_8(value : Json, path : String) -> OrbitPingResponse raise OrbitContractError {
@@ -226,9 +233,10 @@ pub fn orbit_contract_encode_12(value : Int, path : String) -> Json {
 }
 
 ///|
+#derive(Debug)
 pub(all) struct OrbitContract11 {
   revision : Int
-} derive(Debug)
+}
 
 ///|
 pub fn orbit_contract_decode_11(value : Json, path : String) -> OrbitContract11 raise OrbitContractError {

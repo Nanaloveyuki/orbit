@@ -8,7 +8,9 @@ import {
   "Nanaloveyuki/orbit/orbit-plugin",
   "Nanaloveyuki/orbit/orbit-runtime",
   "Nanaloveyuki/orby",
+  "moonbitlang/core/async",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -19,18 +21,20 @@ pub fn run(&@orbit-runtime.RuntimeFactory, DesktopOptions) -> Int32 raise CoreEr
 pub fn run_async(&@orbit-runtime.RuntimeFactory, DesktopOptions, async () -> Unit) -> Unit raise CoreError
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror CoreError {
   InitializationFailed(String)
   StartupFailed(String)
   RuntimeFailed(String)
-} derive(@debug.Debug)
+}
 pub fn CoreError::to_repr(Self) -> @debug.Repr
 
+#derive(@debug.Debug)
 pub(all) suberror DesktopControllerError {
   WindowUnavailable(String)
   HostUnavailable
   RuntimeOperationFailed(String)
-} derive(@debug.Debug)
+}
 pub fn DesktopControllerError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
@@ -47,12 +51,14 @@ pub struct DesktopAsyncContext {
 }
 pub fn DesktopAsyncContext::is_cancelled(Self) -> Bool
 pub fn DesktopAsyncContext::label(Self) -> String
+pub fn DesktopAsyncContext::task_group(Self) -> @async.TaskGroup
 
+#derive(Eq, @debug.Debug)
 pub enum DesktopCloseAction {
   Destroy
   Hide
   Suspend
-} derive(Eq, @debug.Debug)
+}
 pub fn DesktopCloseAction::destroy() -> Self
 pub fn DesktopCloseAction::equal(Self, Self) -> Bool
 pub fn DesktopCloseAction::hide() -> Self
@@ -63,9 +69,9 @@ pub fn DesktopCloseAction::to_repr(Self) -> @debug.Repr
 pub struct DesktopCommand {
   // private fields
 }
-pub fn DesktopCommand::async_command(String, async (DesktopAsyncContext, Json) -> Result[Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
+pub fn DesktopCommand::async_command(String, async (DesktopAsyncContext, @json.Json) -> Result[@json.Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
 pub fn DesktopCommand::name(Self) -> @orbit-ipc.CommandName
-pub fn DesktopCommand::ui(String, (DesktopUiContext, Json) -> Result[Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
+pub fn DesktopCommand::ui(String, (DesktopUiContext, @json.Json) -> Result[@json.Json, @orbit-ipc.CommandFailure]) -> Self raise CoreError
 
 pub struct DesktopController {
   // private fields
@@ -76,10 +82,11 @@ pub fn DesktopController::hide_window(Self, String) -> Unit raise DesktopControl
 pub fn DesktopController::show_window(Self, String) -> Unit raise DesktopControllerError
 pub fn DesktopController::suspend_window(Self, String) -> Unit raise DesktopControllerError
 
+#derive(Eq, @debug.Debug)
 pub enum DesktopIpcPrincipal {
   Window
   RemotePage
-} derive(Eq, @debug.Debug)
+}
 pub fn DesktopIpcPrincipal::equal(Self, Self) -> Bool
 pub fn DesktopIpcPrincipal::not_equal(Self, Self) -> Bool
 pub fn DesktopIpcPrincipal::remote_page() -> Self

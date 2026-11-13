@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/env",
+  "moonbitlang/core/async" @core_async,
   "moonbitlang/async",
   "moonbitlang/async/cond_var",
   "moonbitlang/async/external_loop_integration" @external_loop,
@@ -14,3 +15,7 @@ import {
 }
 
 supported_targets = "native"
+
+options(
+  "allow-experimental-packages": true,
+)

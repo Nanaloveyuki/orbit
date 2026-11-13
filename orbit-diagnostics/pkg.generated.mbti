@@ -5,6 +5,7 @@ import {
   "Nanaloveyuki/BitLogger/src/core",
   "Nanaloveyuki/BitLogger/src/sink_graph",
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -42,6 +43,7 @@ pub fn DiagnosticHistory::snapshot(Self) -> Array[@core.Record]
 pub fn DiagnosticHistory::support_bundle(Self) -> SupportBundle
 pub impl DiagnosticSink for DiagnosticHistory
 
+#derive(Eq, @debug.Debug)
 pub(all) enum DiagnosticKind {
   DesktopStarting
   DesktopStarted
@@ -59,40 +61,43 @@ pub(all) enum DiagnosticKind {
   PluginStartupFailed
   PluginPollFailed
   DesktopStopping
-} derive(Eq, @debug.Debug)
+}
 pub fn DiagnosticKind::equal(Self, Self) -> Bool
 pub fn DiagnosticKind::not_equal(Self, Self) -> Bool
 pub fn DiagnosticKind::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum DiagnosticLevel {
   Info
   Warning
   Error
-} derive(Eq, @debug.Debug)
+}
 pub fn DiagnosticLevel::equal(Self, Self) -> Bool
 pub fn DiagnosticLevel::not_equal(Self, Self) -> Bool
 pub fn DiagnosticLevel::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) struct SupportBundle {
   schema_version : Int32
   capacity : Int32
   dropped_event_count : Int32
   events : Array[SupportEvent]
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn SupportBundle::equal(Self, Self) -> Bool
 pub fn SupportBundle::not_equal(Self, Self) -> Bool
-pub fn SupportBundle::to_json(Self) -> Json
+pub fn SupportBundle::to_json(Self) -> @json.Json
 pub fn SupportBundle::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) struct SupportEvent {
   level : String
   event : String
   window_label : String?
   configuration_fingerprint : String?
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn SupportEvent::equal(Self, Self) -> Bool
 pub fn SupportEvent::not_equal(Self, Self) -> Bool
-pub fn SupportEvent::to_json(Self) -> Json
+pub fn SupportEvent::to_json(Self) -> @json.Json
 pub fn SupportEvent::to_repr(Self) -> @debug.Repr
 
 // Type aliases

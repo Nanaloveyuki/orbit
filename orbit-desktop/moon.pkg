@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/async",
   "moonbit-community/proton_auto_launch",
   "moonbit-community/proton_clipboard",
   "moonbit-community/proton_global_hotkey",
@@ -12,3 +13,7 @@ import {
 }
 
 supported_targets = "native"
+
+options(
+  "allow-experimental-packages": [ "moonbitlang/core/async" ],
+)

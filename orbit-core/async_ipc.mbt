@@ -10,12 +10,32 @@ priv struct PendingInvocation {
 ///|
 priv struct AsyncIpcDispatcher {
   mut group : @async.TaskGroup[Unit]?
+  mut desktop_group : @core_async.TaskGroup?
   pending : Map[String, PendingInvocation]
 }
 
 ///|
 fn AsyncIpcDispatcher::new() -> AsyncIpcDispatcher {
-  { group: None, pending: Map([]), }
+  { group: None, desktop_group: None, pending: Map([]), }
+}
+
+///|
+fn AsyncIpcDispatcher::desktop_context(
+  self : AsyncIpcDispatcher,
+  label : String,
+  cancellation : @ipc.InvocationCancellation,
+) -> Result[DesktopAsyncContext, @ipc.CommandFailure] {
+  match self.desktop_group {
+    Some(group) =>
+      Ok({ label_: label, cancellation_: cancellation, task_group_: group, })
+    None =>
+      Err(
+        @ipc.CommandFailure::new(
+          code="async_unavailable",
+          message="desktop async runtime is not ready",
+        ),
+      )
+  }
 }
 
 ///|
@@ -83,6 +103,7 @@ fn AsyncIpcDispatcher::cancel(
 ///|
 fn AsyncIpcDispatcher::cancel_all(self : AsyncIpcDispatcher) -> Unit {
   self.group = None
+  self.desktop_group = None
   for _, pending in self.pending {
     pending.completed = true
     pending.cancellation.cancel()

@@ -1,7 +1,8 @@
 ///|
+#derive(Debug)
 priv suberror BindingContractError {
   BindingContractError(String)
-} derive(Debug)
+}
 
 ///|
 priv struct ContractType {
@@ -11,7 +12,7 @@ priv struct ContractType {
 }
 
 ///|
-const CONTRACT_ORBIT_VERSION : String = "0.2.0-alpha.2"
+const CONTRACT_ORBIT_VERSION : String = "0.2.0-alpha.3"
 
 ///|
 priv struct ContractCompiler {
@@ -241,7 +242,7 @@ fn ContractCompiler::compile(
       variants.push("  \{variant}")
     }
     self.native.push(
-      "///|\npub(all) enum \{type_name} {\n\{variants.join("\n")}\n} derive(Eq, Debug)\n",
+      "///|\n#derive(Eq, Debug)\npub(all) enum \{type_name} {\n\{variants.join("\n")}\n}\n",
     )
     let decode_cases = []
     let encode_cases = []
@@ -304,7 +305,7 @@ fn ContractCompiler::compile(
       )
     }
     self.native.push(
-      "///|\npub(all) enum \{type_name} {\n\{enum_cases.join("\n")}\n} derive(Debug)\n",
+      "///|\n#derive(Debug)\npub(all) enum \{type_name} {\n\{enum_cases.join("\n")}\n}\n",
     )
     let decode = "  guard value is Object(items) else { orbit_contract_fail(path) }\n  let tag_value = match items.get(\"\{tag}\") { Some(String(value)) => value; _ => orbit_contract_fail(path + \".\" + \{contract_quote(tag)}) }\n  match tag_value {\n\{decode_cases.join("\n")}\n    _ => orbit_contract_fail(path + \".\" + \{contract_quote(tag)})\n  }"
     let encode = "  ignore(path)\n  match value {\n\{encode_cases.join("\n")}\n  }"
@@ -683,7 +684,7 @@ fn ContractCompiler::object_type(
     }
   }
   self.native.push(
-    "///|\npub(all) struct \{native_type} {\n\{native_fields.join("\n")}\n} derive(Debug)\n",
+    "///|\n#derive(Debug)\npub(all) struct \{native_type} {\n\{native_fields.join("\n")}\n}\n",
   )
   let keys = Json::array(property_names.map(Json::string)).stringify()
   self.finish(

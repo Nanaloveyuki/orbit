@@ -25,7 +25,7 @@ impl DesktopExtension for DesktopClipboardExtension with fn commands(_self) {
     command("orbit.clipboard.supported", fn(_ui, _payload) {
       Ok({ "supported": @proton_clipboard.is_supported() })
     }),
-    command("orbit.clipboard.read_text", fn(_ui, _payload) {
+    async_command("orbit.clipboard.read_text", async fn(_ui, _payload) {
       if !@proton_clipboard.is_supported() {
         return Err(unavailable("clipboard is unavailable"))
       }
@@ -39,7 +39,7 @@ impl DesktopExtension for DesktopClipboardExtension with fn commands(_self) {
         Err(_) => Err(failed("clipboard read failed"))
       }
     }),
-    command("orbit.clipboard.write_text", fn(_ui, payload) {
+    async_command("orbit.clipboard.write_text", async fn(_ui, payload) {
       if !@proton_clipboard.is_supported() {
         return Err(unavailable("clipboard is unavailable"))
       }

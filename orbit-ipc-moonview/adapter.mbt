@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 pub enum PagePrincipal {
   Window
   RemotePage
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PagePrincipal with Eq::{not_equal, equal}

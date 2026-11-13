@@ -1,10 +1,11 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct PluginDeclaration {
   id : String
   library : String
   sidecar : PluginSidecarManifest
   permissions : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PluginDeclaration with Eq::{not_equal, equal}
@@ -23,6 +24,7 @@ pub fn PluginDeclaration::new(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
   IncompatibleSidecar(String)
@@ -32,7 +34,7 @@ pub(all) enum PluginRuntimeError {
   InvalidDevelopmentDirectory
   LoadFailure(String, PluginError)
   RegistrationFailure(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PluginRuntimeError with Eq::{not_equal, equal}

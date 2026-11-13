@@ -5,10 +5,11 @@ const DEFAULT_ENDPOINT_PATH : String = "/orbit/v1/invoke"
 const MAX_IPC_MESSAGE_BYTES : Int32 = 262_144
 
 ///|
+#derive(Debug)
 pub(all) suberror HttpAdapterError {
   InvalidAuthenticatedClient(String)
   InvalidAdapterConfiguration(String)
-} derive(Debug)
+}
 
 ///|
 pub extend HttpAdapterError with Debug::{to_repr}

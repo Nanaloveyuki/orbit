@@ -1,9 +1,10 @@
 ///|
+#derive(Debug)
 pub(all) suberror CoreError {
   InitializationFailed(String)
   StartupFailed(String)
   RuntimeFailed(String)
-} derive(Debug)
+}
 
 ///|
 pub extend CoreError with Debug::{to_repr}
@@ -22,10 +23,11 @@ pub struct DesktopWindowOptions {
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum DesktopIpcPrincipal {
   Window
   RemotePage
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DesktopIpcPrincipal with Eq::{not_equal, equal}
@@ -922,10 +924,22 @@ fn DesktopApp::register_extension_commands(
                     ),
                   )
                 }
-                handler(
-                  { label_: label, cancellation_: context.cancellation(), },
-                  payload,
-                )
+                let desktop_context = match self.async_ipc {
+                  Some(dispatcher) =>
+                    match
+                      dispatcher.desktop_context(label, context.cancellation()) {
+                      Ok(desktop_context) => desktop_context
+                      Err(error) => return Err(error)
+                    }
+                  None =>
+                    return Err(
+                      @ipc.CommandFailure::new(
+                        code="async_unavailable",
+                        message="desktop commands require run_async",
+                      ),
+                    )
+                }
+                handler(desktop_context, payload)
               }) catch {
                 _ => return Err("desktop extension command registration failed")
               }
@@ -1472,30 +1486,44 @@ pub fn run_async(
   let external_loop = { app_loop, failure: loop_failure, }
   @async.set_external_event_loop(external_loop)
   @async.run_async_main(() => {
-    @async.with_task_group() <| group => {
-      async_ipc.bind(group)
-      match (ipc_registry, ipc_policy) {
-        (Some(registry), Some(policy)) =>
-          plugins.bind_async(group, wakeup_callback, registry, policy)
-        _ => ()
+    @core_async.with_task_group() <| desktop_group => {
+      async_ipc.desktop_group = Some(desktop_group)
+      defer {
+        async_ipc.desktop_group = None
+        ignore(
+          loop_control.terminate() catch {
+            error => {
+              loop_failure.val = Some(error)
+              0
+            }
+          },
+        )
       }
-      match start_configured_plugins(plugins, plugin_options) {
-        Err(reason) => {
-          startup_failure.val = Some(reason)
-          ignore(
-            loop_control.terminate() catch {
-              error => {
-                loop_failure.val = Some(error)
-                0
-              }
-            },
-          )
-          return
+      @async.with_task_group() <| group => {
+        async_ipc.bind(group)
+        match (ipc_registry, ipc_policy) {
+          (Some(registry), Some(policy)) =>
+            plugins.bind_async(group, wakeup_callback, registry, policy)
+          _ => ()
         }
-        Ok(_) => ()
+        match start_configured_plugins(plugins, plugin_options) {
+          Err(reason) => {
+            startup_failure.val = Some(reason)
+            ignore(
+              loop_control.terminate() catch {
+                error => {
+                  loop_failure.val = Some(error)
+                  0
+                }
+              },
+            )
+            return
+          }
+          Ok(_) => ()
+        }
+        main()
+        async_exit.wait()
       }
-      main()
-      async_exit.wait()
     }
   })
   match loop_failure.val {

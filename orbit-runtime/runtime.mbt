@@ -1,21 +1,23 @@
 ///|
+#derive(Debug)
 pub(all) suberror RuntimeError {
   Unavailable(String)
   Unsupported(String)
   InvalidState(String)
   OperationFailed(String, String)
-} derive(Debug)
+}
 
 ///|
 pub extend RuntimeError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct RuntimeBounds {
   x : Int32
   y : Int32
   width : Int32
   height : Int32
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeBounds with Eq::{not_equal, equal}
@@ -37,6 +39,7 @@ pub fn RuntimeBounds::new(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RuntimeCapabilities {
   navigation : Bool
   script_evaluation : Bool
@@ -44,7 +47,7 @@ pub(all) struct RuntimeCapabilities {
   bounds_updates : Bool
   devtools : Bool
   file_dialogs : Bool
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeCapabilities with Eq::{not_equal, equal}
@@ -53,12 +56,13 @@ pub extend RuntimeCapabilities with Eq::{not_equal, equal}
 pub extend RuntimeCapabilities with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RuntimeFileDialogKind {
   OpenFile
   OpenFiles
   SaveFile
   PickDirectory
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeFileDialogKind with Eq::{not_equal, equal}
@@ -67,10 +71,11 @@ pub extend RuntimeFileDialogKind with Eq::{not_equal, equal}
 pub extend RuntimeFileDialogKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RuntimeFileDialogFilter {
   name : String
   extensions : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeFileDialogFilter with Eq::{not_equal, equal}
@@ -79,13 +84,14 @@ pub extend RuntimeFileDialogFilter with Eq::{not_equal, equal}
 pub extend RuntimeFileDialogFilter with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct RuntimeFileDialogOptions {
   kind : RuntimeFileDialogKind
   title : String?
   filters : Array[RuntimeFileDialogFilter]
   default_name : String?
   initial_directory : String?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeFileDialogOptions with Eq::{not_equal, equal}
@@ -94,10 +100,11 @@ pub extend RuntimeFileDialogOptions with Eq::{not_equal, equal}
 pub extend RuntimeFileDialogOptions with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum RuntimeFileDialogResult {
   Cancelled
   Selected(Array[String])
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeFileDialogResult with Eq::{not_equal, equal}
@@ -106,19 +113,21 @@ pub extend RuntimeFileDialogResult with Eq::{not_equal, equal}
 pub extend RuntimeFileDialogResult with Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) enum RuntimeLifecycleEvent {
   Ready
   Failed(RuntimeError)
   Destroyed
-} derive(Debug)
+}
 
 ///|
 pub extend RuntimeLifecycleEvent with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct RuntimeHost {
   native_handle : UInt64
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend RuntimeHost with Eq::{not_equal, equal}
@@ -142,10 +151,11 @@ pub fn RuntimeHost::native_handle(self : RuntimeHost) -> UInt64 {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum InitialContent {
   Url(String)
   Html(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InitialContent with Eq::{not_equal, equal}

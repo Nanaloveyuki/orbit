@@ -1,11 +1,23 @@
 ///|
 pub struct DesktopSessionExtension {
-  priv keep_awake : Ref[@proton_keepawake.Guard?]
+  priv keep_awake : Ref[KeepAwakeLease?]
+  priv keep_awake_lock : @async.Semaphore
+  priv closing : Ref[Bool]
 }
 
 ///|
 pub fn DesktopSessionExtension::new() -> DesktopSessionExtension {
-  { keep_awake: Ref(None), }
+  {
+    keep_awake: Ref(None),
+    keep_awake_lock: @async.Semaphore(1),
+    closing: Ref(false),
+  }
+}
+
+///|
+priv struct KeepAwakeLease {
+  active : @proton_keepawake.Guard
+  stop : @async.Semaphore
 }
 
 ///|
@@ -16,12 +28,20 @@ pub fn DesktopSessionExtension::as_extension(
 }
 
 ///|
-fn release_keep_awake(extension : DesktopSessionExtension) -> Unit {
+async fn release_keep_awake(
+  extension : DesktopSessionExtension,
+) -> Result[Bool, @ipc.CommandFailure] {
   match extension.keep_awake.val {
-    Some(active) => active.release() catch { _ => () }
-    None => ()
+    Some(lease) => {
+      lease.active.release() catch {
+        _ => return Err(failed("keep awake release failed"))
+      }
+      lease.stop.release()
+      extension.keep_awake.val = None
+      Ok(true)
+    }
+    None => Ok(false)
   }
-  extension.keep_awake.val = None
 }
 
 ///|
@@ -46,8 +66,9 @@ fn auto_launch(
 }
 
 ///|
-fn acquire_keep_awake(
+async fn acquire_keep_awake(
   extension : DesktopSessionExtension,
+  group : @async.TaskGroup,
   scope : @proton_keepawake.Scope,
   reason : String?,
 ) -> Result[Json, @ipc.CommandFailure] {
@@ -59,13 +80,37 @@ fn acquire_keep_awake(
       }
     None => ()
   }
-  release_keep_awake(extension)
+  extension.keep_awake_lock.acquire()
+  defer extension.keep_awake_lock.release()
+  if extension.closing.val {
+    return Err(unavailable("desktop session is shutting down"))
+  }
+  match release_keep_awake(extension) {
+    Err(failure) => return Err(failure)
+    Ok(_) => ()
+  }
   try {
-    let active = @proton_keepawake.acquire(reason?, scope~)
-    extension.keep_awake.val = Some(active)
+    let active = @proton_keepawake.acquire(group, reason?, scope~)
+    if extension.closing.val {
+      active.release()
+      return Err(unavailable("desktop session is shutting down"))
+    }
+    let stop = @async.Semaphore(1, initial_value=0)
+    // The application group also owns the guard itself. This task lets the
+    // synchronous extension shutdown request asynchronous cleanup early.
+    group.spawn_bg(no_wait=true, () => {
+      defer active.release()
+      stop.acquire()
+    })
+    extension.keep_awake.val = Some({ active, stop, })
     Ok({ "active": active.active(), "scope": scope_name(active.scope()) })
   } catch {
-    _ => Err(unavailable("keep awake is unavailable"))
+    error => {
+      if @async.is_being_cancelled() {
+        raise error
+      }
+      Err(unavailable("keep awake is unavailable"))
+    }
   }
 }
 
@@ -131,7 +176,7 @@ impl DesktopExtension for DesktopSessionExtension with fn commands(self) {
           }
       }
     }),
-    command("orbit.keepawake.acquire", fn(_ui, payload) {
+    async_command("orbit.keepawake.acquire", async fn(context, payload) {
       match optional_string_field(payload, "scope") {
         Err(failure) => Err(failure)
         Ok(requested) =>
@@ -140,24 +185,29 @@ impl DesktopExtension for DesktopSessionExtension with fn commands(self) {
             Ok(scope) =>
               match optional_string_field(payload, "reason") {
                 Err(failure) => Err(failure)
-                Ok(reason) => acquire_keep_awake(self, scope, reason)
+                Ok(reason) =>
+                  acquire_keep_awake(self, context.task_group(), scope, reason)
               }
           }
       }
     }),
-    command("orbit.keepawake.release", fn(_ui, _payload) {
-      let active = self.keep_awake.val is Some(_)
-      release_keep_awake(self)
-      Ok({ "released": active })
+    async_command("orbit.keepawake.release", async fn(_context, _payload) {
+      self.keep_awake_lock.acquire()
+      defer self.keep_awake_lock.release()
+      match release_keep_awake(self) {
+        Ok(released) => Ok({ "released": released })
+        Err(failure) => Err(failure)
+      }
     }),
   ]
 }
 
 ///|
 impl DesktopExtension for DesktopSessionExtension with fn start(
-  _self,
+  self,
   _controller,
 ) {
+  self.closing.val = false
   Ok(())
 }
 
@@ -187,6 +237,11 @@ impl DesktopExtension for DesktopSessionExtension with fn window_destroyed(
 
 ///|
 impl DesktopExtension for DesktopSessionExtension with fn shutdown(self) {
-  release_keep_awake(self)
+  self.closing.val = true
+  match self.keep_awake.val {
+    Some(lease) => lease.stop.release()
+    None => ()
+  }
+  self.keep_awake.val = None
   Ok(())
 }

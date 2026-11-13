@@ -1,8 +1,9 @@
 ///|
+#derive(Debug)
 pub(all) suberror ResourceError {
   InvalidPath(String)
   DuplicatePath(String)
-} derive(Debug)
+}
 
 ///|
 pub extend ResourceError with Debug::{to_repr}

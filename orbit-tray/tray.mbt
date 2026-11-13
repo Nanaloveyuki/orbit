@@ -1,19 +1,21 @@
 ///|
+#derive(Debug)
 pub(all) suberror TrayError {
   InvalidIdentifier(String)
   DuplicateMenuCommand(String)
   MenuTooLarge
   EmptyIcon
   Unavailable
-} derive(Debug)
+}
 
 ///|
 pub extend TrayError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct TrayItemId {
   priv value_ : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TrayItemId with Eq::{not_equal, equal}
@@ -35,9 +37,10 @@ pub fn TrayItemId::value(self : TrayItemId) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct TrayCommandId {
   priv value_ : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend TrayCommandId with Eq::{not_equal, equal}
@@ -77,21 +80,23 @@ pub fn TrayIcon::png(self : TrayIcon) -> Bytes {
 }
 
 ///|
+#derive(Debug)
 pub(all) enum TrayMenuEntry {
   Command(TrayCommandId, String, Bool, Bool)
   Separator
   Submenu(String, Array[TrayMenuEntry])
-} derive(Debug)
+}
 
 ///|
 pub extend TrayMenuEntry with Debug::{to_repr}
 
 ///|
+#derive(Debug)
 pub(all) enum TrayEvent {
   PrimaryActivation
   SecondaryActivation
   Command(TrayCommandId)
-} derive(Debug)
+}
 
 ///|
 pub extend TrayEvent with Debug::{to_repr}

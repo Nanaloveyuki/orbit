@@ -1,10 +1,11 @@
 ///|
+#derive(Eq, Debug, ToJson)
 pub(all) struct SupportEvent {
   level : String
   event : String
   window_label : String?
   configuration_fingerprint : String?
-} derive(Eq, Debug, ToJson)
+}
 
 ///|
 pub extend SupportEvent with Eq::{not_equal, equal}
@@ -16,12 +17,13 @@ pub extend SupportEvent with Debug::{to_repr}
 pub extend SupportEvent with ToJson::{to_json}
 
 ///|
+#derive(Eq, Debug, ToJson)
 pub(all) struct SupportBundle {
   schema_version : Int32
   capacity : Int32
   dropped_event_count : Int32
   events : Array[SupportEvent]
-} derive(Eq, Debug, ToJson)
+}
 
 ///|
 pub extend SupportBundle with Eq::{not_equal, equal}

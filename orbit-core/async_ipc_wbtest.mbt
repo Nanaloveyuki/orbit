@@ -216,3 +216,83 @@ test "cancelled completions cannot remove a reused invocation id" {
   assert_eq(responses[1], "current")
   assert_eq(dispatcher.pending.length(), 0)
 }
+
+///|
+async test "desktop resources outlive request cancellation and join application shutdown" {
+  let dispatcher = AsyncIpcDispatcher::new()
+  let registry = @ipc.CommandRegistry::new()
+  let acquired = Ref(false)
+  let released = Ref(false)
+  let desktop_context : Ref[DesktopAsyncContext?] = Ref(None)
+  let name = @ipc.CommandName::new("resource.acquire")
+  registry.register_async_context_json(name, async fn(context, _) {
+    let desktop = match
+      dispatcher.desktop_context("main", context.cancellation()) {
+      Ok(desktop) => desktop
+      Err(error) => return Err(error)
+    }
+    desktop_context.val = Some(desktop)
+    desktop
+    .task_group()
+    .spawn_bg(no_wait=true, () => {
+      defer {
+        released.val = true
+      }
+      acquired.val = true
+      @core_async.sleep(60_000)
+    })
+    @async.sleep(60_000)
+    Ok(Json::null())
+  })
+  let policy = @ipc.CommandPolicy::new()
+  policy.add_grant(
+    @ipc.CommandGrant::new(
+      identifier="resource",
+      effect=@ipc.CapabilityEffect::allow(),
+      principals=[@ipc.PrincipalSelector::window("main")],
+      commands=[name],
+    ),
+  )
+  let request = @ipc.decode_request(
+    "{\"version\":1,\"id\":\"resource\",\"command\":\"resource.acquire\",\"payload\":null}",
+  )
+  let responses : Array[String] = []
+  @core_async.with_task_group() <| application => {
+    dispatcher.desktop_group = Some(application)
+    @async.with_task_group() <| requests => {
+      dispatcher.bind(requests)
+      dispatcher.schedule(
+        "local",
+        window_label="main",
+        registry,
+        policy,
+        @ipc.InvocationContext::window("main"),
+        request,
+        response => responses.push(response),
+      )
+      @async.with_timeout(5_000, () => {
+        while !acquired.val {
+          @async.pause()
+        }
+      })
+      let desktop = desktop_context.val.unwrap()
+      assert_eq(desktop.label(), "main")
+      assert_false(desktop.is_cancelled())
+      dispatcher.cancel_window("main")
+      @core_async.pause()
+      assert_true(desktop.is_cancelled())
+      assert_false(released.val)
+      dispatcher.cancel_all()
+      assert_true(
+        dispatcher.desktop_context(
+          "main",
+          @ipc.InvocationContext::window("main").cancellation(),
+        )
+        is Err(_),
+      )
+    }
+    assert_false(released.val)
+  }
+  assert_true(released.val)
+  assert_eq(responses.length(), 0)
+}

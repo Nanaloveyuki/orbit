@@ -25,8 +25,8 @@ android {
     applicationId = "dev.orbit.reactmemo"
     minSdk = if (waseeEnabled) 26 else 24
     targetSdk = 35
-    versionCode = 1
-    versionName = "0.1.0"
+    versionCode = 2
+    versionName = "0.1.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     externalNativeBuild {
@@ -47,6 +47,9 @@ android {
 
   sourceSets.getByName("main").java.srcDir(
     ajniRoot.dir("android/host/src/main/java"),
+  )
+  sourceSets.getByName("main").java.srcDir(
+    ajniRoot.dir("java/src/main/java"),
   )
   if (waseeEnabled) {
     sourceSets.getByName("main").java.srcDir("src/wasee/java")

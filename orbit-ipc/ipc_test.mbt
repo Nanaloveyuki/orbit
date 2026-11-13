@@ -1,13 +1,15 @@
 ///|
+#derive(FromJson)
 priv struct AddRequest {
   left : Int32
   right : Int32
-} derive(FromJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct AddResponse {
   value : Int32
-} derive(ToJson)
+}
 
 ///|
 test "typed commands preserve string invocation ids" {

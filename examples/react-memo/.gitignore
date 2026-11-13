@@ -1,5 +1,6 @@
 _build/
 .mooncakes/
+moon.work
 .repos/
 node_modules/
 dist/

@@ -7,7 +7,7 @@ pub let app_identifier = "dev.orbit.react-memo"
 pub let app_name = "Orbit Memo"
 
 ///|
-pub let app_version = "0.1.0"
+pub let app_version = "0.1.1"
 
 ///|
 pub let app_product_name : String? = Some("Orbit Memo")
@@ -16,10 +16,10 @@ pub let app_product_name : String? = Some("Orbit Memo")
 pub let app_publisher : String? = None
 
 ///|
-pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.react-memo\",\"name\":\"Orbit Memo\",\"version\":\"0.1.0\",\"product_name\":\"Orbit Memo\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Memo\",\"width\":1180,\"height\":760,\"entry\":\"index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[],\"windows\":{\"webview_install_mode\":\"embed_bootstrapper\"}},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'\"}},\"build\":{\"vite\":{\"dev_command\":\"pnpm dev --host 127.0.0.1\",\"dev_url\":\"http://127.0.0.1:5173\",\"build_command\":\"pnpm build\",\"dist_dir\":\"dist\"}},\"capabilities\":[{\"identifier\":\"memo-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"memo.runtime\"]}],\"plugins\":[]}"
+pub let configuration_json = "{\"schema_version\":2,\"app\":{\"identifier\":\"dev.orbit.react-memo\",\"name\":\"Orbit Memo\",\"version\":\"0.1.1\",\"product_name\":\"Orbit Memo\",\"windows\":[{\"label\":\"main\",\"title\":\"Orbit Memo\",\"width\":1180,\"height\":760,\"entry\":\"index.html\",\"visible\":true,\"resizable\":true}]},\"bundle\":{\"icons\":[],\"windows\":{\"webview_install_mode\":\"embed_bootstrapper\"}},\"web\":{\"embedded\":{\"csp\":\"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'\"}},\"build\":{\"vite\":{\"dev_command\":\"pnpm dev --host 127.0.0.1\",\"dev_url\":\"http://127.0.0.1:5173\",\"build_command\":\"pnpm build\",\"dist_dir\":\"dist\"}},\"capabilities\":[{\"identifier\":\"memo-window-commands\",\"effect\":\"allow\",\"principals\":[{\"kind\":\"window\",\"identifier\":\"main\"}],\"scopes\":[],\"commands\":[\"memo.runtime\"]}],\"plugins\":[]}"
 
 ///|
-pub let configuration_fingerprint = "ea48684902027773bc0c02a93eea85e67ee0042210b8d063f23f9833d0179a90"
+pub let configuration_fingerprint = "1435891dd8c3fb0b1e7d33ce6656cd380fa51645a151e76767674373d1b427ee"
 
 ///|
 pub let window_label = "main"

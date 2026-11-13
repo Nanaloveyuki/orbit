@@ -1,10 +1,11 @@
 ///|
+#derive(Eq, Debug)
 pub enum InvocationTransport {
   MoonView
   Http
   Plugin
   Background
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InvocationTransport with Eq::{not_equal, equal}
@@ -33,13 +34,14 @@ pub fn InvocationTransport::background() -> InvocationTransport {
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum InvocationPrincipal {
   Window(String)
   RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InvocationPrincipal with Eq::{not_equal, equal}

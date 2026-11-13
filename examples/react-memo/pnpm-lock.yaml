@@ -33,9 +33,6 @@ importers:
         specifier: ^1.3.8
         version: 1.4.0
     devDependencies:
-      '@nanaloveyuki/orbit-cli':
-        specifier: 0.1.0-alpha.8
-        version: 0.1.0-alpha.8
       '@tailwindcss/vite':
         specifier: ^4.1.14
         version: 4.3.3(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0))
@@ -522,11 +519,6 @@ packages:
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
-
-  '@nanaloveyuki/orbit-cli@0.1.0-alpha.8':
-    resolution: {integrity: sha512-/pFZP3br2lFoMi2rUgY4zgV66yz/j8/Z3BzprgMiIDceBQxG7CWz3Cyc6H2at+KdCX2QR2E5ph6iSGCbVVJb/Q==}
-    engines: {node: '>=20'}
-    hasBin: true
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -2991,8 +2983,6 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
-
-  '@nanaloveyuki/orbit-cli@0.1.0-alpha.8': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

@@ -1,6 +1,6 @@
 # Platform Support
 
-Orbit `0.2.0-alpha.2` is a pre-release desktop framework. Its public support
+Orbit `0.2.0-alpha.3` is a pre-release desktop framework. Its public support
 claim is deliberately narrower than its build matrix.
 
 The proposed beta support contract is maintained in the

@@ -3,7 +3,7 @@
   "app": {
     "identifier": "dev.orbit.react-memo",
     "name": "Orbit Memo",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "product_name": "Orbit Memo",
     "windows": [
       {

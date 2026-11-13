@@ -1,21 +1,23 @@
 ///|
+#derive(Debug)
 pub(all) suberror DesktopControllerError {
   WindowUnavailable(String)
   HostUnavailable
   RuntimeOperationFailed(String)
-} derive(Debug)
+}
 
 ///|
 pub extend DesktopControllerError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub enum DesktopCloseAction {
   Destroy
   Hide
   /// Hides the top-level window and releases its embedded WebView runtime.
   /// Showing the window creates a fresh runtime using its original options.
   Suspend
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DesktopCloseAction with Eq::{not_equal, equal}
@@ -132,6 +134,7 @@ pub fn DesktopUiContext::show_file_dialog(
 pub struct DesktopAsyncContext {
   priv label_ : String
   priv cancellation_ : @ipc.InvocationCancellation
+  priv task_group_ : @core_async.TaskGroup
 }
 
 ///|
@@ -142,6 +145,15 @@ pub fn DesktopAsyncContext::label(self : DesktopAsyncContext) -> String {
 ///|
 pub fn DesktopAsyncContext::is_cancelled(self : DesktopAsyncContext) -> Bool {
   self.cancellation_.is_cancelled()
+}
+
+///|
+/// Owns desktop resources until application shutdown, independently of the
+/// requesting window or invocation's cancellation.
+pub fn DesktopAsyncContext::task_group(
+  self : DesktopAsyncContext,
+) -> @core_async.TaskGroup {
+  self.task_group_
 }
 
 ///|

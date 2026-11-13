@@ -16,6 +16,7 @@ pub fn encode_command_failure(InvocationId?, CommandFailure) -> String
 pub fn encode_response(InvocationResponse) -> String
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror IpcError {
   MalformedEnvelope(String)
   UnsupportedVersion(Int32)
@@ -26,14 +27,15 @@ pub(all) suberror IpcError {
   InvalidContext(String)
   DuplicateCommand(String)
   DuplicateCapability(String)
-} derive(@debug.Debug)
+}
 pub fn IpcError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub enum CapabilityEffect {
   Allow
   Deny
-} derive(Eq, @debug.Debug)
+}
 pub fn CapabilityEffect::allow() -> Self
 pub fn CapabilityEffect::deny() -> Self
 pub fn CapabilityEffect::equal(Self, Self) -> Bool
@@ -46,13 +48,14 @@ pub struct CommandCapability {
 pub fn CommandCapability::identifier(Self) -> String
 pub fn CommandCapability::new(identifier~ : String, windows~ : Array[String], commands~ : Array[CommandName]) -> Self raise IpcError
 
+#derive(Eq, @debug.Debug)
 pub(all) struct CommandFailure {
   code : String
   message : String
-  data : Json?
-} derive(Eq, @debug.Debug)
+  data : @json.Json?
+}
 pub fn CommandFailure::equal(Self, Self) -> Bool
-pub fn CommandFailure::new(code~ : String, message~ : String, data? : Json) -> Self
+pub fn CommandFailure::new(code~ : String, message~ : String, data? : @json.Json) -> Self
 pub fn CommandFailure::not_equal(Self, Self) -> Bool
 pub fn CommandFailure::to_repr(Self) -> @debug.Repr
 
@@ -62,9 +65,10 @@ pub struct CommandGrant {
 pub fn CommandGrant::identifier(Self) -> String
 pub fn CommandGrant::new(identifier~ : String, effect~ : CapabilityEffect, principals~ : Array[PrincipalSelector], scopes? : Array[InvocationScope], commands~ : Array[CommandName]) -> Self raise IpcError
 
+#derive(Eq, @debug.Debug)
 pub struct CommandName {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn CommandName::equal(Self, Self) -> Bool
 pub fn CommandName::new(String) -> Self raise IpcError
 pub fn CommandName::not_equal(Self, Self) -> Bool
@@ -93,14 +97,14 @@ pub fn CommandRegistry::dispatch_with_context(Self, StringView, CommandPolicy, I
 pub async fn CommandRegistry::dispatch_with_context_async(Self, StringView, CommandPolicy, InvocationContext) -> String
 pub fn CommandRegistry::length(Self) -> Int32
 pub fn CommandRegistry::new() -> Self
-pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
-pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async(Self, CommandName, async (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
-pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_async_context(Self, CommandName, async (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
-pub fn CommandRegistry::register_async_context_json(Self, CommandName, async (InvocationContext, Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
-pub fn CommandRegistry::register_async_json(Self, CommandName, async (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
-pub fn[Request : @json.FromJson, Response : ToJson] CommandRegistry::register_context(Self, CommandName, (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
-pub fn CommandRegistry::register_context_json(Self, CommandName, (InvocationContext, Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
-pub fn CommandRegistry::register_json(Self, CommandName, (Json) -> Result[Json, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : @json.ToJson] CommandRegistry::register(Self, CommandName, (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : @json.ToJson] CommandRegistry::register_async(Self, CommandName, async (Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : @json.ToJson] CommandRegistry::register_async_context(Self, CommandName, async (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_async_context_json(Self, CommandName, async (InvocationContext, @json.Json) -> Result[@json.Json, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_async_json(Self, CommandName, async (@json.Json) -> Result[@json.Json, CommandFailure]) -> Unit raise IpcError
+pub fn[Request : @json.FromJson, Response : @json.ToJson] CommandRegistry::register_context(Self, CommandName, (InvocationContext, Request) -> Result[Response, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_context_json(Self, CommandName, (InvocationContext, @json.Json) -> Result[@json.Json, CommandFailure]) -> Unit raise IpcError
+pub fn CommandRegistry::register_json(Self, CommandName, (@json.Json) -> Result[@json.Json, CommandFailure]) -> Unit raise IpcError
 
 pub struct InvocationCancellation {
   // private fields
@@ -128,22 +132,24 @@ pub fn InvocationContext::transport(Self) -> InvocationTransport
 pub fn InvocationContext::window(String) -> Self raise IpcError
 pub fn InvocationContext::with_response_limit(Self, Int32) -> Self raise IpcError
 
+#derive(Eq, @debug.Debug)
 pub struct InvocationId {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn InvocationId::equal(Self, Self) -> Bool
 pub fn InvocationId::new(String) -> Self raise IpcError
 pub fn InvocationId::not_equal(Self, Self) -> Bool
 pub fn InvocationId::to_repr(Self) -> @debug.Repr
 pub fn InvocationId::value(Self) -> String
 
+#derive(Eq, @debug.Debug)
 pub enum InvocationPrincipal {
   Window(String)
   RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn InvocationPrincipal::equal(Self, Self) -> Bool
 pub fn InvocationPrincipal::not_equal(Self, Self) -> Bool
 pub fn InvocationPrincipal::to_repr(Self) -> @debug.Repr
@@ -153,30 +159,32 @@ pub struct InvocationRequest {
 }
 pub fn InvocationRequest::command(Self) -> CommandName
 pub fn InvocationRequest::id(Self) -> InvocationId
-pub fn InvocationRequest::payload(Self) -> Json
+pub fn InvocationRequest::payload(Self) -> @json.Json
 pub fn InvocationRequest::timeout_ms(Self) -> Int32
 
 pub(all) enum InvocationResponse {
-  Success(InvocationId, Json)
+  Success(InvocationId, @json.Json)
   Failure(InvocationId?, CommandFailure)
 }
 
+#derive(Eq, @debug.Debug)
 pub enum InvocationScope {
   Transport(InvocationTransport)
   Origin(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn InvocationScope::equal(Self, Self) -> Bool
 pub fn InvocationScope::not_equal(Self, Self) -> Bool
 pub fn InvocationScope::origin(String) -> Self raise IpcError
 pub fn InvocationScope::to_repr(Self) -> @debug.Repr
 pub fn InvocationScope::transport(InvocationTransport) -> Self
 
+#derive(Eq, @debug.Debug)
 pub enum InvocationTransport {
   MoonView
   Http
   Plugin
   Background
-} derive(Eq, @debug.Debug)
+}
 pub fn InvocationTransport::background() -> Self
 pub fn InvocationTransport::equal(Self, Self) -> Bool
 pub fn InvocationTransport::http() -> Self
@@ -185,13 +193,14 @@ pub fn InvocationTransport::not_equal(Self, Self) -> Bool
 pub fn InvocationTransport::plugin() -> Self
 pub fn InvocationTransport::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub enum PrincipalSelector {
   Window(String)
   RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn PrincipalSelector::background_task(String) -> Self raise IpcError
 pub fn PrincipalSelector::equal(Self, Self) -> Bool
 pub fn PrincipalSelector::http_client(String) -> Self raise IpcError

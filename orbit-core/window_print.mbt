@@ -1,10 +1,12 @@
 ///|
-priv struct WindowPrintRequest {} derive(FromJson)
+#derive(FromJson)
+priv struct WindowPrintRequest {}
 
 ///|
+#derive(ToJson)
 priv struct WindowPrintResponse {
   opened : Bool
-} derive(ToJson)
+}
 
 ///|
 fn is_window_print_command(command : @ipc.CommandName) -> Bool {

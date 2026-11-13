@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct AppConfig {
   identifier : String
   name : String
@@ -6,7 +7,7 @@ pub(all) struct AppConfig {
   product_name : String?
   publisher : String?
   windows : Array[WindowConfig]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend AppConfig with Eq::{not_equal, equal}
@@ -21,6 +22,7 @@ pub extend AppConfig with ToJson::{to_json}
 pub extend AppConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct WindowConfig {
   label : String
   title : String
@@ -29,7 +31,7 @@ pub(all) struct WindowConfig {
   entry : String
   visible : Bool
   resizable : Bool
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend WindowConfig with Eq::{not_equal, equal}
@@ -44,11 +46,12 @@ pub extend WindowConfig with ToJson::{to_json}
 pub extend WindowConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct BundleConfig {
   icons : Array[String]
   windows : WindowsBundleConfig?
   linux : LinuxBundleConfig?
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend BundleConfig with Eq::{not_equal, equal}
@@ -63,9 +66,10 @@ pub extend BundleConfig with ToJson::{to_json}
 pub extend BundleConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct WindowsBundleConfig {
   webview_install_mode : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend WindowsBundleConfig with Eq::{not_equal, equal}
@@ -80,11 +84,12 @@ pub extend WindowsBundleConfig with ToJson::{to_json}
 pub extend WindowsBundleConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct LinuxDebConfig {
   depends : Array[String]
   section : String
   priority : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend LinuxDebConfig with Eq::{not_equal, equal}
@@ -99,9 +104,10 @@ pub extend LinuxDebConfig with ToJson::{to_json}
 pub extend LinuxDebConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct LinuxRpmConfig {
   requires : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend LinuxRpmConfig with Eq::{not_equal, equal}
@@ -116,9 +122,10 @@ pub extend LinuxRpmConfig with ToJson::{to_json}
 pub extend LinuxRpmConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct LinuxArchConfig {
   depends : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend LinuxArchConfig with Eq::{not_equal, equal}
@@ -133,6 +140,7 @@ pub extend LinuxArchConfig with ToJson::{to_json}
 pub extend LinuxArchConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct LinuxBundleConfig {
   package_name : String
   summary : String
@@ -144,7 +152,7 @@ pub(all) struct LinuxBundleConfig {
   deb : LinuxDebConfig?
   rpm : LinuxRpmConfig?
   arch : LinuxArchConfig?
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend LinuxBundleConfig with Eq::{not_equal, equal}
@@ -159,9 +167,10 @@ pub extend LinuxBundleConfig with ToJson::{to_json}
 pub extend LinuxBundleConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct EmbeddedWebConfig {
   csp : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend EmbeddedWebConfig with Eq::{not_equal, equal}
@@ -176,11 +185,12 @@ pub extend EmbeddedWebConfig with ToJson::{to_json}
 pub extend EmbeddedWebConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct RemoteWebConfig {
   http_url : String
   allowed_origins : Array[String]
   fallback_entry : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend RemoteWebConfig with Eq::{not_equal, equal}
@@ -195,10 +205,11 @@ pub extend RemoteWebConfig with ToJson::{to_json}
 pub extend RemoteWebConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct WebConfig {
   embedded : EmbeddedWebConfig
   remote : RemoteWebConfig?
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend WebConfig with Eq::{not_equal, equal}
@@ -213,12 +224,13 @@ pub extend WebConfig with ToJson::{to_json}
 pub extend WebConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct ViteBuildConfig {
   dev_command : String
   dev_url : String
   build_command : String
   dist_dir : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend ViteBuildConfig with Eq::{not_equal, equal}
@@ -233,9 +245,10 @@ pub extend ViteBuildConfig with ToJson::{to_json}
 pub extend ViteBuildConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct BuildConfig {
   vite : ViteBuildConfig?
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend BuildConfig with Eq::{not_equal, equal}
@@ -250,10 +263,11 @@ pub extend BuildConfig with ToJson::{to_json}
 pub extend BuildConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct PrincipalConfig {
   kind : String
   identifier : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend PrincipalConfig with Eq::{not_equal, equal}
@@ -268,10 +282,11 @@ pub extend PrincipalConfig with ToJson::{to_json}
 pub extend PrincipalConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct ScopeConfig {
   kind : String
   value : String
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend ScopeConfig with Eq::{not_equal, equal}
@@ -286,13 +301,14 @@ pub extend ScopeConfig with ToJson::{to_json}
 pub extend ScopeConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct CapabilityConfig {
   identifier : String
   effect : String
   principals : Array[PrincipalConfig]
   scopes : Array[ScopeConfig]
   commands : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend CapabilityConfig with Eq::{not_equal, equal}
@@ -312,12 +328,13 @@ pub extend CapabilityConfig with FromJson::{from_json}
 /// `library` is always a normalized path relative to the installed
 /// application root. Development overrides are deliberately runtime-only and
 /// therefore never become part of an embedded configuration.
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct PluginConfig {
   id : String
   library : String
   manifest : String
   permissions : Array[String]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend PluginConfig with Eq::{not_equal, equal}
@@ -332,6 +349,7 @@ pub extend PluginConfig with ToJson::{to_json}
 pub extend PluginConfig with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) struct OrbitConfig {
   schema_version : Int32
   app : AppConfig
@@ -340,7 +358,7 @@ pub(all) struct OrbitConfig {
   build : BuildConfig
   capabilities : Array[CapabilityConfig]
   plugins : Array[PluginConfig]
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend OrbitConfig with Eq::{not_equal, equal}

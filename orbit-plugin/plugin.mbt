@@ -1,11 +1,12 @@
 ///|
+#derive(Eq, Debug)
 pub(all) struct PluginManifest {
   id : String
   name : String
   version : String
   commands : Array[String]
   permissions : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PluginManifest with Eq::{not_equal, equal}
@@ -16,11 +17,12 @@ pub extend PluginManifest with Debug::{to_repr}
 ///|
 /// A build-validated sidecar descriptor. JSON Schema values are retained as
 /// ordinary inspectable JSON rather than becoming a second invocation ABI.
+#derive(Eq, Debug, FromJson)
 pub(all) struct PluginCommandDescriptor {
   name : String
   request_schema : Json
   response_schema : Json
-} derive(Eq, Debug, FromJson)
+}
 
 ///|
 pub extend PluginCommandDescriptor with Eq::{not_equal, equal}
@@ -32,6 +34,7 @@ pub extend PluginCommandDescriptor with Debug::{to_repr}
 pub extend PluginCommandDescriptor with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug, FromJson)
 pub(all) struct PluginSidecarManifest {
   schema_version : Int32
   abi_version : Int32
@@ -41,7 +44,7 @@ pub(all) struct PluginSidecarManifest {
   platforms : Array[String]
   requested_permissions : Array[String]
   commands : Array[PluginCommandDescriptor]
-} derive(Eq, Debug, FromJson)
+}
 
 ///|
 pub extend PluginSidecarManifest with Eq::{not_equal, equal}
@@ -53,6 +56,7 @@ pub extend PluginSidecarManifest with Debug::{to_repr}
 pub extend PluginSidecarManifest with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum PluginError {
   LoadFailed
   MissingSymbol(String)
@@ -64,7 +68,7 @@ pub(all) enum PluginError {
   InvocationFailed
   AsyncRuntimeRequired
   ExecutorFailed
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PluginError with Eq::{not_equal, equal}

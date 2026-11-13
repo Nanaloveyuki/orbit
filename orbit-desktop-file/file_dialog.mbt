@@ -1,29 +1,33 @@
 ///|
+#derive(FromJson)
 priv struct FileDialogFilterPayload {
   name : String
   extensions : Array[String]
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct FileDialogRequest {
   title : String?
   filters : Array[FileDialogFilterPayload]?
   default_name : String?
   initial_directory : String?
-} derive(FromJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileDialogFileResponse {
   id : String
   name : String
   kind : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileDialogResponse {
   cancelled : Bool
   files : Array[FileDialogFileResponse]
-} derive(ToJson)
+}
 
 ///|
 fn dialog_command(kind : @runtime.RuntimeFileDialogKind) -> String {

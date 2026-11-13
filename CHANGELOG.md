@@ -4,6 +4,19 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
+## 0.2.0-alpha.3 - 2026-11-13
+
+- Pin compiler `0.10.20+65efd5b93` and CLI `0.1.20261104` in CI, examples,
+  and generated applications.
+- Update owned dependencies together and resolve all external MoonBit dependencies
+  to their latest published, non-yanked versions, including Proton 0.9.0,
+  async 0.22.9, flate 0.10.0, and protobuf 0.2.0.
+- Adapt clipboard, shell, and keep-awake commands to Proton's asynchronous APIs.
+  Applications using these commands must use `orbit-core.run_async`.
+  Keep-awake guards use the application task group and release during shutdown.
+- Generate contracts with `#derive` syntax and align the CLI, contract schema,
+  bindings, and compatibility metadata with this release.
+
 ## 0.2.0-alpha.2 - 2026-11-03
 
 - Pin compiler `0.10.19+97801ee1b` and CLI `0.1.20261029` across CI,

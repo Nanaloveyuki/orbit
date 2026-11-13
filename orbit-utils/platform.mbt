@@ -1,4 +1,5 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum Platform {
   Windows
   Linux
@@ -6,7 +7,7 @@ pub(all) enum Platform {
   Android
   OpenHarmony
   Unknown(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend Platform with Eq::{not_equal, equal}

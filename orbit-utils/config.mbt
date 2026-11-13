@@ -1,11 +1,13 @@
 ///|
+#derive(FromJson)
 priv struct V1AppConfig {
   identifier : String
   name : String
   version : String
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct V1WindowConfig {
   label : String
   title : String
@@ -14,19 +16,21 @@ priv struct V1WindowConfig {
   entry : String
   visible : Bool
   resizable : Bool
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct V1SecurityConfig {
   csp : String
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct V1CapabilityConfig {
   identifier : String
   windows : Array[String]
   commands : Array[String]
-} derive(FromJson)
+}
 
 ///|
 /// A native plugin declared by the application configuration.
@@ -34,13 +38,15 @@ priv struct V1CapabilityConfig {
 /// `library` is always a normalized path relative to the installed
 /// application root. Development overrides are deliberately runtime-only and
 /// therefore never become part of an embedded configuration.
+#derive(FromJson)
 priv struct V1PluginConfig {
   id : String
   library : String
   permissions : Array[String]
-} derive(FromJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct V1OrbitConfig {
   schema_version : Int32
   app : V1AppConfig
@@ -48,14 +54,15 @@ priv struct V1OrbitConfig {
   security : V1SecurityConfig
   capabilities : Array[V1CapabilityConfig]
   plugins : Array[V1PluginConfig]
-} derive(FromJson)
+}
 
 ///|
+#derive(Eq, Debug, ToJson)
 pub(all) struct ConfigDiagnostic {
   code : String
   path : String
   message : String
-} derive(Eq, Debug, ToJson)
+}
 
 ///|
 pub extend ConfigDiagnostic with Eq::{not_equal, equal}
@@ -67,9 +74,10 @@ pub extend ConfigDiagnostic with Debug::{to_repr}
 pub extend ConfigDiagnostic with ToJson::{to_json}
 
 ///|
+#derive(Debug)
 pub(all) suberror ConfigError {
   Invalid(Array[ConfigDiagnostic])
-} derive(Debug)
+}
 
 ///|
 pub extend ConfigError with Debug::{to_repr}

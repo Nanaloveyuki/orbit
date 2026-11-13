@@ -127,8 +127,20 @@ if (command === "android") {
   process.exit(0)
 }
 
-if (command === "dev" && existsSync(localCli)) {
-  run(process.execPath, [localCli, "dev", ...extraArgs])
+const workspace = resolve(project, "moon.work")
+if (existsSync(localBuilder) && !existsSync(workspace)) {
+  writeFileSync(workspace, 'members = [".", "../.."]\n', { flag: "wx" })
+  process.on("exit", () => rmSync(workspace, { force: true }))
+}
+
+if ((command === "dev" || command === "diagnose") && existsSync(localCli)) {
+  run(process.execPath, [
+    localCli,
+    command,
+    "--orbit-build",
+    resolve(repository, "orbit-build"),
+    ...extraArgs,
+  ])
   process.exit(0)
 }
 

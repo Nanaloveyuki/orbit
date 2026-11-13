@@ -8,19 +8,21 @@ import {
 // Values
 
 // Errors
+#derive(@debug.Debug)
 pub(all) suberror TrayError {
   InvalidIdentifier(String)
   DuplicateMenuCommand(String)
   MenuTooLarge
   EmptyIcon
   Unavailable
-} derive(@debug.Debug)
+}
 pub fn TrayError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub struct TrayCommandId {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn TrayCommandId::equal(Self, Self) -> Bool
 pub fn TrayCommandId::new(String) -> Self raise TrayError
 pub fn TrayCommandId::not_equal(Self, Self) -> Bool
@@ -34,11 +36,12 @@ pub fn TrayController::new((TrayItem) -> Unit raise TrayError, (TrayItemId) -> U
 pub fn TrayController::open_menu(Self, TrayItemId) -> Unit raise TrayError
 pub fn TrayController::replace_item(Self, TrayItem) -> Unit raise TrayError
 
+#derive(@debug.Debug)
 pub(all) enum TrayEvent {
   PrimaryActivation
   SecondaryActivation
   Command(TrayCommandId)
-} derive(@debug.Debug)
+}
 pub fn TrayEvent::to_repr(Self) -> @debug.Repr
 
 pub struct TrayIcon {
@@ -61,20 +64,22 @@ pub fn TrayItem::new(TrayItemId, TrayIcon, String, visible? : Bool, menu? : Arra
 pub fn TrayItem::tooltip(Self) -> String
 pub fn TrayItem::visible(Self) -> Bool
 
+#derive(Eq, @debug.Debug)
 pub struct TrayItemId {
   // private fields
-} derive(Eq, @debug.Debug)
+}
 pub fn TrayItemId::equal(Self, Self) -> Bool
 pub fn TrayItemId::new(String) -> Self raise TrayError
 pub fn TrayItemId::not_equal(Self, Self) -> Bool
 pub fn TrayItemId::to_repr(Self) -> @debug.Repr
 pub fn TrayItemId::value(Self) -> String
 
+#derive(@debug.Debug)
 pub(all) enum TrayMenuEntry {
   Command(TrayCommandId, String, Bool, Bool)
   Separator
   Submenu(String, Array[TrayMenuEntry])
-} derive(@debug.Debug)
+}
 pub fn TrayMenuEntry::to_repr(Self) -> @debug.Repr
 
 // Type aliases

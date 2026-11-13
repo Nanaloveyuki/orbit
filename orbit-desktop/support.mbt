@@ -33,6 +33,19 @@ fn command(
 }
 
 ///|
+fn async_command(
+  name : String,
+  handler : async (@core.DesktopAsyncContext, Json) -> Result[
+    Json,
+    @ipc.CommandFailure,
+  ],
+) -> @core.DesktopCommand {
+  @core.DesktopCommand::async_command(name, handler) catch {
+    _ => abort("invalid built-in asynchronous desktop command")
+  }
+}
+
+///|
 fn object_field(payload : Json, field : String) -> Json? {
   match payload {
     Object(fields) => fields.get(field)
@@ -98,12 +111,22 @@ fn safe_text(value : String) -> Result[String, @ipc.CommandFailure] {
 }
 
 ///|
-fn shell_action(action : String, path : String) -> Result[Unit, String] {
-  match action {
-    "open" => @proton_shell.open(path)
-    "reveal" => @proton_shell.reveal_item(path)
-    "trash" => @proton_shell.trash_item(path)
-    _ => Err("unsupported shell action")
+async fn shell_action(action : String, path : String) -> Result[Unit, String] {
+  try {
+    match action {
+      "open" => @proton_shell.open(path)
+      "reveal" => @proton_shell.reveal_item(path)
+      "trash" => @proton_shell.trash_item(path)
+      _ => return Err("unsupported shell action")
+    }
+    Ok(())
+  } catch {
+    error => {
+      if @async.is_being_cancelled() {
+        raise error
+      }
+      Err("shell action failed")
+    }
   }
 }
 

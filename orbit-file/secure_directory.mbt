@@ -1,8 +1,9 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum DirectoryEntryKind {
   File
   Directory
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DirectoryEntryKind with Eq::{not_equal, equal}
@@ -11,10 +12,11 @@ pub extend DirectoryEntryKind with Eq::{not_equal, equal}
 pub extend DirectoryEntryKind with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct DirectoryEntry {
   name : String
   kind : DirectoryEntryKind
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DirectoryEntry with Eq::{not_equal, equal}
@@ -23,12 +25,13 @@ pub extend DirectoryEntry with Eq::{not_equal, equal}
 pub extend DirectoryEntry with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) suberror DirectoryHandleError {
   OpenFailed
   InvalidChildName
   ReadFailed
   TooLarge
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DirectoryHandleError with Eq::{not_equal, equal}

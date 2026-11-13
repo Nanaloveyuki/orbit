@@ -108,7 +108,7 @@ impl DesktopExtension for DesktopShellExtension with fn commands(_self) {
     command("orbit.shell.supported", fn(_ui, _payload) {
       Ok({ "supported": @proton_shell.is_supported() })
     }),
-    command("orbit.shell.open", fn(_ui, payload) {
+    async_command("orbit.shell.open", async fn(_ui, payload) {
       match string_field(payload, "path").bind(safe_text) {
         Err(failure) => Err(failure)
         Ok(path) => {

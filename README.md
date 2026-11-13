@@ -26,8 +26,8 @@ embedded.
 
 ## Prerequisites
 
-- [MoonBit](https://www.moonbitlang.com/download/) compiler `0.10.19+97801ee1b`
-  with CLI `0.1.20261029`
+- [MoonBit](https://www.moonbitlang.com/download/) compiler `0.10.20+65efd5b93`
+  with CLI `0.1.20261104`
 - A native C/C++ compiler and linker
 - Node.js 20 or newer when using the CLI or Vite
 - Windows: MSVC and the Windows SDK
@@ -82,7 +82,7 @@ scripts needed for development and production builds.
 ## Add Orbit to an existing app
 
 ```sh
-moon add Nanaloveyuki/orbit@0.2.0-alpha.2
+moon add Nanaloveyuki/orbit@0.2.0-alpha.3
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev
@@ -97,6 +97,8 @@ and global hotkeys come from the experimental `orbit-desktop` extensions.
 Construct and inject only the extensions the application needs, then grant
 their commands to a local window. Importing the package does not enable them.
 Shell and directory commands return native paths to that authorized window.
+Clipboard, shell operations, and keep-awake commands require
+`orbit-core.run_async`.
 
 ## Edit an application
 

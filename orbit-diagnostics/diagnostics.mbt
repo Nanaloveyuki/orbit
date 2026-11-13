@@ -1,9 +1,10 @@
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticLevel {
   Info
   Warning
   Error
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DiagnosticLevel with Eq::{not_equal, equal}
@@ -12,6 +13,7 @@ pub extend DiagnosticLevel with Eq::{not_equal, equal}
 pub extend DiagnosticLevel with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub(all) enum DiagnosticKind {
   DesktopStarting
   DesktopStarted
@@ -29,7 +31,7 @@ pub(all) enum DiagnosticKind {
   PluginStartupFailed
   PluginPollFailed
   DesktopStopping
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend DiagnosticKind with Eq::{not_equal, equal}

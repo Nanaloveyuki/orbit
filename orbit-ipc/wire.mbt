@@ -1,4 +1,5 @@
 ///|
+#derive(Debug)
 pub(all) suberror IpcError {
   MalformedEnvelope(String)
   UnsupportedVersion(Int32)
@@ -9,15 +10,16 @@ pub(all) suberror IpcError {
   InvalidContext(String)
   DuplicateCommand(String)
   DuplicateCapability(String)
-} derive(Debug)
+}
 
 ///|
 pub extend IpcError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct InvocationId {
   priv value : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InvocationId with Eq::{not_equal, equal}
@@ -45,9 +47,10 @@ pub fn InvocationId::value(self : InvocationId) -> String {
 }
 
 ///|
+#derive(Eq, Debug)
 pub struct CommandName {
   priv value : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CommandName with Eq::{not_equal, equal}
@@ -121,11 +124,12 @@ pub(all) enum InvocationClientMessage {
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct CommandFailure {
   code : String
   message : String
   data : Json?
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CommandFailure with Eq::{not_equal, equal}

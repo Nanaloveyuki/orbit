@@ -161,7 +161,6 @@ jobs:
         run: |
           moon -C ../.. update
           moon -C ../../wasee-moon update
-          moon -C android update
           npm install --global pnpm@11.5.3
           pnpm install --frozen-lockfile
         working-directory: examples/react-memo

@@ -1,15 +1,17 @@
 ///|
+#derive(Debug)
 pub(all) suberror EventError {
   InvalidName(String)
-} derive(Debug)
+}
 
 ///|
 pub extend EventError with Debug::{to_repr}
 
 ///|
+#derive(Eq, Debug)
 pub struct EventName {
   priv value : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EventName with Eq::{not_equal, equal}
@@ -42,13 +44,14 @@ pub fn EventName::value(self : EventName) -> String {
 }
 
 ///|
+#derive(Eq, Debug, ToJson, FromJson)
 pub(all) enum EventTarget {
   Any
   Application
   Window(String)
   Runtime(String)
   Ipc(String)
-} derive(Eq, Debug, ToJson, FromJson)
+}
 
 ///|
 pub extend EventTarget with Eq::{not_equal, equal}
@@ -63,12 +66,13 @@ pub extend EventTarget with ToJson::{to_json}
 pub extend EventTarget with FromJson::{from_json}
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EventEnvelope {
   name : EventName
   source : EventTarget
   target : EventTarget
   payload : Json
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EventEnvelope with Eq::{not_equal, equal}
@@ -87,10 +91,11 @@ pub fn EventEnvelope::new(
 }
 
 ///|
+#derive(Eq, Debug)
 pub(all) struct EventDeliveryFailure {
   code : String
   message : String
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend EventDeliveryFailure with Eq::{not_equal, equal}

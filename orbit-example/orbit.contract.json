@@ -1,5 +1,5 @@
 {
-  "schema_version": { "orbit": "0.2.0-alpha.2", "contract": 1 },
+  "schema_version": { "orbit": "0.2.0-alpha.3", "contract": 1 },
   "types": {
     "PingResponse": {
       "type": "object",

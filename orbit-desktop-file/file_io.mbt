@@ -8,49 +8,57 @@ let max_directory_entries : Int32 = 128
 extern "C" fn link_async_fs() = "orbit_core_link_async_fs"
 
 ///|
+#derive(FromJson)
 priv struct FileReadRequest {
   id : String
-} derive(FromJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileBinaryReadResponse {
   data : String
   size : Int32
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileTextReadResponse {
   text : String
   size : Int32
-} derive(ToJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct FileWriteRequest {
   id : String
   text : String
-} derive(FromJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileWriteResponse {
   size : Int32
-} derive(ToJson)
+}
 
 ///|
+#derive(FromJson)
 priv struct FileDirectoryReadRequest {
   id : String
-} derive(FromJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileDirectoryEntryResponse {
   id : String?
   name : String
   kind : String
-} derive(ToJson)
+}
 
 ///|
+#derive(ToJson)
 priv struct FileDirectoryReadResponse {
   entries : Array[FileDirectoryEntryResponse]
-} derive(ToJson)
+}
 
 ///|
 fn file_read_failure(code : String, message : String) -> @ipc.CommandFailure {
@@ -220,8 +228,10 @@ fn temporary_write_path(target : String, handle : String) -> String {
 }
 
 ///|
-async fn remove_temporary_write(path : String) -> Unit {
-  @async.protect_from_cancel(() => @fs.remove(path) catch { _ => () })
+async fn remove_temporary_write(path : String) -> Unit noraise + nocancel {
+  @async.protect_from_cancel(() => @fs.remove(path) catch { _ => () }) catch {
+    _ => ()
+  }
 }
 
 ///|

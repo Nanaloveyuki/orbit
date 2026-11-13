@@ -1,9 +1,10 @@
 ///|
+#derive(Debug)
 pub(all) suberror CspError {
   EmptyPolicy
   MissingHeadElement
   ExistingPolicy
-} derive(Debug)
+}
 
 ///|
 pub extend CspError with Debug::{to_repr}

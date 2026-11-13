@@ -59,10 +59,11 @@ fn CommandCapability::allows(
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum CapabilityEffect {
   Allow
   Deny
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend CapabilityEffect with Eq::{not_equal, equal}
@@ -81,13 +82,14 @@ pub fn CapabilityEffect::deny() -> CapabilityEffect {
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum PrincipalSelector {
   Window(String)
   RemotePage(String)
   HttpClient(String)
   Plugin(String)
   BackgroundTask(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend PrincipalSelector with Eq::{not_equal, equal}
@@ -146,10 +148,11 @@ pub fn PrincipalSelector::background_task(
 }
 
 ///|
+#derive(Eq, Debug)
 pub enum InvocationScope {
   Transport(InvocationTransport)
   Origin(String)
-} derive(Eq, Debug)
+}
 
 ///|
 pub extend InvocationScope with Eq::{not_equal, equal}

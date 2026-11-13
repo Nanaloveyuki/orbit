@@ -22,27 +22,30 @@ pub fn sidecar_matches_manifest(PluginSidecarManifest, PluginManifest) -> Bool
 // Errors
 
 // Types and methods
+#derive(Eq, @debug.Debug, @json.FromJson)
 pub(all) struct PluginCommandDescriptor {
   name : String
-  request_schema : Json
-  response_schema : Json
-} derive(Eq, @debug.Debug, @json.FromJson)
+  request_schema : @json.Json
+  response_schema : @json.Json
+}
 pub fn PluginCommandDescriptor::equal(Self, Self) -> Bool
-pub fn PluginCommandDescriptor::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginCommandDescriptor::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn PluginCommandDescriptor::not_equal(Self, Self) -> Bool
 pub fn PluginCommandDescriptor::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) struct PluginDeclaration {
   id : String
   library : String
   sidecar : PluginSidecarManifest
   permissions : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn PluginDeclaration::equal(Self, Self) -> Bool
 pub fn PluginDeclaration::new(id~ : String, library~ : String, sidecar~ : PluginSidecarManifest, permissions? : Array[String]) -> Self
 pub fn PluginDeclaration::not_equal(Self, Self) -> Bool
 pub fn PluginDeclaration::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug)
 pub(all) enum PluginError {
   LoadFailed
   MissingSymbol(String)
@@ -54,7 +57,7 @@ pub(all) enum PluginError {
   InvocationFailed
   AsyncRuntimeRequired
   ExecutorFailed
-} derive(Eq, @debug.Debug)
+}
 pub fn PluginError::equal(Self, Self) -> Bool
 pub fn PluginError::not_equal(Self, Self) -> Bool
 pub fn PluginError::to_repr(Self) -> @debug.Repr
@@ -67,13 +70,14 @@ pub fn PluginLibrary::close(Self) -> Result[Unit, PluginError]
 pub fn PluginLibrary::invoke(Self, String, Bytes) -> Result[Bytes, PluginError]
 pub fn PluginLibrary::manifest(Self) -> PluginManifest
 
+#derive(Eq, @debug.Debug)
 pub(all) struct PluginManifest {
   id : String
   name : String
   version : String
   commands : Array[String]
   permissions : Array[String]
-} derive(Eq, @debug.Debug)
+}
 pub fn PluginManifest::equal(Self, Self) -> Bool
 pub fn PluginManifest::not_equal(Self, Self) -> Bool
 pub fn PluginManifest::to_repr(Self) -> @debug.Repr
@@ -95,6 +99,7 @@ pub fn PluginRuntime::register_ipc(Self, @orbit-ipc.CommandRegistry) -> Result[U
 pub fn PluginRuntime::shutdown(Self) -> Result[Unit, PluginRuntimeError]
 pub fn PluginRuntime::start(Self, Array[PluginDeclaration], development_directory? : String?) -> Result[Unit, PluginRuntimeError]
 
+#derive(Eq, @debug.Debug)
 pub(all) enum PluginRuntimeError {
   DuplicatePlugin(String)
   IncompatibleSidecar(String)
@@ -104,11 +109,12 @@ pub(all) enum PluginRuntimeError {
   InvalidDevelopmentDirectory
   LoadFailure(String, PluginError)
   RegistrationFailure(String)
-} derive(Eq, @debug.Debug)
+}
 pub fn PluginRuntimeError::equal(Self, Self) -> Bool
 pub fn PluginRuntimeError::not_equal(Self, Self) -> Bool
 pub fn PluginRuntimeError::to_repr(Self) -> @debug.Repr
 
+#derive(Eq, @debug.Debug, @json.FromJson)
 pub(all) struct PluginSidecarManifest {
   schema_version : Int32
   abi_version : Int32
@@ -118,9 +124,9 @@ pub(all) struct PluginSidecarManifest {
   platforms : Array[String]
   requested_permissions : Array[String]
   commands : Array[PluginCommandDescriptor]
-} derive(Eq, @debug.Debug, @json.FromJson)
+}
 pub fn PluginSidecarManifest::equal(Self, Self) -> Bool
-pub fn PluginSidecarManifest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginSidecarManifest::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
 pub fn PluginSidecarManifest::not_equal(Self, Self) -> Bool
 pub fn PluginSidecarManifest::to_repr(Self) -> @debug.Repr
 
