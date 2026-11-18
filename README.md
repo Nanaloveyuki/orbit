@@ -82,7 +82,7 @@ scripts needed for development and production builds.
 ## Add Orbit to an existing app
 
 ```sh
-moon add Nanaloveyuki/orbit@0.2.0-alpha.3
+moon add Nanaloveyuki/orbit@0.2.0-alpha.4
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev

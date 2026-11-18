@@ -80,6 +80,11 @@ rejected. WebView2 and WKWebView provide this metadata; the current WebKitGTK
 bridge does not, so Linux remote-page IPC is unavailable. Local-page IPC remains
 available on Linux.
 
+On runtimes with attested source metadata, local embedded messages carry their
+origin on the `Window` principal. A programmatic grant can require an exact
+embedded origin such as `orbit://app` for native UI commands. Missing origin
+metadata fails an origin-scoped grant.
+
 The desktop async dispatcher permits at most 64 pending invocations per scope
 and 256 in total. Additional requests receive `ipc_busy`; completion and
 cancellation release capacity. Android host replies must be browser-generated

@@ -131,7 +131,10 @@ pub fn invocation_context(
 ) -> @ipc.InvocationContext? {
   try {
     match principal {
-      Window => Some(@ipc.InvocationContext::window(label))
+      Window =>
+        Some(
+          @ipc.InvocationContext::window(label, origin?=page_message.origin()),
+        )
       RemotePage =>
         Some(
           @ipc.InvocationContext::remote_page(

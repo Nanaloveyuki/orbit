@@ -129,7 +129,7 @@ pub fn InvocationContext::plugin(String) -> Self raise IpcError
 pub fn InvocationContext::principal(Self) -> InvocationPrincipal
 pub fn InvocationContext::remote_page(String, origin~ : String?) -> Self raise IpcError
 pub fn InvocationContext::transport(Self) -> InvocationTransport
-pub fn InvocationContext::window(String) -> Self raise IpcError
+pub fn InvocationContext::window(String, origin? : String) -> Self raise IpcError
 pub fn InvocationContext::with_response_limit(Self, Int32) -> Self raise IpcError
 
 #derive(Eq, @debug.Debug)

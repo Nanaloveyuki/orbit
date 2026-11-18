@@ -4,6 +4,14 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
+## 0.2.0-alpha.4 - 2026-11-19
+
+- Carry runtime-attested origins on local window IPC contexts. Applications can
+  restrict native UI commands to an exact embedded origin and use the existing
+  Window principal to open native dialogs.
+- Use `0.2.0-alpha.4` in `schema_version.orbit` when regenerating a versioned
+  IPC contract with this release.
+
 ## 0.2.0-alpha.3 - 2026-11-13
 
 - Pin compiler `0.10.20+65efd5b93` and CLI `0.1.20261104` in CI, examples,
