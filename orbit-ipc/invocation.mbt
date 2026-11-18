@@ -131,13 +131,19 @@ pub struct InvocationContext {
 }
 
 ///|
+/// Constructs a context for local window content. Supply the page origin only
+/// when the runtime has authenticated it.
 pub fn InvocationContext::window(
   label : String,
+  origin? : String,
 ) -> InvocationContext raise IpcError {
   if !valid_invocation_identity(label) {
     raise InvalidPrincipal(label)
   }
-  context(MoonView, Window(label), None)
+  if origin is Some(value) && !valid_origin(value) {
+    raise InvalidContext(value)
+  }
+  context(MoonView, Window(label), origin)
 }
 
 ///|
