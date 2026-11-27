@@ -126,7 +126,7 @@ client.dispose();
 principal；认证回调返回不透明的 `AuthenticatedHttpClient`，再由普通能力策略决定
 命令权限。
 
-适配器本身不监听端口。宿主负责创建 `moonbitlang/async/http.Server`，选择绑定地址、
+适配器本身不监听端口。宿主负责创建 `moonbitlang/core/async/http.Server`，选择绑定地址、
 TLS 或可信反向代理边界、连接限制和关闭时机，然后传给 `HttpAdapter::serve`。认证返回
 `None` 时，适配器会在读取 body 前返回 HTTP 401。
 

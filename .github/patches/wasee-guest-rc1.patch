@@ -1,0 +1,31 @@
+diff --git a/guest/main.mbt b/guest/main.mbt
+index 3e190dd..9ada4b3 100644
+--- a/guest/main.mbt
++++ b/guest/main.mbt
+@@ -92,7 +92,7 @@ fn run_descriptor_probe(
+     index=0,
+     length=64,
+   )
+-  let response = transport.control(request, 1_000)
++  let response = @transport.UsbTransport::control(transport, request, 1_000)
+   if response.length() >= 12 && response[1] == b'\x01' {
+     let vendor_id = response[8].to_int() + response[9].to_int() * 256
+     let product_id = response[10].to_int() + response[11].to_int() * 256
+@@ -108,7 +108,7 @@ fn run_descriptor_probe(
+   } else {
+     raise @transport.Failure("USB device descriptor response is invalid")
+   }
+-  transport.close()
++  @transport.UsbTransport::close(transport)
+   println("wasee guest: usb open/close=0")
+ }
+
+@@ -126,7 +126,7 @@ fn main {
+     return
+   }
+   let transport = @bridge.AndroidUsbTransport::new(handle)
+-  let info = transport.info() catch {
++  let info = @transport.UsbTransport::info(transport) catch {
+     error => {
+       println("wasee guest: usb info failed=\{Repr(error)}")
+       return

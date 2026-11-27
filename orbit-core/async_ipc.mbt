@@ -9,8 +9,8 @@ priv struct PendingInvocation {
 
 ///|
 priv struct AsyncIpcDispatcher {
-  mut group : @async.TaskGroup[Unit]?
-  mut desktop_group : @core_async.TaskGroup?
+  mut group : @async.TaskGroup?
+  mut desktop_group : @async.TaskGroup?
   pending : Map[String, PendingInvocation]
 }
 
@@ -41,7 +41,7 @@ fn AsyncIpcDispatcher::desktop_context(
 ///|
 fn AsyncIpcDispatcher::bind(
   self : AsyncIpcDispatcher,
-  group : @async.TaskGroup[Unit],
+  group : @async.TaskGroup,
 ) -> Unit {
   self.group = Some(group)
 }

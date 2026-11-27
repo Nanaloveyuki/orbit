@@ -2,8 +2,8 @@ import {
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
-  "moonbitlang/async",
-  "moonbitlang/async/fs",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs",
   "Nanaloveyuki/orbit/orbit-core" @core,
   "Nanaloveyuki/orbit/orbit-file" @file,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
@@ -13,5 +13,6 @@ import {
 supported_targets = "native"
 
 options(
+  "allow-experimental-packages": true,
   "native-stub": [ "async_fs_link.c" ],
 )

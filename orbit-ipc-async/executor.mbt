@@ -16,13 +16,21 @@ async fn run_before_deadline(
   context : @ipc.InvocationContext,
   operation : async () -> String,
 ) -> String? {
+  let mut result = None
+  let mut timed_out = false
   @async.with_task_group() <| group => {
     group.spawn_bg(no_wait=true) <| () => {
       @async.sleep(request.timeout_ms())
+      timed_out = true
       context.cancellation().cancel()
-      group.return_immediately(None)
+      group.return_immediately()
     }
-    Some(operation())
+    result = Some(operation())
+  }
+  if timed_out {
+    None
+  } else {
+    result
   }
 }
 
@@ -39,12 +47,12 @@ pub async fn dispatch_with_deadline(
   request : @ipc.InvocationRequest,
 ) -> String {
   let id = request.id()
+  defer (if @async.is_being_cancelled() { context.cancellation().cancel() })
   let result = run_before_deadline(request, context, () => {
     registry.dispatch_invocation_async(request, policy, context)
   }) catch {
     error => {
       if @async.is_being_cancelled() {
-        context.cancellation().cancel()
         raise error
       }
       return invocation_failure(

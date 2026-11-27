@@ -6,19 +6,6 @@ import {
   "Nanaloveyuki/orbit/orbit-runtime" @runtime,
 }
 
-pkgtype(kind: "executable")
+pkgtype(kind: "foreign_library")
 
 supported_targets = "native"
-
-options(
-  link: {
-    "native": {
-      "exports": [
-        "dispatch_android_event:ajni_dispatch_event",
-        "create_int_callback:ajni_create_int_callback",
-        "handled_observer_error:ajni_handled_observer_error",
-        "dispatch_android_webview_event:ajni_dispatch_webview_event",
-      ],
-    },
-  },
-)

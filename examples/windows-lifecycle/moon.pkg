@@ -1,6 +1,6 @@
 import {
   "Nanaloveyuki/image",
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "Nanaloveyuki/orbit/orbit-core" @core,
   "Nanaloveyuki/orbit/orbit-diagnostics" @diagnostics,
   "Nanaloveyuki/orbit/orbit-desktop-file" @desktop_file,
@@ -16,3 +16,7 @@ import {
 supported_targets = "native"
 
 pkgtype(kind: "executable")
+
+options(
+  "allow-experimental-packages": true,
+)

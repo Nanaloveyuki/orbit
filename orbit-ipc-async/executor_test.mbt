@@ -54,6 +54,30 @@ async test "shared executor enforces deadlines and marks cancellation" {
 }
 
 ///|
+async test "shared executor keeps the deadline when protected work completes later" {
+  let registry = @ipc.CommandRegistry::new()
+  let context = @ipc.InvocationContext::background_task("test")
+  let completed_after_deadline = Ref(false)
+  registry.register_async_json(@ipc.CommandName::new("async.timeout"), async fn(
+    payload,
+  ) {
+    @async.protect_from_cancel(() => {
+      @async.sleep(50)
+      completed_after_deadline.val = context.cancellation().is_cancelled()
+      Ok(payload)
+    })
+  })
+  let response = @orbit-ipc-async.dispatch_source_with_deadline(
+    registry,
+    execution_policy("async.timeout"),
+    context,
+    "{\"version\":1,\"type\":\"invoke\",\"id\":\"timeout\",\"command\":\"async.timeout\",\"payload\":null,\"timeout_ms\":10}",
+  )
+  assert_true(completed_after_deadline.val)
+  assert_true(response.contains("\"code\":\"timeout\""))
+}
+
+///|
 async test "shared executor contains handler failures" {
   let registry = @ipc.CommandRegistry::new()
   registry.register_async_json(@ipc.CommandName::new("async.fail"), async fn(

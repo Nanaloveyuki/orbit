@@ -1,9 +1,8 @@
 import {
   "moonbitlang/core/env",
-  "moonbitlang/core/async" @core_async,
-  "moonbitlang/async",
-  "moonbitlang/async/cond_var",
-  "moonbitlang/async/external_loop_integration" @external_loop,
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/cond_var",
+  "moonbitlang/core/async/external_loop_integration" @external_loop,
   "Nanaloveyuki/orbit/orbit-event" @event,
   "Nanaloveyuki/orbit/orbit-diagnostics" @diagnostics,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,

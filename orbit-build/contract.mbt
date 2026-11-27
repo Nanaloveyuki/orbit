@@ -12,7 +12,7 @@ priv struct ContractType {
 }
 
 ///|
-const CONTRACT_ORBIT_VERSION : String = "0.2.0-alpha.4"
+const CONTRACT_ORBIT_VERSION : String = "0.3.0-alpha.1"
 
 ///|
 priv struct ContractCompiler {

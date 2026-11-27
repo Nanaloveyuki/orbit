@@ -1,6 +1,10 @@
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
 }
 
 supported_targets = "native"
+
+options(
+  "allow-experimental-packages": true,
+)

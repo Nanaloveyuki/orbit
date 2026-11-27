@@ -239,7 +239,7 @@ async test "desktop resources outlive request cancellation and join application 
         released.val = true
       }
       acquired.val = true
-      @core_async.sleep(60_000)
+      @async.sleep(60_000)
     })
     @async.sleep(60_000)
     Ok(Json::null())
@@ -257,7 +257,7 @@ async test "desktop resources outlive request cancellation and join application 
     "{\"version\":1,\"id\":\"resource\",\"command\":\"resource.acquire\",\"payload\":null}",
   )
   let responses : Array[String] = []
-  @core_async.with_task_group() <| application => {
+  @async.with_task_group() <| application => {
     dispatcher.desktop_group = Some(application)
     @async.with_task_group() <| requests => {
       dispatcher.bind(requests)
@@ -279,7 +279,7 @@ async test "desktop resources outlive request cancellation and join application 
       assert_eq(desktop.label(), "main")
       assert_false(desktop.is_cancelled())
       dispatcher.cancel_window("main")
-      @core_async.pause()
+      @async.pause()
       assert_true(desktop.is_cancelled())
       assert_false(released.val)
       dispatcher.cancel_all()

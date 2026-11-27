@@ -26,8 +26,8 @@ embedded.
 
 ## Prerequisites
 
-- [MoonBit](https://www.moonbitlang.com/download/) compiler `0.10.20+65efd5b93`
-  with CLI `0.1.20261104`
+- [MoonBit](https://www.moonbitlang.com/download/) compiler `1.0.0-rc1+3c0520448`
+  with CLI `0.1.20261126`
 - A native C/C++ compiler and linker
 - Node.js 20 or newer when using the CLI or Vite
 - Windows: MSVC and the Windows SDK
@@ -82,7 +82,7 @@ scripts needed for development and production builds.
 ## Add Orbit to an existing app
 
 ```sh
-moon add Nanaloveyuki/orbit@0.2.0-alpha.4
+moon add Nanaloveyuki/orbit@0.3.0-alpha.1
 npm install --save-dev @nanaloveyuki/orbit-cli@alpha
 npx orbit generate
 npx orbit dev

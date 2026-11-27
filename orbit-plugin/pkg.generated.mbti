@@ -3,7 +3,7 @@ package "Nanaloveyuki/orbit/orbit-plugin"
 
 import {
   "Nanaloveyuki/orbit/orbit-ipc",
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
@@ -29,7 +29,7 @@ pub(all) struct PluginCommandDescriptor {
   response_schema : @json.Json
 }
 pub fn PluginCommandDescriptor::equal(Self, Self) -> Bool
-pub fn PluginCommandDescriptor::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginCommandDescriptor::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PluginCommandDescriptor::not_equal(Self, Self) -> Bool
 pub fn PluginCommandDescriptor::to_repr(Self) -> @debug.Repr
 
@@ -92,7 +92,7 @@ pub fn PluginPolicy::new() -> Self
 pub struct PluginRuntime {
   // private fields
 }
-pub fn PluginRuntime::bind_async(Self, @async.TaskGroup[Unit], FuncRef[() -> Unit], @orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy) -> Unit
+pub fn PluginRuntime::bind_async(Self, @async.TaskGroup, FuncRef[() -> Unit], @orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy) -> Unit
 pub fn PluginRuntime::new() -> Self
 pub fn PluginRuntime::poll_events(Self) -> Result[Unit, PluginRuntimeError]
 pub fn PluginRuntime::register_ipc(Self, @orbit-ipc.CommandRegistry) -> Result[Unit, PluginRuntimeError]
@@ -126,7 +126,7 @@ pub(all) struct PluginSidecarManifest {
   commands : Array[PluginCommandDescriptor]
 }
 pub fn PluginSidecarManifest::equal(Self, Self) -> Bool
-pub fn PluginSidecarManifest::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginSidecarManifest::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PluginSidecarManifest::not_equal(Self, Self) -> Bool
 pub fn PluginSidecarManifest::to_repr(Self) -> @debug.Repr
 

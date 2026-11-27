@@ -40,10 +40,9 @@ if(NOT EXISTS "${MOONBIT_RUNTIME_SOURCE}")
 endif()
 
 add_custom_target(generate_orbit_android
-  COMMAND "${CMAKE_COMMAND}" -E env MOONVIEW_NATIVE_BACKEND=android
-    "${MOON_EXECUTABLE}" build --target native --release .
   COMMAND "${CMAKE_COMMAND}"
     "-DANDROID_ROOT=${ANDROID_ROOT}"
+    "-DMOON_EXECUTABLE=${MOON_EXECUTABLE}"
     "-DOUTPUT=${MOONBIT_APP_SOURCE}"
     -P "${CMAKE_CURRENT_LIST_DIR}/CopyMoonBitSource.cmake"
   WORKING_DIRECTORY "${ANDROID_ROOT}"
