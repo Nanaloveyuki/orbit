@@ -173,6 +173,9 @@ jobs:
         working-directory: examples/react-memo
       - name: Build Wasee WASI integration
         run: |
+          # The pinned Wasee guest predates RC1's explicit trait dispatch.
+          git -C "$GITHUB_WORKSPACE/wasee-moon" apply \
+            "$GITHUB_WORKSPACE/.github/patches/wasee-guest-rc1.patch"
           ./gradlew \
             -PwaseeAndroidDir="$GITHUB_WORKSPACE/wasee-moon/android" \
             :app:assembleDebug --no-daemon
