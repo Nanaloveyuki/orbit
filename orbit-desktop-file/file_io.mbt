@@ -173,7 +173,7 @@ async fn read_capability_bytes(
   if size == 0 {
     return Ok(b"")
   }
-  let bytes = file.read_exactly_at(size.to_int(), position=0) catch {
+  let bytes = file.read_exactly(size.to_int()) catch {
     _ =>
       return Err(file_read_failure("file_read_failed", "could not read file"))
   }

@@ -28,7 +28,7 @@ priv struct PendingHostRequest {
 
 ///|
 priv struct PluginAsyncState {
-  group : @async.TaskGroup[Unit]
+  group : @async.TaskGroup
   wakeup_callback : FuncRef[() -> Unit]
   registry : @ipc.CommandRegistry
   policy : @ipc.CommandPolicy
@@ -39,7 +39,7 @@ priv struct PluginAsyncState {
 ///|
 pub fn PluginRuntime::bind_async(
   self : PluginRuntime,
-  group : @async.TaskGroup[Unit],
+  group : @async.TaskGroup,
   wakeup_callback : FuncRef[() -> Unit],
   registry : @ipc.CommandRegistry,
   policy : @ipc.CommandPolicy,

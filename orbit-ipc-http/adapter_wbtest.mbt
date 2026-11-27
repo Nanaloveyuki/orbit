@@ -29,15 +29,14 @@ fn http_test_adapter(
 }
 
 ///|
-fn http_request(
-  meth : @http.RequestMethod,
+fn http_metadata(
   path~ : String = "/orbit/v1/invoke",
   origin~ : String = "https://app.example",
   authorization~ : String = "Bearer secret",
-) -> @http.Request {
+) -> HttpRequestMetadata {
   {
-    meth,
     path,
+    remote_address: "127.0.0.1:4123",
     headers: {
       "content-type": "application/json; charset=utf-8",
       "origin": origin,
@@ -97,7 +96,7 @@ test "HTTP authentication metadata excludes bodies and normalizes header lookup"
       metadata.header("AUTHORIZATION") == Some("Bearer secret")
     Some({ identifier: "sync-client", })
   })
-  let prepared = adapter.prepare(http_request(Post), "127.0.0.1:4123")
+  let prepared = adapter.prepare(Post, http_metadata())
   assert_true(prepared is Ok(_))
   assert_true(observed.val)
 }
@@ -105,17 +104,14 @@ test "HTTP authentication metadata excludes bodies and normalizes header lookup"
 ///|
 async test "HTTP adapter reuses principal origin authorization and async deadlines" {
   let adapter = http_test_adapter(test_authenticator)
-  let allowed = adapter.prepare(http_request(Post), "127.0.0.1:4123").unwrap()
+  let allowed = adapter.prepare(Post, http_metadata()).unwrap()
   let response = adapter.dispatch_source(
     allowed, "{\"version\":1,\"type\":\"invoke\",\"id\":\"http-ok\",\"command\":\"echo\",\"payload\":7,\"timeout_ms\":1000}",
   )
   assert_eq(response.status, 200)
   assert_true(response.body.contains("\"result\":7"))
   let denied = adapter
-    .prepare(
-      http_request(Post, origin="https://other.example"),
-      "127.0.0.1:4123",
-    )
+    .prepare(Post, http_metadata(origin="https://other.example"))
     .unwrap()
   let denied_response = adapter.dispatch_source(
     denied, "{\"version\":1,\"type\":\"invoke\",\"id\":\"http-deny\",\"command\":\"echo\",\"payload\":7,\"timeout_ms\":1000}",
@@ -127,20 +123,17 @@ async test "HTTP adapter reuses principal origin authorization and async deadlin
 test "HTTP adapter rejects unauthenticated, wrong-method and wrong-media requests" {
   let adapter = http_test_adapter(test_authenticator)
   let unauthorized = adapter.prepare(
-    http_request(Post, authorization="Bearer wrong"),
-    "127.0.0.1:4123",
+    Post,
+    http_metadata(authorization="Bearer wrong"),
   )
   assert_true(unauthorized is Err({ status: 401, .. }))
-  let wrong_method = adapter.prepare(http_request(Get), "127.0.0.1:4123")
+  let wrong_method = adapter.prepare(Get, http_metadata())
   assert_true(wrong_method is Err({ status: 405, .. }))
-  let missing = http_request(Post)
+  let missing = http_metadata()
   missing.headers.remove("content-type")
-  let wrong_media = adapter.prepare(missing, "127.0.0.1:4123")
+  let wrong_media = adapter.prepare(Post, missing)
   assert_true(wrong_media is Err({ status: 415, .. }))
-  let wrong_path = adapter.prepare(
-    http_request(Post, path="/other"),
-    "127.0.0.1:4123",
-  )
+  let wrong_path = adapter.prepare(Post, http_metadata(path="/other"))
   assert_true(wrong_path is Err({ status: 404, .. }))
 }
 
@@ -167,9 +160,9 @@ async test "HTTP body limits count bytes across chunked Unicode input" {
   assert_eq(source.length(), 86)
   for limit in [258, 257] {
     let reader = @io.MemoryReader(writer => {
-      writer.write(source[:40])
+      writer.write(@utf8.encode(source[:40], bom=false))
       @async.pause()
-      writer.write(source[40:])
+      writer.write(@utf8.encode(source[40:], bom=false))
     })
     defer reader.close()
     match read_body_limited(reader, limit) {

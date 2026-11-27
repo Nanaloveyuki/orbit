@@ -72,7 +72,7 @@ pub(all) enum EventTarget {
   Ipc(String)
 }
 pub fn EventTarget::equal(Self, Self) -> Bool
-pub fn EventTarget::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EventTarget::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn EventTarget::not_equal(Self, Self) -> Bool
 pub fn EventTarget::to_json(Self) -> @json.Json
 pub fn EventTarget::to_repr(Self) -> @debug.Repr

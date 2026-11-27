@@ -1,8 +1,8 @@
 import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
-  "moonbitlang/async",
-  "moonbitlang/async/cond_var",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/cond_var",
   "Nanaloveyuki/dynlib",
   "Nanaloveyuki/orbit-plugin-abi" @abi,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
@@ -11,3 +11,7 @@ import {
 }
 
 supported_targets = "native"
+
+options(
+  "allow-experimental-packages": true,
+)

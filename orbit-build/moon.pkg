@@ -5,8 +5,7 @@ import {
   "moonbitlang/core/json",
   "Nanaloveyuki/parsec/json" @strict_json,
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
-  "moonbitlang/async",
-  "moonbitlang/async/fs",
+  "moonbitlang/core/async/fs",
   "Nanaloveyuki/image",
   "Nanaloveyuki/orbit/orbit-plugin" @plugin,
   "Nanaloveyuki/orbit/orbit-utils" @utils,
@@ -15,3 +14,7 @@ import {
 supported_targets = "native"
 
 pkgtype(kind: "executable")
+
+options(
+  "allow-experimental-packages": true,
+)

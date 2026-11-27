@@ -43,8 +43,8 @@ async test "authenticated HTTP and window adapters share command policy behavior
     }
     let invoke = "{\"version\":1,\"type\":\"invoke\",\"id\":\"same\",\"command\":\"shared.echo\",\"payload\":{\"value\":7},\"timeout_ms\":1000}"
     let window_response = registry.dispatch_for_window(invoke, policy, "main")
-    let (http_response, http_body) = @http.post(
-      "http://localhost:\{server.addr.port()}/orbit/v1/invoke",
+    let (http_response, http_body) = @http.post_text(
+      "http://127.0.0.1:\{server.local_addr().port}/orbit/v1/invoke",
       invoke,
       headers={
         "Authorization": "Bearer integration-secret",
@@ -56,8 +56,8 @@ async test "authenticated HTTP and window adapters share command policy behavior
     assert_eq(http_body.text(), window_response)
     let denied = invoke.replace_all(old="shared.echo", new="private.read")
     let window_denied = registry.dispatch_for_window(denied, policy, "main")
-    let (http_denied_response, http_denied_body) = @http.post(
-      "http://localhost:\{server.addr.port()}/orbit/v1/invoke",
+    let (http_denied_response, http_denied_body) = @http.post_text(
+      "http://127.0.0.1:\{server.local_addr().port}/orbit/v1/invoke",
       denied,
       headers={
         "Authorization": "Bearer integration-secret",

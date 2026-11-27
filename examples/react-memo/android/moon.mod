@@ -9,6 +9,6 @@ license = "Apache-2.0"
 preferred_target = "native"
 
 import {
-  "Nanaloveyuki/orbit@0.2.0-alpha.3",
-  "Nanaloveyuki/ajni@0.3.8",
+  "Nanaloveyuki/orbit@0.3.0-alpha.1",
+  "Nanaloveyuki/ajni@0.4.0",
 }

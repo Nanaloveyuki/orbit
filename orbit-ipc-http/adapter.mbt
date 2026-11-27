@@ -134,7 +134,7 @@ fn is_json_content_type(value : String) -> Bool {
 fn content_length(headers : @http.Headers) -> Int32? raise {
   match headers.get("content-length") {
     None => None
-    Some(value) => Some(@string.parse_int(value.trim(), base=10))
+    Some(value) => Some(@string.parse_int(value.trim(), radix=10))
   }
 }
 
@@ -177,23 +177,23 @@ fn validate_body_headers(
 
 ///|
 async fn read_body_limited(
-  body : &@io.Reader,
+  body : &@io.BinaryReader,
   limit : Int32,
 ) -> Result[String, BodyReadError] {
   let chunks : Array[Bytes] = []
+  let scratch = FixedArray::make(@cmp.minimum(8_192, limit + 1), b'\x00')
   let mut length = 0
   for ;; {
-    let read_limit = @cmp.minimum(8_192, limit - length + 1)
-    match body.read_some(max_len=read_limit) {
-      None => break
-      Some(chunk) => {
-        length += chunk.length()
-        if length > limit {
-          return Err(TooLarge)
-        }
-        chunks.push(chunk)
-      }
+    let read_limit = @cmp.minimum(scratch.length(), limit - length + 1)
+    let count = body.read_into(scratch.mut_view(end=read_limit))
+    if count == 0 {
+      break
     }
+    length += count
+    if length > limit {
+      return Err(TooLarge)
+    }
+    chunks.push(Bytes::from_array(scratch[:count]))
   }
   let buffer = FixedArray::make(length, b'\x00')
   let mut offset = 0
@@ -263,15 +263,15 @@ pub fn HttpAdapter::endpoint_path(self : HttpAdapter) -> String {
 ///|
 fn HttpAdapter::prepare(
   self : HttpAdapter,
-  request : @http.Request,
-  remote_address : String,
+  meth : @http.RequestMethod,
+  metadata : HttpRequestMetadata,
 ) -> Result[PreparedRequest, AdapterResponse] {
-  if request.path != self.endpoint_path {
+  if metadata.path != self.endpoint_path {
     return Err(
       adapter_failure(404, "Not Found", "not_found", "endpoint not found"),
     )
   }
-  if request.meth != Post {
+  if meth != Post {
     return Err(
       adapter_failure(
         405,
@@ -282,7 +282,7 @@ fn HttpAdapter::prepare(
       ),
     )
   }
-  match request.headers.get("content-type") {
+  match metadata.headers.get("content-type") {
     Some(value) if is_json_content_type(value) => ()
     _ =>
       return Err(
@@ -290,11 +290,6 @@ fn HttpAdapter::prepare(
           415, "Unsupported Media Type", "unsupported_media_type", "HTTP invocation requires application/json",
         ),
       )
-  }
-  let metadata = HttpRequestMetadata::{
-    path: request.path,
-    headers: request.headers,
-    remote_address,
   }
   let client = match (self.authenticate)(metadata) {
     Some(client) => client
@@ -305,7 +300,7 @@ fn HttpAdapter::prepare(
         ),
       )
   }
-  Ok({ client, origin: request.headers.get("origin"), })
+  Ok({ client, origin: metadata.headers.get("origin"), })
 }
 
 ///|
@@ -351,20 +346,24 @@ async fn send_response(
     response.reason,
     extra_headers=headers,
   )
-  connection.write_string(response.body)
+  connection.text.write(response.body)
   connection.end_response()
 }
 
 ///|
-/// Handles one request from `moonbitlang/async/http`.
+/// Handles one request from `moonbitlang/core/async/http`.
 pub async fn HttpAdapter::handle(
   self : HttpAdapter,
-  request : @http.Request,
-  body : &@io.Reader,
+  request : @http.RequestHeader,
+  body : &@io.BinaryReader,
   connection : @http.ServerConnection,
 ) -> Unit {
-  let prepared = match
-    self.prepare(request, connection.client_addr().to_string()) {
+  let metadata = {
+    path: request.path,
+    headers: request.headers,
+    remote_address: connection.remote_addr().to_string(),
+  }
+  let prepared = match self.prepare(request.meth, metadata) {
     Ok(prepared) => prepared
     Err(response) => {
       send_response(connection, response)
@@ -412,7 +411,6 @@ pub async fn HttpAdapter::serve(
 ) -> Unit {
   server.run_forever(allow_failure=true, max_connections?) <| ((
     request,
-    body,
     connection,
-  ) => self.handle(request, body, connection))
+  ) => self.handle(request, connection, connection))
 }

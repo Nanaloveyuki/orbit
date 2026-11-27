@@ -64,7 +64,7 @@ pub(all) struct AppConfig {
   windows : Array[WindowConfig]
 }
 pub fn AppConfig::equal(Self, Self) -> Bool
-pub fn AppConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn AppConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn AppConfig::not_equal(Self, Self) -> Bool
 pub fn AppConfig::to_json(Self) -> @json.Json
 pub fn AppConfig::to_repr(Self) -> @debug.Repr
@@ -74,7 +74,7 @@ pub(all) struct BuildConfig {
   vite : ViteBuildConfig?
 }
 pub fn BuildConfig::equal(Self, Self) -> Bool
-pub fn BuildConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BuildConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn BuildConfig::not_equal(Self, Self) -> Bool
 pub fn BuildConfig::to_json(Self) -> @json.Json
 pub fn BuildConfig::to_repr(Self) -> @debug.Repr
@@ -86,7 +86,7 @@ pub(all) struct BundleConfig {
   linux : LinuxBundleConfig?
 }
 pub fn BundleConfig::equal(Self, Self) -> Bool
-pub fn BundleConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn BundleConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn BundleConfig::not_equal(Self, Self) -> Bool
 pub fn BundleConfig::to_json(Self) -> @json.Json
 pub fn BundleConfig::to_repr(Self) -> @debug.Repr
@@ -100,7 +100,7 @@ pub(all) struct CapabilityConfig {
   commands : Array[String]
 }
 pub fn CapabilityConfig::equal(Self, Self) -> Bool
-pub fn CapabilityConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CapabilityConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn CapabilityConfig::not_equal(Self, Self) -> Bool
 pub fn CapabilityConfig::to_json(Self) -> @json.Json
 pub fn CapabilityConfig::to_repr(Self) -> @debug.Repr
@@ -140,7 +140,7 @@ pub(all) struct EmbeddedWebConfig {
   csp : String
 }
 pub fn EmbeddedWebConfig::equal(Self, Self) -> Bool
-pub fn EmbeddedWebConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn EmbeddedWebConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn EmbeddedWebConfig::not_equal(Self, Self) -> Bool
 pub fn EmbeddedWebConfig::to_json(Self) -> @json.Json
 pub fn EmbeddedWebConfig::to_repr(Self) -> @debug.Repr
@@ -150,7 +150,7 @@ pub(all) struct LinuxArchConfig {
   depends : Array[String]
 }
 pub fn LinuxArchConfig::equal(Self, Self) -> Bool
-pub fn LinuxArchConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn LinuxArchConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn LinuxArchConfig::not_equal(Self, Self) -> Bool
 pub fn LinuxArchConfig::to_json(Self) -> @json.Json
 pub fn LinuxArchConfig::to_repr(Self) -> @debug.Repr
@@ -169,7 +169,7 @@ pub(all) struct LinuxBundleConfig {
   arch : LinuxArchConfig?
 }
 pub fn LinuxBundleConfig::equal(Self, Self) -> Bool
-pub fn LinuxBundleConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn LinuxBundleConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn LinuxBundleConfig::not_equal(Self, Self) -> Bool
 pub fn LinuxBundleConfig::to_json(Self) -> @json.Json
 pub fn LinuxBundleConfig::to_repr(Self) -> @debug.Repr
@@ -181,7 +181,7 @@ pub(all) struct LinuxDebConfig {
   priority : String
 }
 pub fn LinuxDebConfig::equal(Self, Self) -> Bool
-pub fn LinuxDebConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn LinuxDebConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn LinuxDebConfig::not_equal(Self, Self) -> Bool
 pub fn LinuxDebConfig::to_json(Self) -> @json.Json
 pub fn LinuxDebConfig::to_repr(Self) -> @debug.Repr
@@ -191,7 +191,7 @@ pub(all) struct LinuxRpmConfig {
   requires : Array[String]
 }
 pub fn LinuxRpmConfig::equal(Self, Self) -> Bool
-pub fn LinuxRpmConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn LinuxRpmConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn LinuxRpmConfig::not_equal(Self, Self) -> Bool
 pub fn LinuxRpmConfig::to_json(Self) -> @json.Json
 pub fn LinuxRpmConfig::to_repr(Self) -> @debug.Repr
@@ -207,7 +207,7 @@ pub(all) struct OrbitConfig {
   plugins : Array[PluginConfig]
 }
 pub fn OrbitConfig::equal(Self, Self) -> Bool
-pub fn OrbitConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn OrbitConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn OrbitConfig::not_equal(Self, Self) -> Bool
 pub fn OrbitConfig::to_json(Self) -> @json.Json
 pub fn OrbitConfig::to_repr(Self) -> @debug.Repr
@@ -234,7 +234,7 @@ pub(all) struct PluginConfig {
   permissions : Array[String]
 }
 pub fn PluginConfig::equal(Self, Self) -> Bool
-pub fn PluginConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PluginConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PluginConfig::not_equal(Self, Self) -> Bool
 pub fn PluginConfig::to_json(Self) -> @json.Json
 pub fn PluginConfig::to_repr(Self) -> @debug.Repr
@@ -245,7 +245,7 @@ pub(all) struct PrincipalConfig {
   identifier : String
 }
 pub fn PrincipalConfig::equal(Self, Self) -> Bool
-pub fn PrincipalConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn PrincipalConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn PrincipalConfig::not_equal(Self, Self) -> Bool
 pub fn PrincipalConfig::to_json(Self) -> @json.Json
 pub fn PrincipalConfig::to_repr(Self) -> @debug.Repr
@@ -257,7 +257,7 @@ pub(all) struct RemoteWebConfig {
   fallback_entry : String
 }
 pub fn RemoteWebConfig::equal(Self, Self) -> Bool
-pub fn RemoteWebConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn RemoteWebConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn RemoteWebConfig::not_equal(Self, Self) -> Bool
 pub fn RemoteWebConfig::to_json(Self) -> @json.Json
 pub fn RemoteWebConfig::to_repr(Self) -> @debug.Repr
@@ -276,7 +276,7 @@ pub(all) struct ScopeConfig {
   value : String
 }
 pub fn ScopeConfig::equal(Self, Self) -> Bool
-pub fn ScopeConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ScopeConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ScopeConfig::not_equal(Self, Self) -> Bool
 pub fn ScopeConfig::to_json(Self) -> @json.Json
 pub fn ScopeConfig::to_repr(Self) -> @debug.Repr
@@ -289,7 +289,7 @@ pub(all) struct ViteBuildConfig {
   dist_dir : String
 }
 pub fn ViteBuildConfig::equal(Self, Self) -> Bool
-pub fn ViteBuildConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn ViteBuildConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn ViteBuildConfig::not_equal(Self, Self) -> Bool
 pub fn ViteBuildConfig::to_json(Self) -> @json.Json
 pub fn ViteBuildConfig::to_repr(Self) -> @debug.Repr
@@ -300,7 +300,7 @@ pub(all) struct WebConfig {
   remote : RemoteWebConfig?
 }
 pub fn WebConfig::equal(Self, Self) -> Bool
-pub fn WebConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WebConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn WebConfig::not_equal(Self, Self) -> Bool
 pub fn WebConfig::to_json(Self) -> @json.Json
 pub fn WebConfig::to_repr(Self) -> @debug.Repr
@@ -316,7 +316,7 @@ pub(all) struct WindowConfig {
   resizable : Bool
 }
 pub fn WindowConfig::equal(Self, Self) -> Bool
-pub fn WindowConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WindowConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn WindowConfig::not_equal(Self, Self) -> Bool
 pub fn WindowConfig::to_json(Self) -> @json.Json
 pub fn WindowConfig::to_repr(Self) -> @debug.Repr
@@ -326,7 +326,7 @@ pub(all) struct WindowsBundleConfig {
   webview_install_mode : String
 }
 pub fn WindowsBundleConfig::equal(Self, Self) -> Bool
-pub fn WindowsBundleConfig::from_json(@json.Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn WindowsBundleConfig::from_json(@json.Json, @json.DecodeContext) -> Self raise @json.JsonDecodeError
 pub fn WindowsBundleConfig::not_equal(Self, Self) -> Bool
 pub fn WindowsBundleConfig::to_json(Self) -> @json.Json
 pub fn WindowsBundleConfig::to_repr(Self) -> @debug.Repr

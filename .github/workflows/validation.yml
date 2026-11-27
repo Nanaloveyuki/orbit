@@ -168,6 +168,7 @@ jobs:
         run: |
           echo "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046  android/gradle/wrapper/gradle-wrapper.jar" | sha256sum --check
           chmod +x android/gradlew
+          printf '%s\n' 'members = [".", "../../.."]' > android/moon.work
           pnpm run orbit android build
         working-directory: examples/react-memo
       - name: Build Wasee WASI integration

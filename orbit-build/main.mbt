@@ -169,11 +169,11 @@ async fn collect_assets(
           }
           let bytes = if is_text_resource(resource_path) {
             @utf8.encode(
-              normalize_text_line_endings(@fs.read_file(path).text()),
+              normalize_text_line_endings(@fs.read_text(path)),
               bom=false,
             )
           } else {
-            @fs.read_file(path).binary()
+            @fs.read_binary(path)
           }
           assets.push({
             path: resource_path,
@@ -198,7 +198,7 @@ fn bytes_expression(bytes : Bytes, indent : String) -> String {
   let lines = []
   let values = []
   for index = 0; index < bytes.length(); index = index + 1 {
-    values.push("\{bytes[index]}")
+    values.push("b'\\x\{bytes[index].to_hex().to_upper()}'")
     if values.length() == 8 {
       lines.push("\{indent}  \{values.join(", ")},")
       values.clear()
@@ -500,13 +500,13 @@ fn android_generated_source(
 ///|
 async fn write_if_changed(output : String, content : String) -> Unit {
   let unchanged = if @fs.exists(output) {
-    @fs.read_file(output).text() == content
+    @fs.read_text(output) == content
   } else {
     false
   }
   if !unchanged {
     let temporary = "\{output}.tmp"
-    @fs.write_file(temporary, content, create_mode=CreateOrTruncate)
+    @fs.write_text(temporary, content, create_mode=CreateOrTruncate)
     @fs.rename(temporary, output, replace=true)
   }
 }
@@ -514,13 +514,13 @@ async fn write_if_changed(output : String, content : String) -> Unit {
 ///|
 async fn write_bytes_if_changed(output : String, content : Bytes) -> Unit {
   let unchanged = if @fs.exists(output) {
-    @fs.read_file(output).binary() == content
+    @fs.read_binary(output) == content
   } else {
     false
   }
   if !unchanged {
     let temporary = "\{output}.tmp"
-    @fs.write_file(temporary, content, create_mode=CreateOrTruncate)
+    @fs.write_binary(temporary, content, create_mode=CreateOrTruncate)
     @fs.rename(temporary, output, replace=true)
   }
 }
@@ -541,7 +541,7 @@ async fn generate_icons(
   }
   let source_path = @fs.realpath(source_path)
   let output_directory = @fs.realpath(output_directory)
-  let source = @fs.read_file(source_path).binary()
+  let source = @fs.read_binary(source_path)
   let image = @image.decode_png(source) catch {
     _ => abort_build("icon source must be a valid bounded PNG")
   }
@@ -589,7 +589,7 @@ async fn read_plugin_sidecars(
       ) {
       abort_build("plugin sidecar escapes the configuration directory")
     }
-    let source = @fs.read_file(path).text()
+    let source = @fs.read_text(path)
     match @plugin.parse_sidecar_manifest(source) {
       Ok(sidecar) if sidecar.id == plugin.id => sidecars.push(source)
       Ok(_) =>
@@ -611,13 +611,13 @@ async fn migrate_config(input_path : String, output_path : String) -> Unit {
   if @fs.exists(output_path) {
     abort_build("migration output already exists")
   }
-  let migrated = @utils.migrate_config_v1(@fs.read_file(input_path).text()) catch {
+  let migrated = @utils.migrate_config_v1(@fs.read_text(input_path)) catch {
     _ =>
       abort_build(
         "configuration is not a valid schema_version 1 Orbit configuration",
       )
   }
-  @fs.write_file(output_path, migrated + "\n", create_mode=CreateOrTruncate)
+  @fs.write_text(output_path, migrated + "\n", create_mode=CreateOrTruncate)
 }
 
 ///|
@@ -647,7 +647,7 @@ fn webview_install_mode(config : @utils.OrbitConfig) -> String {
 
 ///|
 fn package_compatibility_json() -> String {
-  "{\"orbit\":\"0.2.0-alpha.4\",\"orby\":\"0.1.0-beta.9\",\"moonview\":\"0.1.0-beta.14\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
+  "{\"orbit\":\"0.3.0-alpha.1\",\"orby\":\"0.2.0-beta.1\",\"moonview\":\"0.2.0\",\"plugin_abi\":2,\"plugin_sidecar_schema\":2,\"configuration_schema\":2}"
 }
 
 ///|
@@ -718,7 +718,7 @@ async fn generate_bindings(
   let config_path = @fs.realpath(config_path)
   let output_parent = @fs.realpath(parent_path(output_path))
   let output_path = join_path(output_parent, file_name(output_path))
-  let config_text = @fs.read_file(config_path).text()
+  let config_text = @fs.read_text(config_path)
   let compiled = @utils.compile_config(config_text) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
@@ -729,7 +729,7 @@ async fn generate_bindings(
     join_path(parent_path(config_path), "orbit.contract.json"),
   )
   let contract = if contract_path is Some(_) || @fs.exists(candidate) {
-    let source = @fs.read_file(candidate).text()
+    let source = @fs.read_text(candidate)
     Some(
       compile_contract(source) catch {
         BindingContractError(message) => abort_build(message)
@@ -756,7 +756,7 @@ async fn generate_bindings(
 ///|
 async fn print_vite_workflow(config_path : String) -> Unit {
   let config_path = @fs.realpath(config_path)
-  let config_text = @fs.read_file(config_path).text()
+  let config_text = @fs.read_text(config_path)
   let config = @utils.parse_config(config_text) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
@@ -766,7 +766,7 @@ async fn print_vite_workflow(config_path : String) -> Unit {
 ///|
 async fn print_package_metadata(config_path : String) -> Unit {
   let config_path = @fs.realpath(config_path)
-  let config_text = @fs.read_file(config_path).text()
+  let config_text = @fs.read_text(config_path)
   let compiled = @utils.compile_config(config_text) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
@@ -803,7 +803,7 @@ async fn generate(
   let configuration_directory = parent_path(config_path)
   let output_parent = @fs.realpath(parent_path(output_path))
   let output_path = join_path(output_parent, file_name(output_path))
-  let config_text = @fs.read_file(config_path).text()
+  let config_text = @fs.read_text(config_path)
   let compiled = @utils.compile_config(config_text) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
@@ -841,7 +841,7 @@ async fn generate(
       if !entry.has_suffix(".html") && !entry.has_suffix(".htm") {
         abort_build("window entry must be an HTML document for CSP injection")
       }
-      let entry_html = @fs.read_file(entry_path).text()
+      let entry_html = @fs.read_text(entry_path)
       let entry_html = @utils.inject_csp(
         entry_html,
         orbit_config.web.embedded.csp,
@@ -907,7 +907,7 @@ async fn generate_development(
   output_path : String,
 ) -> Unit {
   let config_path = @fs.realpath(config_path)
-  let config = @utils.parse_config(@fs.read_file(config_path).text()) catch {
+  let config = @utils.parse_config(@fs.read_text(config_path)) catch {
     _ => abort_build("configuration does not satisfy the Orbit schema")
   }
   let development_url = match config.build.vite {

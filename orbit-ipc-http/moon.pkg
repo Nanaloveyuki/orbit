@@ -2,19 +2,24 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
-  "moonbitlang/async/http",
-  "moonbitlang/async/io",
+  "moonbitlang/core/async/http",
+  "moonbitlang/core/async/io",
   "Nanaloveyuki/orbit/orbit-ipc" @ipc,
   "Nanaloveyuki/orbit/orbit-ipc-async" @ipc_async,
 }
 
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/socket",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/socket",
 } for "test"
 
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"
 
 supported_targets = "native"
+
+options(
+  "allow-experimental-packages": true,
+)

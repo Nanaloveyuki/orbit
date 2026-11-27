@@ -134,7 +134,7 @@ pub fn DesktopUiContext::show_file_dialog(
 pub struct DesktopAsyncContext {
   priv label_ : String
   priv cancellation_ : @ipc.InvocationCancellation
-  priv task_group_ : @core_async.TaskGroup
+  priv task_group_ : @async.TaskGroup
 }
 
 ///|
@@ -152,7 +152,7 @@ pub fn DesktopAsyncContext::is_cancelled(self : DesktopAsyncContext) -> Bool {
 /// requesting window or invocation's cancellation.
 pub fn DesktopAsyncContext::task_group(
   self : DesktopAsyncContext,
-) -> @core_async.TaskGroup {
+) -> @async.TaskGroup {
   self.task_group_
 }
 

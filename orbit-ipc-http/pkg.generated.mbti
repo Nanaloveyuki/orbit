@@ -3,8 +3,8 @@ package "Nanaloveyuki/orbit/orbit-ipc-http"
 
 import {
   "Nanaloveyuki/orbit/orbit-ipc",
-  "moonbitlang/async/http",
-  "moonbitlang/async/io",
+  "moonbitlang/core/async/http",
+  "moonbitlang/core/async/io",
   "moonbitlang/core/debug",
 }
 
@@ -29,7 +29,7 @@ pub struct HttpAdapter {
   // private fields
 }
 pub fn HttpAdapter::endpoint_path(Self) -> String
-pub async fn HttpAdapter::handle(Self, @http.Request, &@io.Reader, @http.ServerConnection) -> Unit
+pub async fn HttpAdapter::handle(Self, @http.RequestHeader, &@io.BinaryReader, @http.ServerConnection) -> Unit
 pub fn HttpAdapter::new(@orbit-ipc.CommandRegistry, @orbit-ipc.CommandPolicy, (HttpRequestMetadata) -> AuthenticatedHttpClient?, endpoint_path? : String, max_request_bytes? : Int32, max_response_chars? : Int32) -> Self raise HttpAdapterError
 pub async fn HttpAdapter::serve(Self, @http.Server, max_connections? : Int32) -> Unit
 

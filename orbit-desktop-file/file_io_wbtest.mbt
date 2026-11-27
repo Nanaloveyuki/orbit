@@ -10,7 +10,7 @@ test "concurrent writes of one capability use different temporary paths" {
 async test "failed exclusive creation leaves another operation's file intact" {
   link_async_fs()
   let directory = @fs.tmpdir(prefix="orbit-write-test")
-  defer @fs.rmdir(directory)
+  defer @fs.remove(directory)
   let path = directory + "/pending"
   defer remove_temporary_write(path)
   write_temporary_file(path, b"first")
@@ -23,5 +23,5 @@ async test "failed exclusive creation leaves another operation's file intact" {
   assert_true(rejected)
   let file = @fs.open(path, mode=ReadOnly)
   defer file.close()
-  assert_eq(file.read_exactly_at(5, position=0), b"first")
+  assert_eq(file.read_exactly(5), b"first")
 }

@@ -4,6 +4,13 @@ This project follows semantic versioning after `1.0.0`. Before that milestone,
 each prerelease may contain breaking API or configuration changes. Every release
 notes those changes and the required application migration.
 
+## 0.3.0-alpha.1 - 2026-11-27
+
+- Pin MoonBit compiler archive `1.0.0-rc1+3c0520448` and CLI `0.1.20261126`.
+- Move IPC tasks, cancellation, HTTP and desktop file I/O to the standard library async runtime.
+- Update the first-party dependencies, including MoonView 0.2.0 and Orby 0.2.0-beta.1, and align the Windows and Android native build outputs with RC1.
+- Regenerate versioned IPC contracts and bindings with `schema_version.orbit` set to `0.3.0-alpha.1`.
+
 ## 0.2.0-alpha.4 - 2026-11-19
 
 - Carry runtime-attested origins on local window IPC contexts. Applications can

@@ -19,7 +19,7 @@ OIDC and must not receive an npm write token.
 1. Update `moon.mod` and `orbit-cli/package.json` to the same version.
 2. Merge the version change through the normal validation workflow.
 3. Create and push the matching protected tag, for example
-   `v0.2.0-alpha.3`.
+   `v0.3.0-alpha.1`.
 
 The release workflow verifies the tag, runs MoonBit and Node tests, performs a
 Mooncake dry run, packs the npm artifact, creates a draft GitHub Release,
@@ -28,8 +28,8 @@ only then makes the GitHub Release public. A failure leaves the GitHub Release
 as a draft for inspection. npm prereleases use their first prerelease identifier
 as the dist-tag (`alpha.1` uses `alpha`); stable versions use `latest`.
 
-`.moonbit-toolchain` selects the exact installer archive `0.10.20+65efd5b93`;
-`.moon-version` records the corresponding CLI version `0.1.20261104`. Unix CI
+`.moonbit-toolchain` selects the exact installer archive `1.0.0-rc1+3c0520448`;
+`.moon-version` records the corresponding CLI version `0.1.20261126`. Unix CI
 passes the archive identifier to `unix.sh`; Windows CI sets
 `MOONBIT_INSTALL_VERSION` from the same file before running `powershell.ps1`.
 Do not pass the CLI version to the installer or use the floating `latest`
@@ -48,5 +48,3 @@ Application repositories should pin the Orbit CLI version, publish the native
 artifact together with Orbit metadata, include the signing system's detached
 signature or bundle and a `SHA256SUMS` file, and keep GitHub authentication in
 their own CI rather than placing GitHub API access inside Orbit CLI.
-
-

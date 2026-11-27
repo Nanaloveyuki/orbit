@@ -1486,7 +1486,7 @@ pub fn run_async(
   let external_loop = { app_loop, failure: loop_failure, }
   @async.set_external_event_loop(external_loop)
   @async.run_async_main(() => {
-    @core_async.with_task_group() <| desktop_group => {
+    @async.with_task_group() <| desktop_group => {
       async_ipc.desktop_group = Some(desktop_group)
       defer {
         async_ipc.desktop_group = None

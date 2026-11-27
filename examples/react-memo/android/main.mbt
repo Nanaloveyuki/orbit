@@ -18,6 +18,7 @@ fn memo_registry() -> @ipc.CommandRegistry raise @ipc.IpcError {
 }
 
 ///|
+#export_name("ajni_dispatch_event")
 pub fn dispatch_android_event(
   kind : Int32,
   first : Int32,
@@ -27,16 +28,19 @@ pub fn dispatch_android_event(
 }
 
 ///|
+#export_name("ajni_create_int_callback")
 pub fn create_int_callback(env : UInt64) -> UInt64 {
   @ajni_android.create_int_callback(env)
 }
 
 ///|
+#export_name("ajni_handled_observer_error")
 pub fn handled_observer_error() -> Int32 {
   @ajni_android.handled_observer_error()
 }
 
 ///|
+#export_name("ajni_dispatch_webview_event")
 pub fn dispatch_android_webview_event(
   kind : Int32,
   handle : Int64,
@@ -45,8 +49,6 @@ pub fn dispatch_android_webview_event(
 ) -> Unit {
   @ajni_webview.dispatch_from_android(kind, handle, payload, detail)
 }
-
-///|
 
 ///|
 fn configure_android_application() -> Unit {
@@ -69,10 +71,7 @@ fn configure_android_application() -> Unit {
 }
 
 ///|
-/// Ajni invokes `moonbit_init` from `JNI_OnLoad`, not the executable entry.
-let android_application : Unit = configure_android_application()
-
-///|
-fn main {
-  ignore(android_application)
+/// Ajni invokes `moonbit_init` from `JNI_OnLoad`.
+fn init {
+  configure_android_application()
 }
